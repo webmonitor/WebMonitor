@@ -60,7 +60,7 @@ WebMonitor is a web content monitoring and email notification platform built wit
 ### Docker deployment
 
 ```bash
-git clone https://github.com/qfpqhyl/WebMonitor.git
+git clone https://github.com/webmonitor/WebMonitor.git
 cd WebMonitor
 docker-compose up -d
 ```

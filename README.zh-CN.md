@@ -60,7 +60,7 @@ WebMonitor 是一个基于 React 前端和 FastAPI 后端构建的网页内容�
 ### Docker 部署
 
 ```bash
-git clone https://github.com/qfpqhyl/WebMonitor.git
+git clone https://github.com/webmonitor/WebMonitor.git
 cd WebMonitor
 docker-compose up -d
 ```
