@@ -8,11 +8,12 @@ import uvicorn
 from dotenv import load_dotenv
 
 from ..db.database import get_db, engine, Base
-from ..db.models import MonitorTask, MonitorLog
+from ..db.models import MonitorTask, MonitorLog, User
 from ..schemas import MonitorTaskCreate, MonitorTaskResponse, MonitorLogResponse
 from ..db.crud import create_monitor_task, get_monitor_tasks, get_monitor_task, update_monitor_task, delete_monitor_task, get_monitor_logs
 from ..services.scheduler import monitor_scheduler
 from ..services.email_service import EmailService
+from ..services.auth_service import get_current_active_user
 
 
 # 创建数据库表
@@ -68,27 +69,35 @@ async def read_tasks(skip: int = 0, limit: int = 100, db: Session = Depends(get_
     return get_monitor_tasks(db=db, skip=skip, limit=limit)
 
 @app.get("/api/monitor-tasks/{task_id}", response_model=MonitorTaskResponse)
-async def read_task(task_id: int, db: Session = Depends(get_db)):
+async def read_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     """获取单个监控任务"""
     task = get_monitor_task(db=db, task_id=task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="监控任务不存在")
+    if task.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此任务")
     return task
 
 @app.put("/api/monitor-tasks/{task_id}", response_model=MonitorTaskResponse)
-async def update_task(task_id: int, task: MonitorTaskCreate, db: Session = Depends(get_db)):
+async def update_task(task_id: int, task: MonitorTaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     """更新监控任务"""
-    updated_task = update_monitor_task(db=db, task_id=task_id, task=task)
-    if updated_task is None:
+    existing_task = get_monitor_task(db=db, task_id=task_id)
+    if existing_task is None:
         raise HTTPException(status_code=404, detail="监控任务不存在")
+    if existing_task.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此任务")
+    updated_task = update_monitor_task(db=db, task_id=task_id, task=task)
     return updated_task
 
 @app.delete("/api/monitor-tasks/{task_id}")
-async def delete_task(task_id: int, db: Session = Depends(get_db)):
+async def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     """删除监控任务"""
-    success = delete_monitor_task(db=db, task_id=task_id)
-    if not success:
+    existing_task = get_monitor_task(db=db, task_id=task_id)
+    if existing_task is None:
         raise HTTPException(status_code=404, detail="监控任务不存在")
+    if existing_task.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此任务")
+    success = delete_monitor_task(db=db, task_id=task_id)
     return {"message": "监控任务删除成功"}
 
 @app.get("/api/monitor-tasks/{task_id}/logs", response_model=List[MonitorLogResponse])
