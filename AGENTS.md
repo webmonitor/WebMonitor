@@ -69,8 +69,8 @@ cp ../.env.example .env                  # then edit
 python main.py                           # uvicorn main:app --host 0.0.0.0 --port 8000
 
 # Frontend local
-cd frontend && npm install && npm start  # CRA dev server :3000; REACT_APP_API_URL from .env.development
-npm run build                            # production build → build/, served by nginx in Docker
+cd frontend && pnpm install && pnpm start  # CRA dev server :3000; REACT_APP_API_URL from .env.development
+pnpm run build                            # production build → build/, served by nginx in Docker
 ```
 
 - No lint/format commands exist (backend has no linter config; frontend eslint is CRA defaults via `package.json` eslintConfig).
@@ -111,13 +111,13 @@ npm run build                            # production build → build/, served b
 ## Runtime/Tooling Preferences
 
 - Python 3.9 (`python:3.9-slim` image; deps are exact pins in `backend/requirements.txt` — no pyproject/uv/poetry).
-- Node 18 (`node:18-alpine`); npm with committed `package-lock.json`; react-scripts 5.0.1 (CRA, pinned).
+- Node 18 (`node:18-alpine`); pnpm 10 with committed `pnpm-lock.yaml` (`packageManager` pinned; images run `pnpm install --frozen-lockfile`); react-scripts 5.0.1 (CRA, pinned).
 - Chromium comes from apt (`chromium-driver`) inside the backend image; `CHROME_BIN`/`CHROME_DRIVER` env are set there; Selenium Manager resolves the driver at runtime.
 - Docker: backend container runs as non-root `appuser`; SQLite DB lives at `/app/data/webmonitor.db` with **no volume** — data does not survive container rebuilds.
 - Env vars are read only via pydantic-settings `.env` (backend) and `REACT_APP_*` (frontend). `.env` is gitignored; copy from `.env.example`.
 
 ## Testing & QA
 
-- **No automated tests and no CI** (no pytest, no `*.test.js`, no `.github/workflows`). `npm test` finds no tests; backend has no test runner installed.
+- **No automated tests and no CI** (no pytest, no `*.test.js`, no `.github/workflows`). `pnpm test` finds no tests; backend has no test runner installed.
 - Verification is manual/runtime: `GET /health`, Docker healthchecks, and the built-in test endpoints — `POST /api/monitor-tasks/{id}/test`, `POST /api/test-email`, `POST /api/email-configs/{id}/test`, `POST /api/blacklist-domains/test`.
-- When changing behavior, exercise the real path: run the stack, hit the affected endpoint (or `npm start` + browser for UI), and report observed results. If adding tests, keep them self-contained (no test infra exists to extend).
+- When changing behavior, exercise the real path: run the stack, hit the affected endpoint (or `pnpm start` + browser for UI), and report observed results. If adding tests, keep them self-contained (no test infra exists to extend).

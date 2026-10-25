@@ -42,6 +42,7 @@ Thumbs.db
 # 前端相关 (开发时添加)
 node_modules/
 npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .next/

@@ -8,16 +8,16 @@ RUN apk add --no-cache nginx
 WORKDIR /app
 
 # 复制package文件
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
-# 安装依赖
-RUN npm install
+# 安装依赖（pnpm）
+RUN npm install -g pnpm@10.34.8 && pnpm install --frozen-lockfile
 
 # 复制源代码
 COPY . .
 
 # 构建应用
-RUN npm run build
+RUN pnpm run build
 
 # 复制nginx配置
 COPY nginx.conf /etc/nginx/nginx.conf

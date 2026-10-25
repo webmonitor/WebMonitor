@@ -88,8 +88,8 @@ python main.py
 
 ```bash
 cd frontend
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 ---
