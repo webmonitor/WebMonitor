@@ -52,7 +52,9 @@ frontend/
   src/contexts/AuthContext.js  # useAuth(); token+user in localStorage; axios defaults
   src/locales/           # en.js, zh-CN.js (+ docs/{en,zh-CN}.js content modules for /docs page)
   src/utils/             # i18n.js helpers, date.js
-  nginx.conf             # serves CRA build on :3000, proxies /api/ → webmonitor-backend:8000
+deploy/
+  backend.Dockerfile     # FastAPI + Selenium/Chromium image (context: repo root)
+  web.Dockerfile         # CRA build → static files via `serve` (context: repo root)
 image/                   # README screenshot asset
 ```
 
@@ -106,6 +108,7 @@ pnpm run build                            # production build → build/, served 
 | `frontend/src/App.js` | Routes + MUI theme |
 | `frontend/src/contexts/AuthContext.js` | Auth state, token storage, axios base config |
 | `docker-compose.yml` | Two services, env defaults, healthchecks |
+| `deploy/backend.Dockerfile`, `deploy/web.Dockerfile` | Build definitions (both contexts are the repo root); no reverse proxy |
 | `.env.example` | Env template (note: `ADMIN_*`/`FRONTEND_URL` not actually consumed) |
 
 ## Runtime/Tooling Preferences
@@ -115,6 +118,10 @@ pnpm run build                            # production build → build/, served 
 - Chromium comes from apt (`chromium-driver`) inside the backend image; `CHROME_BIN`/`CHROME_DRIVER` env are set there; Selenium Manager resolves the driver at runtime.
 - Docker: backend container runs as non-root `appuser`; SQLite DB lives at `/app/data/webmonitor.db` with **no volume** — data does not survive container rebuilds.
 - Env vars are read only via pydantic-settings `.env` (backend) and `REACT_APP_*` (frontend). `.env` is gitignored; copy from `.env.example`.
+- **No reverse proxy.** The frontend image is static files only (`serve -s build`); the browser calls the API cross-origin. Consequences:
+  - `REACT_APP_API_URL` is inlined by CRA **at build time**, so it is a compose build arg (`docker compose build frontend` after changing it), not a runtime env var. Empty value keeps relative `/api/...` requests, which then require an external proxy.
+  - `BACKEND_CORS_ORIGINS` must list the page's real origin (`scheme://host:port`). `localhost:3000` and `127.0.0.1:3000` are **distinct** origins; both are in the default. Serving the SPA from a custom domain needs that domain added, or the preflight fails with no CORS headers.
+  - `frontend` no longer `depends_on` `backend`; the two services start independently.
 
 ## Testing & QA
 

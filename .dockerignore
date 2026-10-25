@@ -11,7 +11,7 @@ docs/
 *.md
 
 # Development
-# Root-level dependency manifest is required by backend/Dockerfile.
+# Root-level dependency manifest is required by deploy/backend.Dockerfile.
 !requirements.txt
 !pyproject.toml
 .env.example
@@ -50,13 +50,18 @@ coverage/
 *.lcov
 
 # Dependency directories
+# Patterns are matched against the root context, so nested copies must be named
+# explicitly: both images build from the repository root.
 node_modules/
+frontend/node_modules/
+**/node_modules/
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 build/
+frontend/build/
 develop-eggs/
 dist/
 downloads/
@@ -95,6 +100,10 @@ tests/
 Dockerfile*
 docker-compose*
 .dockerignore
+
+# Caches
+.ruff_cache/
+.pytest_cache/
 
 # Temporary files
 tmp/
