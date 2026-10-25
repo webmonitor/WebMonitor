@@ -1,5 +1,5 @@
 # 使用官方镜像
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 # 设置工作目录
 WORKDIR /app
@@ -23,14 +23,15 @@ RUN apt-get update && apt-get install -y \
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROME_DRIVER=/usr/bin/chromedriver
 
-# 复制requirements文件
-COPY requirements.txt .
+# 依赖清单在仓库根目录（构建上下文为 WebMonitor/）
+COPY requirements.txt pyproject.toml ./
 
-# 安装Python依赖
-RUN pip install --no-cache-dir -r requirements.txt
+# 安装Python依赖（哈希校验，与 pyproject.toml 的精确 pin 一致）
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
 # 复制后端代码
-COPY . .
+COPY backend/main.py ./
+COPY backend/app ./app/
 
 # 创建非root用户并设置权限
 RUN useradd -m -u 1000 appuser \

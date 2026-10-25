@@ -79,9 +79,9 @@ docker-compose up -d
 后端：
 
 ```bash
-cd backend
+# 依赖清单在仓库根目录
 pip install -r requirements.txt
-python main.py
+cd backend && python main.py
 ```
 
 前端：

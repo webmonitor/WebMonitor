@@ -1,0 +1,28 @@
+[project]
+name = "webmonitor-backend"
+version = "1.0.0"
+description = "Legacy WebMonitor backend: FastAPI + Selenium XPath monitoring."
+requires-python = ">=3.12,<3.13"
+# Exact pins for what this project actually imports. The workspace conda
+# environment (../.github/requirements-workspace.txt) is the union of all three
+# projects; each project pins only its own needs. No lock file:
+# requirements.txt is generated from this list by `uv pip compile
+# --generate-hashes`.
+dependencies = [
+  "fastapi==0.142.2",
+  "uvicorn[standard]==0.54.0",
+  "sqlalchemy==2.1.1",
+  "pydantic==2.13.5",
+  "pydantic-settings==2.15.0",
+  "python-multipart==0.0.32",
+  "python-jose[cryptography]==3.5.0",
+  "bcrypt==5.0.0",
+  "python-dotenv==1.2.4",
+  "selenium==4.51.0",
+  "apscheduler==3.11.3",
+  "email-validator==2.3.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120

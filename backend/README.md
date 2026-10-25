@@ -7,7 +7,6 @@ WebMonitor 后端服务，基于 FastAPI + SQLite + Selenium 构建的网页内�
 ```
 backend/
 ├── main.py                 # 应用主入口文件
-├── requirements.txt        # Python依赖
 ├── .env.example           # 环境变量模板
 ├── README.md              # 项目说明
 ├── app/                   # 应用主目录
@@ -41,8 +40,9 @@ backend/
 ## 快速开始
 
 ### 1. 安装依赖
+依赖清单在仓库根目录（`../pyproject.toml` 为源，`../requirements.txt` 由 `uv pip compile` 生成）：
 ```bash
-pip install -r requirements.txt
+pip install -r ../requirements.txt
 ```
 
 ### 2. 配置环境变量

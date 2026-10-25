@@ -79,9 +79,11 @@ Default admin account:
 Backend:
 
 ```bash
-cd backend
+# 依赖清单在仓库根目录（pyproject.toml 为源，requirements.txt 由 uv pip compile 生成）
+# 工作区共用 conda 环境（Python 3.12），见 ../.github/environment.yml
+conda activate webmonitor
 pip install -r requirements.txt
-python main.py
+cd backend && python main.py
 ```
 
 Frontend:

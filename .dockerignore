@@ -11,6 +11,9 @@ docs/
 *.md
 
 # Development
+# Root-level dependency manifest is required by backend/Dockerfile.
+!requirements.txt
+!pyproject.toml
 .env.example
 .env.local
 .env.development.local
