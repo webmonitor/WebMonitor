@@ -267,7 +267,7 @@ const BlacklistManagement = () => {
           >
             {content.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             {content.subtitle}
           </Typography>
         </Box>
@@ -295,7 +295,7 @@ const BlacklistManagement = () => {
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -320,7 +320,7 @@ const BlacklistManagement = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(25, 118, 210, 0.1)',
@@ -343,7 +343,7 @@ const BlacklistManagement = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -368,7 +368,7 @@ const BlacklistManagement = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(239, 68, 68, 0.1)',
@@ -391,7 +391,7 @@ const BlacklistManagement = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -416,7 +416,7 @@ const BlacklistManagement = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(107, 114, 128, 0.1)',
@@ -439,7 +439,7 @@ const BlacklistManagement = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -464,7 +464,7 @@ const BlacklistManagement = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(167, 139, 250, 0.1)',
@@ -497,16 +497,16 @@ const BlacklistManagement = () => {
               {content.guideTitle}
             </Typography>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.guideLine1}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.guideLine2}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.guideLine3}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.guideLine4}
           </Typography>
         </CardContent>
@@ -541,7 +541,7 @@ const BlacklistManagement = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               {content.noDomains}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
               {content.noDomainsSubtitle}
             </Typography>
             <Button
@@ -598,7 +598,7 @@ const BlacklistManagement = () => {
                             {domain.domain}
                           </Typography>
                           {domain.domain.startsWith('*') && (
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                               {content.wildcard}
                             </Typography>
                           )}
@@ -606,7 +606,7 @@ const BlacklistManagement = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {domain.description || '-'}
                       </Typography>
                     </TableCell>
@@ -620,7 +620,7 @@ const BlacklistManagement = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {formatDateTime(domain.created_at, i18n.language)}
                       </Typography>
                     </TableCell>

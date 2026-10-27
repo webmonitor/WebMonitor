@@ -294,14 +294,14 @@ const PublicTasks = () => {
           >
             {content.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             {content.subtitle}
           </Typography>
         </Box>
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -326,7 +326,7 @@ const PublicTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(25, 118, 210, 0.1)',
@@ -349,7 +349,7 @@ const PublicTasks = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -374,7 +374,7 @@ const PublicTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(16, 185, 129, 0.1)',
@@ -397,7 +397,7 @@ const PublicTasks = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -422,7 +422,7 @@ const PublicTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: subscriptionInfo.remaining_slots > 0 ? 'rgba(34, 211, 238, 0.1)' : 'rgba(239, 68, 68, 0.1)',
@@ -445,7 +445,7 @@ const PublicTasks = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -470,7 +470,7 @@ const PublicTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(167, 139, 250, 0.1)',
@@ -502,13 +502,13 @@ const PublicTasks = () => {
               {content.usageTitle}
             </Typography>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.usageLine1}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.usageLine2}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.usageLine3}
           </Typography>
         </CardContent>
@@ -543,7 +543,7 @@ const PublicTasks = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               {content.noTasks}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {content.noTasksSubtitle}
             </Typography>
           </Box>
@@ -590,12 +590,11 @@ const PublicTasks = () => {
                             <LinkIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
                             <Typography
                               variant="caption"
-                              color="text.secondary"
-                              sx={{
-                                maxWidth: 200,
+                              sx={{maxWidth: 200,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
+                                color: 'text.secondary',
                               }}
                             >
                               {task.url}
@@ -628,7 +627,7 @@ const PublicTasks = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {formatDateTime(task.created_at, i18n.language)}
                       </Typography>
                     </TableCell>
@@ -683,16 +682,16 @@ const PublicTasks = () => {
               <Typography variant="h6" sx={{ mb: 1 }}>
                 {selectedTask.name}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
                 {content.createdByLabel}: {selectedTask.owner_username} | {content.createdAtLabel}: {formatDateTime(selectedTask.created_at, i18n.language)}
               </Typography>
               <Typography variant="body1" sx={{ mb: 2 }}>
                 {selectedTask.description || content.noDescription}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+              <Typography variant="body2" sx={{ wordBreak: 'break-all', color: 'text.secondary' }}>
                 {content.monitorUrl}: {selectedTask.url}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
                 {content.subscriberCount}: {selectedTask.subscription_count}
               </Typography>
             </Box>
@@ -728,7 +727,7 @@ const PublicTasks = () => {
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             {content.chooseEmailConfig}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
             {content.chooseEmailConfigSubtitle}
           </Typography>
         </DialogTitle>

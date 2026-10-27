@@ -270,14 +270,14 @@ const MySubscriptions = () => {
           >
             {content.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             {content.subtitle}
           </Typography>
         </Box>
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -302,7 +302,7 @@ const MySubscriptions = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(25, 118, 210, 0.1)',
@@ -325,7 +325,7 @@ const MySubscriptions = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -350,7 +350,7 @@ const MySubscriptions = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(16, 185, 129, 0.1)',
@@ -373,7 +373,7 @@ const MySubscriptions = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -398,7 +398,7 @@ const MySubscriptions = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(239, 68, 68, 0.1)',
@@ -421,7 +421,7 @@ const MySubscriptions = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -446,7 +446,7 @@ const MySubscriptions = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(167, 139, 250, 0.1)',
@@ -478,13 +478,13 @@ const MySubscriptions = () => {
               {content.guideTitle}
             </Typography>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.guideLine1}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.guideLine2}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
             • {content.guideLine3}
           </Typography>
         </CardContent>
@@ -519,7 +519,7 @@ const MySubscriptions = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               {content.noSubscriptions}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
               {content.noSubscriptionsSubtitle}
             </Typography>
             <Button
@@ -576,7 +576,7 @@ const MySubscriptions = () => {
                           <Typography variant="body1" sx={{ fontWeight: 600 }}>
                             {subscription.task_name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {content.createdBy}: {subscription.task_owner}
                           </Typography>
                         </Box>
@@ -588,12 +588,11 @@ const MySubscriptions = () => {
                         <Tooltip title={subscription.task_url} arrow>
                           <Typography
                             variant="body2"
-                            color="text.secondary"
-                            sx={{
-                              maxWidth: 200,
+                            sx={{maxWidth: 200,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
+                              color: 'text.secondary',
                             }}
                           >
                             {subscription.task_url}
@@ -613,7 +612,7 @@ const MySubscriptions = () => {
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <EmailIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                           {subscription.email_config_id
                             ? emailConfigs.find((config) => config.id === subscription.email_config_id)?.name || content.unknownConfig
                             : content.defaultConfig}
@@ -621,7 +620,7 @@ const MySubscriptions = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {formatDateTime(subscription.created_at, i18n.language)}
                       </Typography>
                     </TableCell>
@@ -697,7 +696,7 @@ const MySubscriptions = () => {
                   value={formData.email_config_id || ''}
                   onChange={(event) => setFormData({ ...formData, email_config_id: event.target.value || null })}
                   sx={{ mb: 2 }}
-                  SelectProps={{ native: true }}
+                  slotProps={{ select: { native: true } }}
                 >
                   <option value="">{content.useDefaultConfig}</option>
                   {emailConfigs.map((config) => (

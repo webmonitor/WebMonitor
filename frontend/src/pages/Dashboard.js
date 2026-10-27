@@ -29,7 +29,7 @@ import {
   Security as SecurityIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
@@ -119,27 +119,23 @@ const Dashboard = () => {
     excellent: 'Excellent',
   };
 
-  const { data: tasks = [], refetch: refetchTasks } = useQuery(
-    'monitor-tasks',
-    async () => {
+  const { data: tasks = [], refetch: refetchTasks } = useQuery({
+    queryKey: ['monitor-tasks'],
+    queryFn: async () => {
       const response = await axios.get('/api/monitor-tasks');
       return response.data;
     },
-    {
-      refetchInterval: 60000,
-    }
-  );
+    refetchInterval: 60000,
+  });
 
-  const { data: logs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery(
-    'latest-monitor-logs',
-    async () => {
+  const { data: logs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
+    queryKey: ['latest-monitor-logs'],
+    queryFn: async () => {
       const response = await axios.get('/api/monitor-logs/latest?limit=10');
       return response.data;
     },
-    {
-      refetchInterval: 30000,
-    }
-  );
+    refetchInterval: 30000,
+  });
 
   const totalTasks = tasks.length;
   const activeTasks = tasks.filter((task) => task.is_active).length;
@@ -227,7 +223,7 @@ const Dashboard = () => {
             </Box>
 
             <Grid container spacing={3}>
-              <Grid item xs={6} md={3}>
+              <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#10b981', fontWeight: 'bold' }}>
                     {totalTasks}
@@ -237,7 +233,7 @@ const Dashboard = () => {
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} md={3}>
+              <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#22d3ee', fontWeight: 'bold' }}>
                     {activeTasks}
@@ -247,7 +243,7 @@ const Dashboard = () => {
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} md={3}>
+              <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#a78bfa', fontWeight: 'bold' }}>
                     {recentChanges}
@@ -257,7 +253,7 @@ const Dashboard = () => {
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} md={3}>
+              <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#34d399', fontWeight: 'bold' }}>
                     {successRate}%
@@ -272,7 +268,7 @@ const Dashboard = () => {
         </Box>
 
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               title={content.totalTasks}
               value={totalTasks}
@@ -282,7 +278,7 @@ const Dashboard = () => {
               trend={totalTasks > 0 ? 12 : 0}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               title={content.activeTasks}
               value={activeTasks}
@@ -292,7 +288,7 @@ const Dashboard = () => {
               trend={activeTasks > 0 ? 8 : 0}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               title={content.recentChanges}
               value={recentChanges}
@@ -302,7 +298,7 @@ const Dashboard = () => {
               trend={recentChanges > 0 ? 15 : 0}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               title={content.successRate}
               value={`${successRate}%`}
@@ -315,7 +311,7 @@ const Dashboard = () => {
         </Grid>
 
         <Grid container spacing={4}>
-          <Grid item xs={12} lg={8}>
+          <Grid size={{ xs: 12, lg: 8 }}>
             <Paper
               sx={{
                 p: 3,
@@ -363,7 +359,7 @@ const Dashboard = () => {
                   <Typography variant="h6" sx={{ color: '#1a1a1a', mb: 1 }}>
                     {content.noActivity}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.noActivitySubtitle}
                   </Typography>
                 </Box>
@@ -417,7 +413,7 @@ const Dashboard = () => {
                                 sx={{ fontSize: '0.75rem' }}
                               />
                             </Box>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                               <TimeIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
                               {formatRelativeTime(log.check_time, i18n.language)}
                             </Typography>
@@ -433,7 +429,7 @@ const Dashboard = () => {
                               width: '100%',
                             }}
                           >
-                            <Typography variant="body2" color="error.main" sx={{ fontWeight: 500 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
                               {content.errorPrefix}: {log.error_message}
                             </Typography>
                           </Box>
@@ -446,16 +442,16 @@ const Dashboard = () => {
                               width: '100%',
                             }}
                           >
-                            <Typography variant="body2" color="success.main" sx={{ fontWeight: 500, mb: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1, color: 'success.main' }}>
                               {content.changeDetected}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                               {content.newContentPreview}: {log.new_content.substring(0, 150)}
                               {log.new_content.length > 150 ? '...' : ''}
                             </Typography>
                           </Box>
                         ) : (
-                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
                             {content.contentUnchanged}
                           </Typography>
                         )}
@@ -470,9 +466,9 @@ const Dashboard = () => {
             </Paper>
           </Grid>
 
-          <Grid item xs={12} lg={4}>
+          <Grid size={{ xs: 12, lg: 4 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Paper
                   sx={{
                     p: 3,
@@ -547,7 +543,7 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Paper
                   sx={{
                     p: 3,
@@ -577,7 +573,7 @@ const Dashboard = () => {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {content.monitorEngine}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {content.poweredBy}
                           </Typography>
                         </Box>
@@ -607,7 +603,7 @@ const Dashboard = () => {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {content.notificationService}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {content.emailNotifications}
                           </Typography>
                         </Box>
@@ -637,7 +633,7 @@ const Dashboard = () => {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {content.responseTime}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {content.average} {averageResponseTime}s
                           </Typography>
                         </Box>
@@ -666,7 +662,7 @@ const Dashboard = () => {
           backgroundColor: '#ffffff',
         }}
       >
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
         <Button

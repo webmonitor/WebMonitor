@@ -231,7 +231,7 @@ const HomePage = () => {
               py: 2,
             }}
           >
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <WebMonitorLogo size={40} showPulse />
                 <Typography
@@ -250,10 +250,10 @@ const HomePage = () => {
                 <LanguageSwitcher />
               </Box>
             </Stack>
-            <Stack direction="row" spacing={2} alignItems="center">
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
               <Button
                 variant="text"
-                onClick={() => navigate('/docs')}
+                onClick={() => navigate('/documentation')}
                 sx={{
                   color: '#64748b',
                   fontWeight: 500,
@@ -336,8 +336,8 @@ const HomePage = () => {
         }}
       >
         <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, px: { xs: 3, md: 6 } }}>
-          <Grid container spacing={{ xs: 6, md: 10 }} alignItems="center">
-            <Grid item xs={12} lg={6}>
+          <Grid container spacing={{ xs: 6, md: 10 }} sx={{ alignItems: 'center' }}>
+            <Grid size={{ xs: 12, lg: 6 }}>
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={heroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
@@ -484,7 +484,7 @@ const HomePage = () => {
               </motion.div>
             </Grid>
 
-            <Grid item xs={12} lg={6}>
+            <Grid size={{ xs: 12, lg: 6 }}>
               <motion.div
                 initial={{ opacity: 0, x: 50 }}
                 animate={heroInView ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
@@ -556,7 +556,7 @@ const HomePage = () => {
                     <Box sx={{ p: 3 }}>
                       <Grid container spacing={2} sx={{ mb: 3 }}>
                         {content.previewStats.map((stat, i) => (
-                          <Grid item xs={4} key={stat.label}>
+                          <Grid key={stat.label} size={{ xs: 4 }}>
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={heroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
@@ -721,7 +721,7 @@ const HomePage = () => {
 
           <Grid container spacing={3}>
             {content.features.map((feature, index) => (
-              <Grid item xs={12} sm={6} md={4} key={feature.title}>
+              <Grid key={feature.title} size={{ xs: 12, sm: 6, md: 4 }}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={featuresInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
@@ -815,9 +815,9 @@ const HomePage = () => {
             </Box>
           </motion.div>
 
-          <Grid container spacing={4} alignItems="stretch">
+          <Grid container spacing={4} sx={{ alignItems: 'stretch' }}>
             {content.advantages.map((advantage, index) => (
-              <Grid item xs={12} md={4} key={advantage.title}>
+              <Grid key={advantage.title} size={{ xs: 12, md: 4 }}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={advantagesInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
@@ -936,7 +936,7 @@ const HomePage = () => {
                 {content.ctaSubtitle}
               </Typography>
 
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'center' }}>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Button
                     variant="contained"

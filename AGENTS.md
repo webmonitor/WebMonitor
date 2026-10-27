@@ -13,7 +13,12 @@ Legacy v1 of a web content change-monitoring platform with email alerts. Two ind
 ## Architecture & Data Flow
 
 ```
-React SPA (:3000) --axios /api/*--> FastAPI (:8000)
+Browser --same origin (:8000)--> FastAPI
+  /            -> React SPA build (index.html, static/*)
+  /api/*       -> API routers
+  /*           -> index.html (client-side routes)
+
+API path inside FastAPI:
   routes → services → crud → SQLAlchemy models (sync)
 APScheduler (BackgroundScheduler, per-task interval jobs)
   → MonitorService.check_single_task
@@ -36,7 +41,7 @@ APScheduler (BackgroundScheduler, per-task interval jobs)
 
 ```
 backend/
-  main.py                # real entrypoint: create_all, admin seed, CORS, lifespan starts scheduler
+  main.py                # real entrypoint: create_all, admin seed, SPA+API on one origin, lifespan starts scheduler
   app/
     api/routes.py        # monitor-tasks, logs, email-configs, blacklist, public-tasks, subscriptions
     api/auth.py          # /auth register/login/me/users/logout
@@ -50,11 +55,10 @@ frontend/
   src/pages/             # 12 page components, one per route (Dashboard, MonitorTasks, ...)
   src/components/        # Layout, ProtectedRoute, StatCard, LanguageSwitcher, ...
   src/contexts/AuthContext.js  # useAuth(); token+user in localStorage; axios defaults
-  src/locales/           # en.js, zh-CN.js (+ docs/{en,zh-CN}.js content modules for /docs page)
+  src/locales/           # en.js, zh-CN.js (+ docs/{en,zh-CN}.js content modules for /documentation page)
   src/utils/             # i18n.js helpers, date.js
 deploy/
-  backend.Dockerfile     # FastAPI + Selenium/Chromium image (context: repo root)
-  web.Dockerfile         # CRA build → static files via `serve` (context: repo root)
+  Dockerfile             # multi-stage: CRA build → FastAPI+Chromium runtime that serves both (context: repo root)
 image/                   # README screenshot asset
 ```
 
@@ -62,7 +66,7 @@ image/                   # README screenshot asset
 
 ```sh
 # Docker (full stack)
-docker-compose up -d                     # frontend :3000, backend :8000, API docs /docs
+docker-compose up -d                     # single container: UI + API on :8000, docs at /docs
 curl -f http://localhost:8000/health     # compose healthcheck target
 
 # Backend local (dependency manifest lives at the repo root)
@@ -71,8 +75,8 @@ cp .env.example backend/.env             # then edit
 cd backend && python main.py             # uvicorn main:app --host 0.0.0.0 --port 8000
 
 # Frontend local
-cd frontend && pnpm install && pnpm start  # CRA dev server :3000; REACT_APP_API_URL from .env.development
-pnpm run build                            # production build → build/, served by nginx in Docker
+cd frontend && pnpm install && pnpm start  # CRA dev server :3000, proxies /api to :8000 (package.json "proxy")
+pnpm run build                            # production build → build/, copied into the single Docker image
 ```
 
 - No lint/format commands exist (backend has no linter config; frontend eslint is CRA defaults via `package.json` eslintConfig).
@@ -83,14 +87,14 @@ pnpm run build                            # production build → build/, served 
 **Backend**
 - snake_case modules; service classes `XxxService` (+ `MonitorScheduler`); CRUD as module-level `verb_noun` functions; models singular PascalCase with plural `__tablename__`; routes kebab-case (`/monitor-tasks`), `/auth/*` and `/subscribe/{task_id}` exceptions.
 - Errors: raise `HTTPException(status_code, detail)` with **Chinese detail strings** from routes; services return tuples/dicts/bools (e.g. `(content, error, title)`, `{"success": bool}`) rather than raising; broad `except Exception` + `logger.error`; email failures never propagate.
-- All env config flows through the `Settings` singleton (`from app.core.config import settings`); never `os.getenv` directly. `BACKEND_CORS_ORIGINS` accepts comma-separated string or list.
+- All env config flows through the `Settings` singleton (`from app.core.config import settings`); never `os.getenv` directly. There is no CORS setting: the SPA and the API are served from the same origin.
 - Async services called from sync scheduler jobs via `asyncio.run(...)`; routes may be sync (`def`) since DB/session calls are sync SQLAlchemy.
 
 **Frontend**
 - Plain JS (no TypeScript, no PropTypes). PascalCase files for components/pages matching the component; default exports everywhere except `useAuth` hook.
-- Styling exclusively via MUI `sx` prop + shared `createTheme` in `App.js`; no CSS modules.
-- Data: react-query v3 (`useQuery`/`useMutation`) in newer pages; older pages use `useEffect` + axios + local state — follow react-query for new pages.
-- API calls: axios imported directly in pages against relative `/api/...` paths; base URL from `axios.defaults.baseURL` (`REACT_APP_API_URL`, set in `AuthContext.js`). Error extraction pattern: `err.response?.data?.detail || err.response?.data?.message`.
+- Styling exclusively via MUI `sx` prop + shared `createTheme` in `App.js`; no CSS modules. MUI is **v9**: use `Grid size={{ xs, sm, md }}` (no `item`/`xs` props), `slotProps` (`input`/`htmlInput`/`select`/`paper`) instead of `InputProps`/`inputProps`/`SelectProps`/`PaperProps`/`primaryTypographyProps`, and demo/page design tokens such as `color="text.secondary"` belong in `sx` (the shorthand prop is `textSecondary`).
+- Data: TanStack Query v5 (`@tanstack/react-query`) in newer pages; its API is object-form (`useQuery({ queryKey, queryFn, ... })`, `useMutation({ mutationFn, onSuccess })`, `invalidateQueries({ queryKey })`, `isPending`), and `onSuccess`/`keepPreviousData` on queries are gone (`placeholderData: keepPreviousData`). Older pages use `useEffect` + axios + local state — follow TanStack Query for new pages.
+- API calls: axios imported directly in pages against relative `/api/...` paths (`axios.defaults.baseURL = ''` in `AuthContext.js` — same origin as the page). Error extraction pattern: `err.response?.data?.detail || err.response?.data?.message`.
 - Auth: `useAuth()` from `contexts/AuthContext.js`; token + user JSON in `localStorage`; wrap routes in `ProtectedRoute` (`adminOnly` prop for admin pages).
 - i18n: `t()` via react-i18next with resources in `src/locales/{en,zh-CN}.js` (`fallbackLng: 'en'`); docs-page copy lives separately in `src/locales/docs/*.js` imported directly by `Documentation.js`; some pages still use inline `isChinese ? {...} : {...}` objects — prefer `t()` for new strings.
 
@@ -98,7 +102,7 @@ pnpm run build                            # production build → build/, served 
 
 | File | Role |
 |---|---|
-| `backend/main.py` | Entrypoint: `create_all`, default-admin seed, CORS, scheduler lifespan |
+| `backend/main.py` | Entrypoint: `create_all`, default-admin seed, SPA static serving + catch-all, scheduler lifespan |
 | `backend/app/core/config.py` | All env vars (pydantic-settings); ground truth for configuration |
 | `backend/app/api/routes.py` | All monitor/task CRUD + test endpoints |
 | `backend/app/services/scheduler.py` | APScheduler job sync (`monitor_task_{id}`) |
@@ -107,21 +111,23 @@ pnpm run build                            # production build → build/, served 
 | `backend/app/api/main.py` | **Legacy duplicate app — do not extend** |
 | `frontend/src/App.js` | Routes + MUI theme |
 | `frontend/src/contexts/AuthContext.js` | Auth state, token storage, axios base config |
-| `docker-compose.yml` | Two services, env defaults, healthchecks |
-| `deploy/backend.Dockerfile`, `deploy/web.Dockerfile` | Build definitions (both contexts are the repo root); no reverse proxy |
-| `.env.example` | Env template (note: `ADMIN_*`/`FRONTEND_URL` not actually consumed) |
+| `docker-compose.yml` | One `webmonitor` service on :8000, env defaults, healthcheck |
+| `deploy/Dockerfile` | Single multi-stage build definition (context: repo root); backend serves the SPA, no reverse proxy, no CORS |
+| `.env.example` | Env template (note: `ADMIN_*` are not consumed — `main.py` hard-codes the seeded admin) |
 
 ## Runtime/Tooling Preferences
 
 - Python 3.12 (`python:3.12-slim` image). Dependency pins live in the repo-root `pyproject.toml`; `requirements.txt` next to it is generated by `uv pip compile --generate-hashes --python-version 3.12 --universal`. No lock file.
 - Node 18 (`node:18-alpine`); pnpm 10 with committed `pnpm-lock.yaml` (`packageManager` pinned; images run `pnpm install --frozen-lockfile`); react-scripts 5.0.1 (CRA, pinned).
+- Frontend stack after the dependency upgrade: React 19.3, MUI 9.5 (`@mui/material` + `@mui/icons-material`), TanStack Query 5, react-router-dom 6.30 (v7 needs Node ≥20, so it stays on 6), i18next 26 + react-i18next 17, framer-motion 14, axios 1.20. `devDependencies` are limited to what CRA's bundled eslint/fork-ts-checker actually need (`eslint-plugin-jest` 25.7, `typescript` 4.9.5); raising either breaks `react-scripts` peer resolution. `@mui/x-data-grid`, `@mui/x-date-pickers` and `web-vitals` were unused and removed.
 - Chromium comes from apt (`chromium-driver`) inside the backend image; `CHROME_BIN`/`CHROME_DRIVER` env are set there; Selenium Manager resolves the driver at runtime.
 - Docker: backend container runs as non-root `appuser`; SQLite DB lives at `/app/data/webmonitor.db` with **no volume** — data does not survive container rebuilds.
 - Env vars are read only via pydantic-settings `.env` (backend) and `REACT_APP_*` (frontend). `.env` is gitignored; copy from `.env.example`.
-- **No reverse proxy.** The frontend image is static files only (`serve -s build`); the browser calls the API cross-origin. Consequences:
-  - `REACT_APP_API_URL` is inlined by CRA **at build time**, so it is a compose build arg (`docker compose build frontend` after changing it), not a runtime env var. Empty value keeps relative `/api/...` requests, which then require an external proxy.
-  - `BACKEND_CORS_ORIGINS` must list the page's real origin (`scheme://host:port`). `localhost:3000` and `127.0.0.1:3000` are **distinct** origins; both are in the default. Serving the SPA from a custom domain needs that domain added, or the preflight fails with no CORS headers.
-  - `frontend` no longer `depends_on` `backend`; the two services start independently.
+- **Single image, single origin.** `deploy/Dockerfile` is multi-stage: it builds the CRA bundle and copies it next to the backend, and `backend/main.py` serves it (`FRONTEND_DIST`, default `web/`) on the same port as `/api`. Consequences:
+  - Only one container and one port (`8000`); `docker compose up -d` starts `webmonitor` alone.
+  - No CORS middleware and no `BACKEND_CORS_ORIGINS`; none is needed because browser and API share an origin.
+  - Axios uses relative `/api/...` URLs (`axios.defaults.baseURL = ''`). Local `pnpm start` relies on CRA's `"proxy": "http://127.0.0.1:8000"`; there is no `REACT_APP_API_URL` any more.
+  - `backend/main.py` registers `/api` routers first, then mounts `/static` for hashed assets, then a `/{full_path:path}` catch-all that returns `index.html` so client-side routes survive a hard refresh. Any new non-API route must be registered before that catch-all.
 
 ## Testing & QA
 

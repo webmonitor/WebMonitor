@@ -168,7 +168,7 @@ function Layout({ children }) {
             >
               WebMonitor
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {isChinese ? '网页监控系统' : 'Web monitoring platform'}
             </Typography>
           </Box>
@@ -232,12 +232,16 @@ function Layout({ children }) {
                   <ListItemText
                     primary={item.text}
                     secondary={item.description}
-                    primaryTypographyProps={{
-                      fontSize: '0.9rem',
-                      fontWeight: isActive ? 600 : 500,
-                    }}
-                    secondaryTypographyProps={{
-                      fontSize: '0.75rem',
+                    slotProps={{
+                      primary: {
+                        sx: {
+                          fontSize: '0.9rem',
+                          fontWeight: isActive ? 600 : 500,
+                        },
+                      },
+                      secondary: {
+                        sx: { fontSize: '0.75rem' },
+                      },
                     }}
                   />
                 </ListItemButton>
@@ -264,7 +268,7 @@ function Layout({ children }) {
             <Typography variant="body2" sx={{ fontWeight: 600, truncate: true }}>
               {user?.username || t('common.user')}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ truncate: true }}>
+            <Typography variant="caption" sx={{ truncate: true, color: 'text.secondary' }}>
               {user?.email || ''}
             </Typography>
           </Box>
@@ -395,13 +399,15 @@ function Layout({ children }) {
               }}
               open={Boolean(userMenuAnchor)}
               onClose={handleUserMenuClose}
-              PaperProps={{
-                sx: {
-                  mt: 1,
-                  minWidth: 200,
-                  borderRadius: 2,
-                  border: '1px solid rgba(0, 0, 0, 0.06)',
-                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+              slotProps={{
+                paper: {
+                  sx: {
+                    mt: 1,
+                    minWidth: 200,
+                    borderRadius: 2,
+                    border: '1px solid rgba(0, 0, 0, 0.06)',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+                  },
                 },
               }}
             >
@@ -414,7 +420,7 @@ function Layout({ children }) {
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {user?.username || t('common.user')}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {user?.email || ''}
                   </Typography>
                 </Box>

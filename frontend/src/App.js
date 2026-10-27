@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -207,8 +207,9 @@ function App() {
               {/* 注册页面 - 不需要认证 */}
               <Route path="/register" element={<Register />} />
 
-              {/* 文档页面 - 不需要认证 */}
-              <Route path="/docs" element={<Documentation />} />
+              {/* 文档页面 - 不需要认证。
+                  路径不能是 /docs：同源发布后 /docs 属于 FastAPI 的 Swagger UI。 */}
+              <Route path="/documentation" element={<Documentation />} />
 
               {/* 仪表板 */}
               <Route path="/dashboard" element={

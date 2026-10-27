@@ -66,9 +66,11 @@ docker-compose up -d
 ```
 
 Then open:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
+- Web UI: http://localhost:8000/
 - API docs: http://localhost:8000/docs
+
+The frontend is served by the same FastAPI process as the API, so the browser
+only talks to one origin and no CORS configuration exists.
 
 Default admin account:
 - Username: `admin`
@@ -108,7 +110,6 @@ Copy `.env.example` to `.env` and update the values as needed.
 | `ADMIN_USERNAME` | Default admin username | `admin` |
 | `ADMIN_PASSWORD` | Default admin password | `admin123` |
 | `ADMIN_EMAIL` | Default admin email | `admin@example.com` |
-| `FRONTEND_URL` | Frontend origin | `http://localhost:3000` |
 | `DATABASE_URL` | Database connection string | `sqlite:///./data/webmonitor.db` |
 | `SMTP_SERVER` | SMTP host for notifications | - |
 | `SMTP_PORT` | SMTP port | `465` |
@@ -141,7 +142,7 @@ image/     Screenshots and assets used in documentation
 
 ## Architecture summary
 
-1. The React frontend calls the FastAPI backend through Axios.
+1. FastAPI serves the built React frontend and the API from one origin; the React app calls `/api/...` through Axios with relative URLs.
 2. Authentication is handled with JWT.
 3. Monitoring tasks are stored in the database through SQLAlchemy.
 4. APScheduler triggers monitoring jobs in the background.

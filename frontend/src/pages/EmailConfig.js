@@ -40,7 +40,7 @@ import {
   Email as EmailIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
@@ -144,59 +144,53 @@ const EmailConfig = () => {
 
   const queryClient = useQueryClient();
 
-  const { data: emailConfigs = [] } = useQuery(
-    'emailConfigs',
-    async () => {
+  const { data: emailConfigs = [] } = useQuery({
+    queryKey: ['emailConfigs'],
+    queryFn: async () => {
       const response = await axios.get('/api/email-configs');
       return response.data;
-    }
-  );
+    },
+  });
 
-  const createConfigMutation = useMutation(
-    async (configData) => {
+  const createConfigMutation = useMutation({
+    mutationFn: async (configData) => {
       const response = await axios.post('/api/email-configs', configData);
       return response.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('emailConfigs');
-        setOpenDialog(false);
-        resetForm();
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['emailConfigs'] });
+      setOpenDialog(false);
+      resetForm();
+    },
+  });
 
-  const updateConfigMutation = useMutation(
-    async ({ id, ...configData }) => {
+  const updateConfigMutation = useMutation({
+    mutationFn: async ({ id, ...configData }) => {
       const response = await axios.put(`/api/email-configs/${id}`, configData);
       return response.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('emailConfigs');
-        setOpenDialog(false);
-        resetForm();
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['emailConfigs'] });
+      setOpenDialog(false);
+      resetForm();
+    },
+  });
 
-  const deleteConfigMutation = useMutation(
-    async (id) => {
+  const deleteConfigMutation = useMutation({
+    mutationFn: async (id) => {
       await axios.delete(`/api/email-configs/${id}`);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('emailConfigs');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['emailConfigs'] });
+    },
+  });
 
-  const testConfigMutation = useMutation(
-    async (configId) => {
+  const testConfigMutation = useMutation({
+    mutationFn: async (configId) => {
       const response = await axios.post(`/api/email-configs/${configId}/test`);
       return response.data;
-    }
-  );
+    },
+  });
 
   const resetForm = () => {
     setFormData({
@@ -273,7 +267,7 @@ const EmailConfig = () => {
           >
             {content.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             {content.subtitle}
           </Typography>
         </Box>
@@ -301,7 +295,7 @@ const EmailConfig = () => {
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -311,7 +305,7 @@ const EmailConfig = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(37, 99, 235, 0.1)',
@@ -327,7 +321,7 @@ const EmailConfig = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {emailConfigs.length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.emailConfigs}
                   </Typography>
                 </Box>
@@ -335,7 +329,7 @@ const EmailConfig = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -345,7 +339,7 @@ const EmailConfig = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(16, 185, 129, 0.1)',
@@ -361,7 +355,7 @@ const EmailConfig = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {emailConfigs.filter((config) => config.is_active).length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.activeConfigs}
                   </Typography>
                 </Box>
@@ -369,7 +363,7 @@ const EmailConfig = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -379,7 +373,7 @@ const EmailConfig = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(34, 211, 238, 0.1)',
@@ -395,7 +389,7 @@ const EmailConfig = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     SSL/TLS
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.secureConnection}
                   </Typography>
                 </Box>
@@ -403,7 +397,7 @@ const EmailConfig = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -413,7 +407,7 @@ const EmailConfig = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(167, 139, 250, 0.1)',
@@ -429,7 +423,7 @@ const EmailConfig = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {content.configured}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.systemConfigured}
                   </Typography>
                 </Box>
@@ -478,7 +472,7 @@ const EmailConfig = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               {content.noConfigs}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
               {content.noConfigsSubtitle}
             </Typography>
             <Button
@@ -531,7 +525,7 @@ const EmailConfig = () => {
                           <Typography variant="body1" sx={{ fontWeight: 600 }}>
                             {config.name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {config.smtp_server}:{config.smtp_port} {config.is_ssl ? 'SSL' : ''}
                           </Typography>
                         </Box>
@@ -544,7 +538,7 @@ const EmailConfig = () => {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {config.smtp_user}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {content.smtpSenderAccount}
                           </Typography>
                         </Box>
@@ -557,7 +551,7 @@ const EmailConfig = () => {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {config.receiver_email}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {content.notificationReceiver}
                           </Typography>
                         </Box>
@@ -569,7 +563,7 @@ const EmailConfig = () => {
                           <IconButton
                             size="small"
                             onClick={() => handleTestConfig(config.id)}
-                            disabled={testConfigMutation.isLoading}
+                            disabled={testConfigMutation.isPending}
                             sx={{
                               color: '#2563eb',
                               '&:hover': { backgroundColor: 'rgba(37, 99, 235, 0.1)' },
@@ -594,7 +588,7 @@ const EmailConfig = () => {
                           <IconButton
                             size="small"
                             onClick={() => deleteConfigMutation.mutate(config.id)}
-                            disabled={deleteConfigMutation.isLoading}
+                            disabled={deleteConfigMutation.isPending}
                             sx={{
                               color: '#ef4444',
                               '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
@@ -634,10 +628,12 @@ const EmailConfig = () => {
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 4,
-            border: '1px solid rgba(0, 0, 0, 0.06)',
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 4,
+              border: '1px solid rgba(0, 0, 0, 0.06)',
+            },
           },
         }}
       >
@@ -676,7 +672,7 @@ const EmailConfig = () => {
         <form onSubmit={handleSubmit}>
           <DialogContent sx={{ pt: 3 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.configName}
                   fullWidth
@@ -696,7 +692,7 @@ const EmailConfig = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label={content.smtpServer}
                   fullWidth
@@ -704,12 +700,14 @@ const EmailConfig = () => {
                   onChange={(e) => setFormData({ ...formData, smtp_server: e.target.value })}
                   required
                   placeholder="smtp.example.com"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <MailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -724,7 +722,7 @@ const EmailConfig = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label={content.smtpPort}
                   fullWidth
@@ -745,7 +743,7 @@ const EmailConfig = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.senderAddress}
                   fullWidth
@@ -753,12 +751,14 @@ const EmailConfig = () => {
                   value={formData.smtp_user}
                   onChange={(e) => setFormData({ ...formData, smtp_user: e.target.value })}
                   required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -773,7 +773,7 @@ const EmailConfig = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.smtpPassword}
                   type={showPassword ? 'text' : 'password'}
@@ -782,24 +782,26 @@ const EmailConfig = () => {
                   onChange={(e) => setFormData({ ...formData, smtp_password: e.target.value })}
                   required
                   helperText={content.passwordHelper}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SecurityIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle password visibility"
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          sx={{ color: 'rgba(0, 0, 0, 0.6)' }}
-                        >
-                          {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SecurityIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            sx={{ color: 'rgba(0, 0, 0, 0.6)' }}
+                          >
+                            {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -814,7 +816,7 @@ const EmailConfig = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.receiverAddress}
                   fullWidth
@@ -822,12 +824,14 @@ const EmailConfig = () => {
                   value={formData.receiver_email}
                   onChange={(e) => setFormData({ ...formData, receiver_email: e.target.value })}
                   required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -842,7 +846,7 @@ const EmailConfig = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(37, 99, 235, 0.05)' }}>
                   <Switch
                     checked={formData.is_ssl}
@@ -860,7 +864,7 @@ const EmailConfig = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {content.useSsl}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       {content.useSslHelper}
                     </Typography>
                   </Box>
@@ -882,7 +886,7 @@ const EmailConfig = () => {
             <Button
               type="submit"
               variant="contained"
-              disabled={createConfigMutation.isLoading || updateConfigMutation.isLoading}
+              disabled={createConfigMutation.isPending || updateConfigMutation.isPending}
               sx={{
                 background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
                 px: 4,
@@ -910,7 +914,7 @@ const EmailConfig = () => {
           borderTop: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
         <Button

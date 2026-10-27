@@ -199,7 +199,7 @@ const renderList = (list) => {
 const renderBlock = (block) => {
   if (block.type === 'text') {
     return block.paragraphs.map((paragraph) => (
-      <Typography key={paragraph} paragraph sx={{ color: '#64748b', lineHeight: 1.8 }}>
+      <Typography key={paragraph} sx={{ color: '#64748b', lineHeight: 1.8, mb: 2 }}>
         {paragraph}
       </Typography>
     ));
@@ -209,7 +209,7 @@ const renderBlock = (block) => {
     return (
       <SubSection key={block.title} title={block.title}>
         {block.paragraphs?.map((paragraph) => (
-          <Typography key={paragraph} paragraph>
+          <Typography key={paragraph} sx={{ mb: 2 }}>
             {paragraph}
           </Typography>
         ))}
@@ -323,9 +323,13 @@ const Documentation = () => {
             </Box>
             <ListItemText
               primary={section.title}
-              primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: activeSection === section.id ? 600 : 500,
+              slotProps={{
+                primary: {
+                  sx: {
+                    fontSize: '0.9rem',
+                    fontWeight: activeSection === section.id ? 600 : 500,
+                  },
+                },
               }}
             />
           </ListItemButton>
@@ -430,7 +434,7 @@ const Documentation = () => {
               </Box>
             </Box>
 
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <Button
                 variant="text"
                 startIcon={<ArrowBackIcon />}
@@ -579,7 +583,7 @@ const Documentation = () => {
             <Typography sx={{ color: '#64748b', mb: 4 }}>
               {content.footerCta.subtitle}
             </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'center' }}>
               <Button
                 variant="contained"
                 size="large"

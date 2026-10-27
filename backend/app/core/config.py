@@ -1,11 +1,8 @@
 """
 应用配置设置
 """
-import os
-import json
-from typing import Optional, Union, List
+from typing import Optional
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -18,9 +15,6 @@ class Settings(BaseSettings):
 
     # 数据库设置
     DATABASE_URL: str = "sqlite:///./webmonitor.db"
-
-    # CORS设置
-    BACKEND_CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # 邮件设置
     SMTP_SERVER: Optional[str] = None
@@ -46,15 +40,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-
-    @field_validator('BACKEND_CORS_ORIGINS', mode='before')
-    @classmethod
-    def assemble_cors_origins(cls, v):
-        if isinstance(v, str) and not v.startswith('['):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
 
     class Config:
         env_file = ".env"

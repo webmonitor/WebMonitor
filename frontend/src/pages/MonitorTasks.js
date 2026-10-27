@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -42,7 +42,7 @@ import {
   Link as LinkIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
@@ -215,95 +215,87 @@ const MonitorTasks = () => {
     return config ? config.name : content.unknownConfig;
   };
 
-  const { data: tasks = [], error } = useQuery(
-    'monitor-tasks',
-    async () => {
+  const { data: tasks = [], error } = useQuery({
+    queryKey: ['monitor-tasks'],
+    queryFn: async () => {
       const response = await axios.get('/api/monitor-tasks');
       return response.data;
-    }
-  );
+    },
+  });
 
-  const { data: emailConfigs = [] } = useQuery(
-    'emailConfigs',
-    async () => {
+  const { data: emailConfigs = [] } = useQuery({
+    queryKey: ['emailConfigs'],
+    queryFn: async () => {
       const response = await axios.get('/api/email-configs/simple-list');
       return response.data;
     },
-    {
-      onSuccess: (data) => {
-        if (data.length === 1 && !formData.email_config_id && !editingTask) {
-          setFormData((prev) => ({
-            ...prev,
-            email_config_id: data[0].id,
-          }));
-        }
-      },
+  });
+
+  // v5 dropped `onSuccess` on queries: preselect the only config the same way, from data.
+  useEffect(() => {
+    if (emailConfigs.length !== 1 || editingTask || formData.email_config_id) {
+      return;
     }
-  );
+    setFormData((prev) => ({ ...prev, email_config_id: emailConfigs[0].id }));
+  }, [emailConfigs, editingTask, formData.email_config_id]);
 
   const showBlacklistAlert = () => {
     window.alert(`${content.blacklistAlertTitle}\n\n${content.blacklistAlertBody}`);
   };
 
-  const createMutation = useMutation(
-    async (taskData) => {
+  const createMutation = useMutation({
+    mutationFn: async (taskData) => {
       const response = await axios.post('/api/monitor-tasks', taskData);
       return response.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('monitor-tasks');
-        handleClose();
-      },
-      onError: (errorValue) => {
-        if (errorValue.response?.status === 403 && errorValue.response?.data?.detail?.includes('黑名单')) {
-          showBlacklistAlert();
-          return;
-        }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monitor-tasks'] });
+      handleClose();
+    },
+    onError: (errorValue) => {
+      if (errorValue.response?.status === 403 && errorValue.response?.data?.detail?.includes('黑名单')) {
+        showBlacklistAlert();
+        return;
+      }
 
-        window.alert(`${content.createFailed}: ${getReadableError(errorValue)}`);
-      },
-    }
-  );
+      window.alert(`${content.createFailed}: ${getReadableError(errorValue)}`);
+    },
+  });
 
-  const updateMutation = useMutation(
-    async ({ id, taskData }) => {
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, taskData }) => {
       const response = await axios.put(`/api/monitor-tasks/${id}`, taskData);
       return response.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('monitor-tasks');
-        handleClose();
-      },
-      onError: (errorValue) => {
-        if (errorValue.response?.status === 403 && errorValue.response?.data?.detail?.includes('黑名单')) {
-          showBlacklistAlert();
-          return;
-        }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monitor-tasks'] });
+      handleClose();
+    },
+    onError: (errorValue) => {
+      if (errorValue.response?.status === 403 && errorValue.response?.data?.detail?.includes('黑名单')) {
+        showBlacklistAlert();
+        return;
+      }
 
-        window.alert(`${content.updateFailed}: ${getReadableError(errorValue)}`);
-      },
-    }
-  );
+      window.alert(`${content.updateFailed}: ${getReadableError(errorValue)}`);
+    },
+  });
 
-  const deleteMutation = useMutation(
-    async (id) => {
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
       await axios.delete(`/api/monitor-tasks/${id}`);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('monitor-tasks');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monitor-tasks'] });
+    },
+  });
 
-  const testMutation = useMutation(
-    async (id) => {
+  const testMutation = useMutation({
+    mutationFn: async (id) => {
       const response = await axios.post(`/api/monitor-tasks/${id}/test`);
       return response.data;
-    }
-  );
+    },
+  });
 
   const handleOpen = (task = null) => {
     if (task) {
@@ -399,7 +391,7 @@ const MonitorTasks = () => {
           >
             {content.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             {content.subtitle}
           </Typography>
         </Box>
@@ -435,13 +427,13 @@ const MonitorTasks = () => {
                 {content.blacklistTitle}
               </Typography>
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+            <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
               • {content.blacklistItem1}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+            <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
               • {content.blacklistItem2}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+            <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
               • {content.blacklistItem3}
             </Typography>
           </CardContent>
@@ -449,7 +441,7 @@ const MonitorTasks = () => {
       )}
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -473,7 +465,7 @@ const MonitorTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(16, 185, 129, 0.1)',
@@ -495,7 +487,7 @@ const MonitorTasks = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -519,7 +511,7 @@ const MonitorTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(34, 211, 238, 0.1)',
@@ -542,7 +534,7 @@ const MonitorTasks = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -566,7 +558,7 @@ const MonitorTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(239, 68, 68, 0.1)',
@@ -589,7 +581,7 @@ const MonitorTasks = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               height: '100%',
@@ -613,7 +605,7 @@ const MonitorTasks = () => {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(167, 139, 250, 0.1)',
@@ -666,7 +658,7 @@ const MonitorTasks = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               {content.noTasks}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
               {content.noTasksSubtitle}
             </Typography>
             <Button
@@ -727,12 +719,11 @@ const MonitorTasks = () => {
                             <LinkIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
                             <Typography
                               variant="caption"
-                              color="text.secondary"
-                              sx={{
-                                maxWidth: 200,
+                              sx={{maxWidth: 200,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
+                                color: 'text.secondary',
                               }}
                             >
                               {task.url}
@@ -742,7 +733,7 @@ const MonitorTasks = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {task.xpath ? `${task.xpath.substring(0, 50)}...` : content.notSet}
                       </Typography>
                     </TableCell>
@@ -823,10 +814,12 @@ const MonitorTasks = () => {
         onClose={handleClose}
         maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 4,
-            border: '1px solid rgba(0, 0, 0, 0.06)',
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 4,
+              border: '1px solid rgba(0, 0, 0, 0.06)',
+            },
           },
         }}
       >
@@ -845,7 +838,7 @@ const MonitorTasks = () => {
         <form onSubmit={handleSubmit}>
           <DialogContent sx={{ pt: 3 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.taskName}
                   fullWidth
@@ -865,7 +858,7 @@ const MonitorTasks = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.monitorUrl}
                   fullWidth
@@ -885,7 +878,7 @@ const MonitorTasks = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.xpathSelector}
                   fullWidth
@@ -907,7 +900,7 @@ const MonitorTasks = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label={content.intervalSeconds}
                   type="number"
@@ -919,7 +912,7 @@ const MonitorTasks = () => {
                       interval: parseInt(e.target.value, 10) || 300,
                     })
                   }
-                  inputProps={{ min: 10 }}
+                  slotProps={{ htmlInput: { min: 10 } }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
@@ -933,7 +926,7 @@ const MonitorTasks = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth required>
                   <InputLabel id="email-config-label">{content.emailConfigRequired}</InputLabel>
                   <Select
@@ -973,7 +966,7 @@ const MonitorTasks = () => {
                   )}
                 </FormControl>
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.taskDescription}
                   fullWidth
@@ -995,7 +988,7 @@ const MonitorTasks = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
                   <Switch
                     checked={formData.is_public}
@@ -1013,13 +1006,13 @@ const MonitorTasks = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {content.publicTask}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       {content.publicTaskHelper}
                     </Typography>
                   </Box>
                 </Box>
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
                   <Switch
                     checked={formData.is_active}
@@ -1037,7 +1030,7 @@ const MonitorTasks = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {content.enableMonitoring}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       {content.enableMonitoringHelper}
                     </Typography>
                   </Box>
@@ -1059,7 +1052,7 @@ const MonitorTasks = () => {
             <Button
               type="submit"
               variant="contained"
-              disabled={createMutation.isLoading || updateMutation.isLoading}
+              disabled={createMutation.isPending || updateMutation.isPending}
               sx={{
                 background: 'linear-gradient(45deg, #10b981 30%, #059669 90%)',
                 px: 4,
@@ -1087,7 +1080,7 @@ const MonitorTasks = () => {
           borderTop: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
         <Button

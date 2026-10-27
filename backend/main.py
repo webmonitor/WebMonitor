@@ -1,11 +1,11 @@
 """
 WebMonitor 后端主启动文件
 """
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from typing import List
 
 from app.core.config import settings
 from app.db.database import engine, SessionLocal
@@ -97,33 +97,35 @@ app = FastAPI(
     debug=settings.DEBUG
 )
 
-# CORS中间件配置
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 前端构建产物目录。默认 web/（镜像里把 CRA 的 build/ 拷到这里），
+# 前后端同源发布，浏览器只访问这一个 origin。
+FRONTEND_DIST = os.environ.get("FRONTEND_DIST", "web")
 
-# 挂载静态文件目录（如果存在）
-import os
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# 注册API路由
+# 注册API路由（先注册，保证 /api/* 不会被 SPA 兜底路由接管）
 app.include_router(api_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 
-@app.get("/")
-async def root():
-    """根路径"""
-    return {
-        "message": f"欢迎使用 {settings.APP_NAME}",
-        "version": settings.APP_VERSION,
-        "docs": "/docs",
-        "status": "running"
-    }
+# CRA 产物：static/ 下是带内容哈希的 js/css，可长期缓存
+if os.path.isdir(os.path.join(FRONTEND_DIST, "static")):
+    app.mount(
+        "/static",
+        StaticFiles(directory=os.path.join(FRONTEND_DIST, "static")),
+        name="frontend-static",
+    )
+
+
+@app.get("/", include_in_schema=False)
+async def frontend_index():
+    """根路径返回前端首页"""
+    index = os.path.join(FRONTEND_DIST, "index.html")
+    if not os.path.isfile(index):
+        return {
+            "message": f"欢迎使用 {settings.APP_NAME}",
+            "version": settings.APP_VERSION,
+            "docs": "/docs",
+            "status": "running",
+        }
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 @app.get("/health")
 async def health_check():
@@ -133,6 +135,28 @@ async def health_check():
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION
     }
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_fallback(full_path: str):
+    """前端路由兜底：刷新 /dashboard 等客户端路由时返回 index.html。
+
+    必须最后注册；/api、/docs、/openapi.json 与 /static 都已先行匹配。
+    """
+    # 未知的 API 路径必须是 404 JSON，不能回落成 index.html
+    if full_path.startswith(("api/", "docs", "redoc", "openapi.json")):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    index = os.path.join(FRONTEND_DIST, "index.html")
+    if not os.path.isfile(index):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    # 前端产物里的真实文件（favicon.svg 等）直接返回；拒绝越出产物目录的路径
+    root = os.path.realpath(FRONTEND_DIST)
+    candidate = os.path.realpath(os.path.join(root, full_path))
+    if candidate.startswith(root + os.sep) and os.path.isfile(candidate):
+        return FileResponse(candidate)
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 if __name__ == "__main__":
     import uvicorn

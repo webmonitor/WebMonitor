@@ -41,7 +41,7 @@ import {
   Email as EmailIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
@@ -165,61 +165,55 @@ const UserManagement = () => {
 
   const queryClient = useQueryClient();
 
-  const { data: users = [], error } = useQuery(
-    'users',
-    async () => {
+  const { data: users = [], error } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
       const response = await axios.get('/api/auth/users');
       return response.data;
-    }
-  );
+    },
+  });
 
-  const { data: currentUser } = useQuery(
-    'currentUser',
-    async () => {
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: async () => {
       const response = await axios.get('/api/auth/me');
       return response.data;
-    }
-  );
+    },
+  });
 
-  const createMutation = useMutation(
-    async (userData) => {
+  const createMutation = useMutation({
+    mutationFn: async (userData) => {
       const response = await axios.post('/api/auth/register', userData);
       return response.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('users');
-        handleClose();
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      handleClose();
+    },
+  });
 
-  const updateMutation = useMutation(
-    async ({ id, userData }) => {
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, userData }) => {
       const response = await axios.put(`/api/auth/users/${id}`, userData);
       return response.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('users');
-        handleClose();
-      },
-      onError: (mutationError) => {
-        console.error('Update user error:', mutationError.response?.data || mutationError.message);
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      handleClose();
+    },
+    onError: (mutationError) => {
+      console.error('Update user error:', mutationError.response?.data || mutationError.message);
+    },
+  });
 
-  const deleteMutation = useMutation(
-    async (id) => {
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
       await axios.delete(`/api/auth/users/${id}`);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('users');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
 
   const handleOpen = (user = null) => {
     if (user) {
@@ -315,7 +309,7 @@ const UserManagement = () => {
           >
             {content.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             {content.subtitle}
           </Typography>
         </Box>
@@ -343,7 +337,7 @@ const UserManagement = () => {
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -353,7 +347,7 @@ const UserManagement = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(167, 139, 250, 0.1)',
@@ -369,7 +363,7 @@ const UserManagement = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {users.length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.totalUsers}
                   </Typography>
                 </Box>
@@ -377,7 +371,7 @@ const UserManagement = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -387,7 +381,7 @@ const UserManagement = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(34, 211, 238, 0.1)',
@@ -403,7 +397,7 @@ const UserManagement = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {users.filter((user) => user.is_active).length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.activeUsers}
                   </Typography>
                 </Box>
@@ -411,7 +405,7 @@ const UserManagement = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -421,7 +415,7 @@ const UserManagement = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(245, 158, 11, 0.1)',
@@ -437,7 +431,7 @@ const UserManagement = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {users.filter((user) => user.is_admin).length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.admins}
                   </Typography>
                 </Box>
@@ -445,7 +439,7 @@ const UserManagement = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               p: 2,
@@ -455,7 +449,7 @@ const UserManagement = () => {
             }}
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     bgcolor: 'rgba(16, 185, 129, 0.1)',
@@ -471,7 +465,7 @@ const UserManagement = () => {
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {content.securityLevel}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {content.high}
                   </Typography>
                 </Box>
@@ -520,7 +514,7 @@ const UserManagement = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               {content.noUsers}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
               {content.noUsersSubtitle}
             </Typography>
             <Button
@@ -577,7 +571,7 @@ const UserManagement = () => {
                           <Typography variant="body1" sx={{ fontWeight: 600 }}>
                             {user.username}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {user.full_name || content.fullNameNotSet}
                           </Typography>
                         </Box>
@@ -659,10 +653,12 @@ const UserManagement = () => {
         maxWidth="md"
         fullWidth
         disableEnforceFocus
-        PaperProps={{
-          sx: {
-            borderRadius: 4,
-            border: '1px solid rgba(0, 0, 0, 0.06)',
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 4,
+              border: '1px solid rgba(0, 0, 0, 0.06)',
+            },
           },
         }}
       >
@@ -701,7 +697,7 @@ const UserManagement = () => {
         <form onSubmit={handleSubmit}>
           <DialogContent sx={{ pt: 3 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.username}
                   fullWidth
@@ -709,12 +705,14 @@ const UserManagement = () => {
                   onChange={(event) => setFormData({ ...formData, username: event.target.value })}
                   required
                   disabled={!!editingUser}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PersonIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -729,18 +727,20 @@ const UserManagement = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.fullName}
                   fullWidth
                   value={formData.full_name}
                   onChange={(event) => setFormData({ ...formData, full_name: event.target.value })}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PeopleIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PeopleIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -755,7 +755,7 @@ const UserManagement = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.emailAddress}
                   fullWidth
@@ -763,12 +763,14 @@ const UserManagement = () => {
                   value={formData.email}
                   onChange={(event) => setFormData({ ...formData, email: event.target.value })}
                   required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -783,7 +785,7 @@ const UserManagement = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label={content.password}
                   type={showPassword ? 'text' : 'password'}
@@ -792,24 +794,26 @@ const UserManagement = () => {
                   onChange={(event) => setFormData({ ...formData, password: event.target.value })}
                   required={!editingUser}
                   helperText={editingUser ? content.passwordHelperEdit : content.passwordHelperCreate}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SecurityIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label={content.togglePasswordVisibility}
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          sx={{ color: 'rgba(0, 0, 0, 0.6)' }}
-                        >
-                          {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SecurityIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label={content.togglePasswordVisibility}
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            sx={{ color: 'rgba(0, 0, 0, 0.6)' }}
+                          >
+                            {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -824,14 +828,14 @@ const UserManagement = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label={content.maxSubscriptions}
                   type="number"
                   fullWidth
                   value={formData.max_subscriptions}
                   onChange={(event) => setFormData({ ...formData, max_subscriptions: parseInt(event.target.value, 10) || 10 })}
-                  inputProps={{ min: 1, max: 100 }}
+                  slotProps={{ htmlInput: { min: 1, max: 100 } }}
                   helperText={content.maxSubscriptionsHelper}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -846,7 +850,7 @@ const UserManagement = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(245, 158, 11, 0.05)' }}>
                   <Switch
                     checked={formData.is_admin}
@@ -864,13 +868,13 @@ const UserManagement = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {content.adminPermission}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       {content.adminPermissionHelper}
                     </Typography>
                   </Box>
                 </Box>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
                   <Switch
                     checked={formData.is_active}
@@ -888,7 +892,7 @@ const UserManagement = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {content.activeAccount}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       {content.activeAccountHelper}
                     </Typography>
                   </Box>
@@ -910,7 +914,7 @@ const UserManagement = () => {
             <Button
               type="submit"
               variant="contained"
-              disabled={createMutation.isLoading || updateMutation.isLoading}
+              disabled={createMutation.isPending || updateMutation.isPending}
               sx={{
                 background: 'linear-gradient(45deg, #a78bfa 30%, #8b5cf6 90%)',
                 px: 4,
@@ -938,7 +942,7 @@ const UserManagement = () => {
           borderTop: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
         <Button

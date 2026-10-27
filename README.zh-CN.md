@@ -66,9 +66,10 @@ docker-compose up -d
 ```
 
 启动后访问：
-- 前端: http://localhost:3000
-- 后端 API: http://localhost:8000
+- 页面: http://localhost:8000/
 - API 文档: http://localhost:8000/docs
+
+前端由同一个 FastAPI 进程提供，浏览器只访问一个来源，因此没有跨域配置。
 
 默认管理员账号：
 - 用户名: `admin`
@@ -106,7 +107,6 @@ pnpm start
 | `ADMIN_USERNAME` | 默认管理员用户名 | `admin` |
 | `ADMIN_PASSWORD` | 默认管理员密码 | `admin123` |
 | `ADMIN_EMAIL` | 默认管理员邮箱 | `admin@example.com` |
-| `FRONTEND_URL` | 前端访问地址 | `http://localhost:3000` |
 | `DATABASE_URL` | 数据库连接字符串 | `sqlite:///./data/webmonitor.db` |
 | `SMTP_SERVER` | 通知邮件使用的 SMTP 服务器 | - |
 | `SMTP_PORT` | SMTP 端口 | `465` |

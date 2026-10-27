@@ -1,11 +1,12 @@
 name: webmonitor
 services:
-  # 后端服务
-  backend:
+  # 单体服务：FastAPI 同时提供 API 和前端静态页面，浏览器只访问一个 origin。
+  # 因此没有跨域：不再有 CORS 配置，也没有第二个前端容器。
+  webmonitor:
     build:
       context: .
-      dockerfile: deploy/backend.Dockerfile
-    container_name: webmonitor-backend
+      dockerfile: deploy/Dockerfile
+    container_name: webmonitor
     restart: unless-stopped
     environment:
       # 数据库配置 - 使用SQLite
@@ -26,8 +27,6 @@ services:
       # 应用配置
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      # 浏览器直连后端：必须包含页面实际来源（scheme://host:port）。
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
 
       # 默认管理员账户
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
@@ -35,6 +34,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@webmonitor.com}
 
     ports:
+      # 页面与 API 共用这一个端口：http://localhost:8000/
       - "8000:8000"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
@@ -42,31 +42,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - webmonitor-network
-
-  # 前端服务：纯静态站点，不再反向代理 /api/。
-  # 浏览器直连后端，因此 API 地址在构建时烧进 bundle（见 deploy/web.Dockerfile），
-  # 且后端必须通过 BACKEND_CORS_ORIGINS 放行页面来源。
-  frontend:
-    build:
-      context: .
-      dockerfile: deploy/web.Dockerfile
-      args:
-        # 必须在构建期确定；留空则使用相对路径（要求前置代理把 /api 转给后端）。
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8000}
-    container_name: webmonitor-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - webmonitor-network
-
-networks:
-  webmonitor-network:
-    driver: bridge

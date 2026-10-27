@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-// 设置 axios 基础 URL
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || '';
+// 前后端同源发布：页面与 API 走同一个 origin，请求一律用相对路径 /api/...。
+// 开发期由 CRA dev server 的 `proxy`（见 package.json）转发到后端。
+axios.defaults.baseURL = '';
 
 const AuthContext = createContext();
 

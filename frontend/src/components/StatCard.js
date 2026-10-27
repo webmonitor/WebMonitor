@@ -53,7 +53,7 @@ const StatCard = ({ title, value, icon, color, subtitle, trend }) => {
       }}
     >
       <CardContent sx={{ p: 3 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Box
             className="stat-icon"
             sx={{
@@ -80,14 +80,14 @@ const StatCard = ({ title, value, icon, color, subtitle, trend }) => {
               >
                 {getTrendText()}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 {t('common.vsLastWeek')}
               </Typography>
             </Box>
           )}
         </Box>
 
-        <Box mb={1}>
+        <Box sx={{ mb: 1 }}>
           <Typography
             variant="h3"
             component="div"
@@ -111,7 +111,7 @@ const StatCard = ({ title, value, icon, color, subtitle, trend }) => {
             {title}
           </Typography>
           {subtitle && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {subtitle}
             </Typography>
           )}
