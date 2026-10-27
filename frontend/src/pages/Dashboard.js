@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Divider,
   Avatar,
+  Alert,
   alpha,
   IconButton,
   Tooltip,
@@ -26,128 +27,57 @@ import {
   Schedule as ScheduleIcon,
   NotificationsActive as NotificationsIcon,
   Speed as SpeedIcon,
-  Security as SecurityIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 
 import StatCard from '../components/StatCard';
 import FooterLinks from '../components/FooterLinks';
+import { useAuth } from '../contexts/AuthContext';
+import api, { getApiErrorMessage } from '../api/client';
+import { keys } from '../api/queryKeys';
 import { formatRelativeTime } from '../utils/date';
-import { isChineseLanguage } from '../utils/i18n';
+
+const LATEST_LOGS_LIMIT = 10;
 
 const Dashboard = () => {
   const { t, i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
+  const { user } = useAuth();
 
-  const content = isChinese ? {
-    overview: '监控概览',
-    title: '仪表板',
-    subtitle: '实时监控您的网页内容变化',
-    refresh: '刷新数据',
-    totalTasks: '总任务数',
-    activeTasks: '活跃任务',
-    recentChanges: '最近变化',
-    successRate: '成功率',
-    allTasks: '所有监控任务',
-    runningTasks: '正在运行的任务',
-    detectedChanges: '检测到的内容变化',
-    executionSuccessRate: '监控执行成功率',
-    recentActivity: '最近监控活动',
-    viewAll: '查看全部',
-    noActivity: '暂无监控活动',
-    noActivitySubtitle: '开始创建监控任务后，这里将显示活动记录',
-    taskLabel: '任务',
-    changed: '内容变化',
-    unchanged: '无变化',
-    errorPrefix: '错误',
-    changeDetected: '检测到内容变化',
-    newContentPreview: '新内容预览',
-    contentUnchanged: '内容未发生变化',
-    quickActions: '快速操作',
-    manageTasks: '管理监控任务',
-    configureEmail: '配置邮件通知',
-    viewLogs: '查看详细日志',
-    systemStatus: '系统状态',
-    monitorEngine: '监控引擎',
-    poweredBy: '基于 Selenium',
-    healthy: '正常',
-    notificationService: '通知服务',
-    emailNotifications: '邮件通知',
-    active: '活跃',
-    responseTime: '响应时间',
-    average: '平均',
-    excellent: '优秀',
-  } : {
-    overview: 'Monitoring overview',
-    title: 'Dashboard',
-    subtitle: 'Monitor your web content changes in real time.',
-    refresh: 'Refresh data',
-    totalTasks: 'Total tasks',
-    activeTasks: 'Active tasks',
-    recentChanges: 'Recent changes',
-    successRate: 'Success rate',
-    allTasks: 'All monitor tasks',
-    runningTasks: 'Running tasks',
-    detectedChanges: 'Detected content changes',
-    executionSuccessRate: 'Monitoring execution success rate',
-    recentActivity: 'Recent monitoring activity',
-    viewAll: 'View all',
-    noActivity: 'No monitoring activity yet',
-    noActivitySubtitle: 'Activity will appear here after you create monitor tasks.',
-    taskLabel: 'Task',
-    changed: 'Changed',
-    unchanged: 'Unchanged',
-    errorPrefix: 'Error',
-    changeDetected: 'Content change detected',
-    newContentPreview: 'New content preview',
-    contentUnchanged: 'Content unchanged',
-    quickActions: 'Quick actions',
-    manageTasks: 'Manage monitor tasks',
-    configureEmail: 'Configure email notifications',
-    viewLogs: 'View detailed logs',
-    systemStatus: 'System status',
-    monitorEngine: 'Monitoring engine',
-    poweredBy: 'Powered by Selenium',
-    healthy: 'Healthy',
-    notificationService: 'Notification service',
-    emailNotifications: 'Email notifications',
-    active: 'Active',
-    responseTime: 'Response time',
-    average: 'Average',
-    excellent: 'Excellent',
-  };
-
-  const { data: tasks = [], refetch: refetchTasks } = useQuery({
-    queryKey: ['monitor-tasks'],
-    queryFn: async () => {
-      const response = await axios.get('/api/monitor-tasks');
-      return response.data;
-    },
+  const tasksQuery = useQuery({
+    queryKey: keys.tasks(user?.id),
+    queryFn: ({ signal }) => api.get('/api/monitor-tasks', { signal }).then((response) => response.data),
+    enabled: !!user,
     refetchInterval: 60000,
   });
 
-  const { data: logs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
-    queryKey: ['latest-monitor-logs'],
-    queryFn: async () => {
-      const response = await axios.get('/api/monitor-logs/latest?limit=10');
-      return response.data;
-    },
+  const logsQuery = useQuery({
+    queryKey: keys.latestLogs(user?.id, LATEST_LOGS_LIMIT),
+    queryFn: ({ signal }) =>
+      api
+        .get('/api/monitor-logs/latest', { params: { limit: LATEST_LOGS_LIMIT }, signal })
+        .then((response) => response.data),
+    enabled: !!user,
     refetchInterval: 30000,
   });
 
+  const tasks = tasksQuery.data ?? [];
+  const logs = logsQuery.data ?? [];
+  const tasksError = tasksQuery.error;
+  const logsError = logsQuery.error;
+  const emptyValue = t('common.emptyValue');
+
   const totalTasks = tasks.length;
   const activeTasks = tasks.filter((task) => task.is_active).length;
+  // 没有任何日志样本时不能报 100%：没有数据就是没有数据。
   const successRate = logs.length > 0
-    ? Math.round((logs.filter((log) => !log.error_message).length / logs.length) * 100)
-    : 100;
+    ? `${Math.round((logs.filter((log) => !log.error_message).length / logs.length) * 100)}%`
+    : null;
   const recentChanges = logs.filter((log) => log.is_changed).length;
-  const averageResponseTime = 1.2;
 
   const handleRefresh = () => {
-    refetchTasks();
-    refetchLogs();
+    tasksQuery.refetch();
+    logsQuery.refetch();
   };
 
   return (
@@ -187,7 +117,7 @@ const Dashboard = () => {
                     textTransform: 'uppercase',
                   }}
                 >
-                  {content.overview}
+                  {t('dashboard.overview')}
                 </Typography>
                 <Typography
                   variant="h3"
@@ -198,16 +128,17 @@ const Dashboard = () => {
                     fontSize: { xs: '2rem', md: '2.5rem' },
                   }}
                 >
-                  {content.title}
+                  {t('dashboard.title')}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.8)', mt: 1 }}>
-                  {content.subtitle}
+                  {t('dashboard.subtitle')}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <Tooltip title={content.refresh}>
+                <Tooltip title={t('dashboard.refresh')}>
                   <IconButton
                     onClick={handleRefresh}
+                    aria-label={t('dashboard.refresh')}
                     sx={{
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                       color: 'white',
@@ -226,40 +157,40 @@ const Dashboard = () => {
               <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#10b981', fontWeight: 'bold' }}>
-                    {totalTasks}
+                    {tasksError ? emptyValue : totalTasks}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {content.totalTasks}
+                    {t('dashboard.totalTasks')}
                   </Typography>
                 </Box>
               </Grid>
               <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#22d3ee', fontWeight: 'bold' }}>
-                    {activeTasks}
+                    {tasksError ? emptyValue : activeTasks}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {content.activeTasks}
+                    {t('dashboard.activeTasks')}
                   </Typography>
                 </Box>
               </Grid>
               <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#a78bfa', fontWeight: 'bold' }}>
-                    {recentChanges}
+                    {logsError ? emptyValue : recentChanges}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {content.recentChanges}
+                    {t('dashboard.recentChanges')}
                   </Typography>
                 </Box>
               </Grid>
               <Grid size={{ xs: 6, md: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ color: '#34d399', fontWeight: 'bold' }}>
-                    {successRate}%
+                    {logsError ? emptyValue : successRate ?? emptyValue}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {content.successRate}
+                    {t('dashboard.successRate')}
                   </Typography>
                 </Box>
               </Grid>
@@ -267,45 +198,47 @@ const Dashboard = () => {
           </Box>
         </Box>
 
+        {tasksError && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {t('tasks.loadTasksError')}: {getApiErrorMessage(tasksError, t('common.unknownError'))}
+          </Alert>
+        )}
+
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
-              title={content.totalTasks}
-              value={totalTasks}
+              title={t('dashboard.totalTasks')}
+              value={tasksError ? null : totalTasks}
               icon={<TaskIcon />}
               color="#10b981"
-              subtitle={content.allTasks}
-              trend={totalTasks > 0 ? 12 : 0}
+              subtitle={t('dashboard.allTasks')}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
-              title={content.activeTasks}
-              value={activeTasks}
+              title={t('dashboard.activeTasks')}
+              value={tasksError ? null : activeTasks}
               icon={<SuccessIcon />}
               color="#22d3ee"
-              subtitle={content.runningTasks}
-              trend={activeTasks > 0 ? 8 : 0}
+              subtitle={t('dashboard.runningTasks')}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
-              title={content.recentChanges}
-              value={recentChanges}
+              title={t('dashboard.recentChanges')}
+              value={logsError ? null : recentChanges}
               icon={<TrendingUpIcon />}
               color="#a78bfa"
-              subtitle={content.detectedChanges}
-              trend={recentChanges > 0 ? 15 : 0}
+              subtitle={t('dashboard.detectedChanges', { sample: logs.length })}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
-              title={content.successRate}
-              value={`${successRate}%`}
+              title={t('dashboard.successRate')}
+              value={logsError ? null : successRate}
               icon={<SpeedIcon />}
               color="#34d399"
-              subtitle={content.executionSuccessRate}
-              trend={successRate > 90 ? 5 : 0}
+              subtitle={t('dashboard.executionSuccessRate', { sample: logs.length })}
             />
           </Grid>
         </Grid>
@@ -323,7 +256,7 @@ const Dashboard = () => {
             >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
-                  {content.recentActivity}
+                  {t('dashboard.recentActivity')}
                 </Typography>
                 <Button
                   size="small"
@@ -334,11 +267,15 @@ const Dashboard = () => {
                     '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
                   }}
                 >
-                  {content.viewAll}
+                  {t('dashboard.viewAll')}
                 </Button>
               </Box>
 
-              {logsLoading ? (
+              {logsError ? (
+                <Alert severity="error" sx={{ mb: 1 }}>
+                  {t('logs.loadError')}: {getApiErrorMessage(logsError, t('common.unknownError'))}
+                </Alert>
+              ) : logsQuery.isLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
                   <CircularProgress sx={{ color: '#10b981' }} />
                 </Box>
@@ -357,10 +294,10 @@ const Dashboard = () => {
                     <ScheduleIcon sx={{ fontSize: 32 }} />
                   </Avatar>
                   <Typography variant="h6" sx={{ color: '#1a1a1a', mb: 1 }}>
-                    {content.noActivity}
+                    {t('dashboard.noActivity')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {content.noActivitySubtitle}
+                    {t('dashboard.noActivitySubtitle')}
                   </Typography>
                 </Box>
               ) : (
@@ -397,7 +334,7 @@ const Dashboard = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
                               <Chip
                                 size="small"
-                                label={`${content.taskLabel} #${log.task_id}`}
+                                label={`${t('dashboard.taskLabel')} #${log.task_id}`}
                                 sx={{
                                   backgroundColor: 'rgba(37, 99, 235, 0.1)',
                                   color: '#2563eb',
@@ -408,7 +345,7 @@ const Dashboard = () => {
                               <Chip
                                 size="small"
                                 icon={log.is_changed ? <TrendingUpIcon /> : <SuccessIcon />}
-                                label={log.is_changed ? content.changed : content.unchanged}
+                                label={log.is_changed ? t('dashboard.changed') : t('dashboard.unchanged')}
                                 color={log.is_changed ? 'warning' : 'success'}
                                 sx={{ fontSize: '0.75rem' }}
                               />
@@ -430,7 +367,7 @@ const Dashboard = () => {
                             }}
                           >
                             <Typography variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
-                              {content.errorPrefix}: {log.error_message}
+                              {t('dashboard.errorPrefix')}: {log.error_message}
                             </Typography>
                           </Box>
                         ) : log.is_changed && log.new_content ? (
@@ -443,16 +380,16 @@ const Dashboard = () => {
                             }}
                           >
                             <Typography variant="body2" sx={{ fontWeight: 500, mb: 1, color: 'success.main' }}>
-                              {content.changeDetected}
+                              {t('dashboard.changeDetected')}
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              {content.newContentPreview}: {log.new_content.substring(0, 150)}
+                              {t('dashboard.newContentPreview')}: {log.new_content.substring(0, 150)}
                               {log.new_content.length > 150 ? '...' : ''}
                             </Typography>
                           </Box>
                         ) : (
                           <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-                            {content.contentUnchanged}
+                            {t('dashboard.contentUnchanged')}
                           </Typography>
                         )}
                       </ListItem>
@@ -478,7 +415,7 @@ const Dashboard = () => {
                   }}
                 >
                   <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a1a1a', mb: 3 }}>
-                    {content.quickActions}
+                    {t('dashboard.quickActions')}
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Button
@@ -497,7 +434,7 @@ const Dashboard = () => {
                         },
                       }}
                     >
-                      {content.manageTasks}
+                      {t('dashboard.manageTasks')}
                     </Button>
                     <Button
                       variant="outlined"
@@ -517,7 +454,7 @@ const Dashboard = () => {
                         },
                       }}
                     >
-                      {content.configureEmail}
+                      {t('dashboard.configureEmail')}
                     </Button>
                     <Button
                       variant="outlined"
@@ -537,114 +474,8 @@ const Dashboard = () => {
                         },
                       }}
                     >
-                      {content.viewLogs}
+                      {t('dashboard.viewLogs')}
                     </Button>
-                  </Box>
-                </Paper>
-              </Grid>
-
-              <Grid size={{ xs: 12 }}>
-                <Paper
-                  sx={{
-                    p: 3,
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                    border: '1px solid rgba(0, 0, 0, 0.06)',
-                    borderRadius: 4,
-                  }}
-                >
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a1a1a', mb: 3 }}>
-                    {content.systemStatus}
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            mr: 2,
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            color: '#10b981',
-                          }}
-                        >
-                          <SecurityIcon sx={{ fontSize: 18 }} />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {content.monitorEngine}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {content.poweredBy}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Chip
-                        size="small"
-                        label={content.healthy}
-                        color="success"
-                        sx={{ fontWeight: 'bold' }}
-                      />
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            mr: 2,
-                            backgroundColor: 'rgba(34, 211, 238, 0.1)',
-                            color: '#22d3ee',
-                          }}
-                        >
-                          <NotificationsIcon sx={{ fontSize: 18 }} />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {content.notificationService}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {content.emailNotifications}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Chip
-                        size="small"
-                        label={content.active}
-                        color="primary"
-                        sx={{ fontWeight: 'bold' }}
-                      />
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            mr: 2,
-                            backgroundColor: 'rgba(167, 139, 250, 0.1)',
-                            color: '#a78bfa',
-                          }}
-                        >
-                          <SpeedIcon sx={{ fontSize: 18 }} />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {content.responseTime}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {content.average} {averageResponseTime}s
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Chip
-                        size="small"
-                        label={content.excellent}
-                        color="success"
-                        sx={{ fontWeight: 'bold' }}
-                      />
-                    </Box>
                   </Box>
                 </Paper>
               </Grid>

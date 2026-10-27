@@ -106,16 +106,24 @@ Copy `.env.example` to `.env` and update the values as needed.
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `SECRET_KEY` | JWT signing key. Change this in production. | - |
-| `ADMIN_USERNAME` | Default admin username | `admin` |
-| `ADMIN_PASSWORD` | Default admin password | `admin123` |
-| `ADMIN_EMAIL` | Default admin email | `admin@example.com` |
+| `SECRET_KEY` | JWT signing key. **Required**, at least 32 characters; example values are rejected. | - |
+| `ADMIN_USERNAME` | Bootstrap admin username (used only when no admin exists) | `admin` |
+| `ADMIN_PASSWORD` | Bootstrap admin password. **Required on first start**; startup fails if no admin exists and this is empty. Never resets an existing admin. | - |
+| `ADMIN_EMAIL` | Bootstrap admin email | `admin@example.com` |
 | `DATABASE_URL` | Database connection string | `sqlite:///./data/webmonitor.db` |
-| `SMTP_SERVER` | SMTP host for notifications | - |
+| `SMTP_SERVER` | Deployment-level SMTP fallback host (used only for users with no email config) | - |
 | `SMTP_PORT` | SMTP port | `465` |
 | `SMTP_USER` | SMTP username | - |
 | `SMTP_PASSWORD` | SMTP password or app password | - |
-| `DEFAULT_CHECK_INTERVAL` | Default monitoring interval in seconds | `300` |
+| `RECEIVER_EMAIL` | Fallback notification recipient | - |
+| `LOG_LEVEL` | Log level written to stdout | `INFO` |
+| `FRONTEND_DIST` | Directory containing the built SPA | `web` |
+
+Generate a signing key with:
+
+```sh
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
 See `.env.example` for the current full configuration template.
 

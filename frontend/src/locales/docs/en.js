@@ -1,9 +1,4 @@
 const docsEn = {
-  sidebarTitle: 'Documentation',
-  badge: 'Docs',
-  backHome: 'Back to home',
-  login: 'Log in',
-  register: 'Sign up free',
   title: 'Documentation',
   subtitle: 'Learn how to monitor web content changes and receive timely notifications with WebMonitor.',
   footerCta: {

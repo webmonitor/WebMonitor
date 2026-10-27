@@ -33,9 +33,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
-import { WebMonitorLogo } from '../components/WebMonitorLogo';
+import WebMonitorLogo from '../components/WebMonitorLogo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import { isChineseLanguage } from '../utils/i18n';
 import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
 
 const GitHubIcon = (props) => (
@@ -50,10 +49,39 @@ const GitHubIcon = (props) => (
   </svg>
 );
 
+// 展示用配置：图标与颜色只属于页面，文案全部来自翻译资源，按 locale 的 key 对应。
+const FEATURE_PRESENTATION = {
+  realtime: { Icon: MonitorIcon, color: '#10b981' },
+  notifications: { Icon: NotificationsIcon, color: '#2563eb' },
+  secure: { Icon: SecurityIcon, color: '#f59e0b' },
+  performance: { Icon: SpeedIcon, color: '#ec4899' },
+  analysis: { Icon: AssessmentIcon, color: '#8b5cf6' },
+  schedule: { Icon: ScheduleIcon, color: '#06b6d4' },
+};
+
+const ADVANTAGE_PRESENTATION = {
+  setup: { Icon: CheckCircleIcon, color: '#10b981' },
+  scale: { Icon: TrendingUpIcon, color: '#2563eb' },
+  api: { Icon: IntegrationIcon, color: '#f59e0b' },
+};
+
+// 示例数据：数值与颜色是页面固定的演示内容，标签来自 home.previewStats。
+const PREVIEW_STATS = [
+  { key: 'activeTasks', value: '12', color: '#10b981' },
+  { key: 'changesToday', value: '5', color: '#2563eb' },
+  { key: 'successRate', value: '99%', color: '#f59e0b' },
+];
+
+// 示例活动：状态文案来自 home.previewActivities。
+const PREVIEW_ACTIVITIES = [
+  { url: 'example.com/products', statusKey: 'changed', statusColor: '#f59e0b' },
+  { url: 'shop.example.com', statusKey: 'normal', statusColor: '#10b981' },
+  { url: 'news.example.com', statusKey: 'normal', statusColor: '#10b981' },
+];
+
 const HomePage = () => {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
+  const { t } = useTranslation();
 
   const refHero = useRef(null);
   const refFeatures = useRef(null);
@@ -64,105 +92,14 @@ const HomePage = () => {
   const advantagesInView = useInView(refAdvantages, { once: true, margin: '-100px' });
   const ctaInView = useInView(refCTA, { once: true, margin: '-100px' });
 
-  const content = isChinese ? {
-    navDocs: '文档',
-    navLogin: '登录',
-    navRegister: '免费注册',
-    badge: '新一代智能监控平台',
-    heroTitleLine1: '实时监控',
-    heroTitleLine2: '每一次变化',
-    heroSubtitle: '基于 Selenium 的强大引擎，精准捕捉动态内容变化，为您提供可靠的网页监控解决方案。',
-    heroPrimary: '免费开始使用',
-    heroSecondary: '立即登录',
-    trustStats: [
-      { value: '24/7', label: '全天候监控' },
-      { value: '99.9%', label: '服务可用性' },
-      { value: '<1s', label: '响应延迟' },
-    ],
-    previewStats: [
-      { label: '活跃任务', value: '12', color: '#10b981' },
-      { label: '今日变化', value: '5', color: '#2563eb' },
-      { label: '成功率', value: '99%', color: '#f59e0b' },
-    ],
-    activityTitle: '最近监控活动',
-    previewActivities: [
-      { url: 'example.com/products', status: '检测到变化', statusColor: '#f59e0b' },
-      { url: 'shop.example.com', status: '正常', statusColor: '#10b981' },
-      { url: 'news.example.com', status: '正常', statusColor: '#10b981' },
-    ],
-    floatingTitle: '内容变化检测',
-    floatingStatus: '已通知',
-    featuresOverline: '核心功能',
-    featuresTitle: '专业级监控能力',
-    featuresSubtitle: '基于 Selenium WebDriver 的强大引擎，为您提供精准可靠的网页内容监控服务。',
-    features: [
-      { icon: <MonitorIcon sx={{ fontSize: 28 }} />, title: '实时监控', description: '7x24 持续监控网页内容变化，支持 JavaScript 渲染和动态抓取。', color: '#10b981' },
-      { icon: <NotificationsIcon sx={{ fontSize: 28 }} />, title: '即时通知', description: '通过邮件及时通知您关键变化，避免错过重要更新。', color: '#2563eb' },
-      { icon: <SecurityIcon sx={{ fontSize: 28 }} />, title: '安全可靠', description: '提供账户权限控制与稳定的任务执行体验。', color: '#f59e0b' },
-      { icon: <SpeedIcon sx={{ fontSize: 28 }} />, title: '高性能', description: '优化的监控引擎支持更快的抓取与执行反馈。', color: '#ec4899' },
-      { icon: <AssessmentIcon sx={{ fontSize: 28 }} />, title: '智能分析', description: '基于 XPath 精准定位内容，减少误报。', color: '#8b5cf6' },
-      { icon: <ScheduleIcon sx={{ fontSize: 28 }} />, title: '灵活调度', description: '自定义监控间隔，适应不同网站与业务场景。', color: '#06b6d4' },
-    ],
-    advantagesOverline: '为什么选择我们',
-    advantagesTitle: '技术优势明显',
-    advantages: [
-      { icon: <CheckCircleIcon />, title: '零配置启动', description: '无需安装额外软件，注册后即可开始使用。', color: '#10b981' },
-      { icon: <TrendingUpIcon />, title: '可扩展架构', description: '适配从个人到团队的多种监控需求。', color: '#2563eb' },
-      { icon: <IntegrationIcon />, title: 'API 集成', description: '提供完整 RESTful API，方便集成到现有系统。', color: '#f59e0b' },
-    ],
-    ctaTitle: '立即开始监控您关心的网页内容',
-    ctaSubtitle: '注册账号，立即体验专业的网页监控服务，享受实时内容变化通知。',
-    footerTagline: '基于 Selenium 的专业网页内容监控解决方案',
-  } : {
-    navDocs: 'Documentation',
-    navLogin: 'Log in',
-    navRegister: 'Sign up free',
-    badge: 'Next-generation monitoring platform',
-    heroTitleLine1: 'Monitor',
-    heroTitleLine2: 'every change',
-    heroSubtitle: 'Powered by Selenium, WebMonitor captures dynamic content changes accurately and delivers a reliable web monitoring workflow.',
-    heroPrimary: 'Start for free',
-    heroSecondary: 'Log in now',
-    trustStats: [
-      { value: '24/7', label: 'Always-on monitoring' },
-      { value: '99.9%', label: 'Service availability' },
-      { value: '<1s', label: 'Response latency' },
-    ],
-    previewStats: [
-      { label: 'Active tasks', value: '12', color: '#10b981' },
-      { label: 'Changes today', value: '5', color: '#2563eb' },
-      { label: 'Success rate', value: '99%', color: '#f59e0b' },
-    ],
-    activityTitle: 'Recent monitoring activity',
-    previewActivities: [
-      { url: 'example.com/products', status: 'Changed', statusColor: '#f59e0b' },
-      { url: 'shop.example.com', status: 'Normal', statusColor: '#10b981' },
-      { url: 'news.example.com', status: 'Normal', statusColor: '#10b981' },
-    ],
-    floatingTitle: 'Content change detected',
-    floatingStatus: 'Notified',
-    featuresOverline: 'Core features',
-    featuresTitle: 'Professional monitoring capabilities',
-    featuresSubtitle: 'A Selenium WebDriver-powered engine gives you accurate and dependable monitoring for modern web pages.',
-    features: [
-      { icon: <MonitorIcon sx={{ fontSize: 28 }} />, title: 'Real-time monitoring', description: 'Track page content continuously, including JavaScript-rendered pages and dynamic elements.', color: '#10b981' },
-      { icon: <NotificationsIcon sx={{ fontSize: 28 }} />, title: 'Instant notifications', description: 'Get email alerts as soon as important page content changes.', color: '#2563eb' },
-      { icon: <SecurityIcon sx={{ fontSize: 28 }} />, title: 'Secure and reliable', description: 'Role controls and stable task execution help keep monitoring predictable.', color: '#f59e0b' },
-      { icon: <SpeedIcon sx={{ fontSize: 28 }} />, title: 'High performance', description: 'An optimized engine improves execution speed and feedback loops.', color: '#ec4899' },
-      { icon: <AssessmentIcon sx={{ fontSize: 28 }} />, title: 'Precise analysis', description: 'XPath-based targeting reduces noise and focuses on the content that matters.', color: '#8b5cf6' },
-      { icon: <ScheduleIcon sx={{ fontSize: 28 }} />, title: 'Flexible scheduling', description: 'Set custom intervals for different websites and monitoring needs.', color: '#06b6d4' },
-    ],
-    advantagesOverline: 'Why choose us',
-    advantagesTitle: 'Built for practical use',
-    advantages: [
-      { icon: <CheckCircleIcon />, title: 'Start with zero setup', description: 'No extra installation required — create an account and begin monitoring.', color: '#10b981' },
-      { icon: <TrendingUpIcon />, title: 'Scalable architecture', description: 'Designed to support individual users and growing teams alike.', color: '#2563eb' },
-      { icon: <IntegrationIcon />, title: 'API integration', description: 'A full RESTful API makes it easy to integrate with existing systems.', color: '#f59e0b' },
-    ],
-    ctaTitle: 'Start monitoring the pages you care about',
-    ctaSubtitle: 'Create an account and get timely notifications when important web content changes.',
-    footerTagline: 'A Selenium-powered solution for professional web content monitoring',
-  };
+  const features = t('home.features', { returnObjects: true }).map((item) => ({
+    ...item,
+    ...FEATURE_PRESENTATION[item.key],
+  }));
+  const advantages = t('home.advantages', { returnObjects: true }).map((item) => ({
+    ...item,
+    ...ADVANTAGE_PRESENTATION[item.key],
+  }));
 
   const handleLogin = () => {
     navigate('/login');
@@ -234,7 +171,7 @@ const HomePage = () => {
           >
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <WebMonitorLogo size={40} showPulse />
+                <WebMonitorLogo size={40} />
                 <Typography
                   variant="h6"
                   component="div"
@@ -265,7 +202,7 @@ const HomePage = () => {
                   transition: 'color 0.2s ease',
                 }}
               >
-                {content.navDocs}
+                {t('home.navDocs')}
               </Button>
               <Button
                 variant="text"
@@ -280,7 +217,7 @@ const HomePage = () => {
                   transition: 'color 0.2s ease',
                 }}
               >
-                {content.navLogin}
+                {t('home.navLogin')}
               </Button>
               <Button
                 variant="contained"
@@ -301,7 +238,7 @@ const HomePage = () => {
                   transition: 'all 0.2s ease',
                 }}
               >
-                {content.navRegister}
+                {t('home.navRegister')}
               </Button>
               <Tooltip title="GitHub" arrow>
                 <IconButton
@@ -367,7 +304,7 @@ const HomePage = () => {
                           textTransform: 'uppercase',
                         }}
                       >
-                        {content.badge}
+                        {t('home.badge')}
                       </Typography>
                     </Box>
                   </Box>
@@ -384,7 +321,7 @@ const HomePage = () => {
                       letterSpacing: '-0.02em',
                     }}
                   >
-                    {content.heroTitleLine1}
+                    {t('home.heroTitleLine1')}
                     <br />
                     <Box
                       component="span"
@@ -395,7 +332,7 @@ const HomePage = () => {
                         backgroundClip: 'text',
                       }}
                     >
-                      {content.heroTitleLine2}
+                      {t('home.heroTitleLine2')}
                     </Box>
                   </Typography>
 
@@ -409,7 +346,7 @@ const HomePage = () => {
                       fontWeight: 400,
                     }}
                   >
-                    {content.heroSubtitle}
+                    {t('home.heroSubtitle')}
                   </Typography>
 
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -433,7 +370,7 @@ const HomePage = () => {
                         }}
                         endIcon={<RocketIcon />}
                       >
-                        {content.heroPrimary}
+                        {t('home.heroPrimary')}
                       </Button>
                     </motion.div>
 
@@ -459,28 +396,10 @@ const HomePage = () => {
                         }}
                         startIcon={<PlayArrowIcon />}
                       >
-                        {content.heroSecondary}
+                        {t('home.heroSecondary')}
                       </Button>
                     </motion.div>
                   </Stack>
-
-                  <Box sx={{ mt: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {content.trustStats.map((stat, index) => (
-                      <Box key={stat.label} sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box>
-                          <Typography variant="h5" sx={{ fontWeight: 700, color: '#334155' }}>
-                            {stat.value}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                            {stat.label}
-                          </Typography>
-                        </Box>
-                        {index < content.trustStats.length - 1 && (
-                          <Box sx={{ width: 1, height: 30, backgroundColor: '#e2e8f0', ml: 4 }} />
-                        )}
-                      </Box>
-                    ))}
-                  </Box>
                 </Box>
               </motion.div>
             </Grid>
@@ -493,172 +412,187 @@ const HomePage = () => {
               >
                 <Box
                   sx={{
-                    position: 'relative',
                     display: 'flex',
-                    justifyContent: 'center',
+                    flexDirection: 'column',
                     alignItems: 'center',
                   }}
                 >
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      width: '100%',
-                      maxWidth: 560,
-                      borderRadius: 4,
-                      overflow: 'hidden',
-                      background: '#ffffff',
-                      border: '1px solid rgba(0, 0, 0, 0.08)',
-                      boxShadow: '0 25px 80px rgba(0, 0, 0, 0.12)',
-                    }}
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#94a3b8', mb: 1.5, letterSpacing: 0.5 }}
                   >
-                    <Box
-                      sx={{
-                        p: 2,
-                        borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
-                        backgroundColor: '#fafafa',
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        {['#ff5f57', '#febc2e', '#28c840'].map((color) => (
-                          <Box
-                            key={color}
-                            sx={{
-                              width: 12,
-                              height: 12,
-                              borderRadius: '50%',
-                              backgroundColor: color,
-                            }}
-                          />
-                        ))}
-                      </Box>
-                      <Box
-                        sx={{
-                          flex: 1,
-                          mx: 2,
-                          py: 0.75,
-                          px: 2,
-                          borderRadius: 1.5,
-                          backgroundColor: '#f1f5f9',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                        }}
-                      >
-                        <MonitorIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                        <Typography variant="caption" sx={{ color: '#64748b' }}>
-                          webmonitor.app/dashboard
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ p: 3 }}>
-                      <Grid container spacing={2} sx={{ mb: 3 }}>
-                        {content.previewStats.map((stat, i) => (
-                          <Grid key={stat.label} size={{ xs: 4 }}>
-                            <motion.div
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={heroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                              transition={{ delay: 0.6 + i * 0.1 }}
-                            >
-                              <Box
-                                sx={{
-                                  p: 2,
-                                  borderRadius: 2,
-                                  backgroundColor: alpha(stat.color, 0.08),
-                                  textAlign: 'center',
-                                }}
-                              >
-                                <Typography variant="h5" sx={{ fontWeight: 700, color: stat.color }}>
-                                  {stat.value}
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: '#64748b' }}>
-                                  {stat.label}
-                                </Typography>
-                              </Box>
-                            </motion.div>
-                          </Grid>
-                        ))}
-                      </Grid>
-
-                      <Box sx={{ backgroundColor: '#f8fafc', borderRadius: 2, p: 2 }}>
-                        <Typography variant="subtitle2" sx={{ color: '#475569', mb: 2 }}>
-                          {content.activityTitle}
-                        </Typography>
-                        {content.previewActivities.map((item, i) => (
-                          <motion.div
-                            key={`${item.url}-${item.status}`}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={heroInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
-                            transition={{ delay: 0.8 + i * 0.1 }}
-                          >
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                py: 1.5,
-                                borderBottom: i < content.previewActivities.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Box
-                                  sx={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: '50%',
-                                    backgroundColor: item.statusColor,
-                                  }}
-                                />
-                                <Typography variant="body2" sx={{ color: '#475569' }}>
-                                  {item.url}
-                                </Typography>
-                              </Box>
-                              <Typography variant="caption" sx={{ color: item.statusColor, fontWeight: 500 }}>
-                                {item.status}
-                              </Typography>
-                            </Box>
-                          </motion.div>
-                        ))}
-                      </Box>
-                    </Box>
-                  </Paper>
-
-                  <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                    style={{
-                      position: 'absolute',
-                      top: -20,
-                      right: -20,
+                    {t('home.previewLabel')}
+                  </Typography>
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
                     }}
                   >
                     <Paper
+                      elevation={0}
                       sx={{
-                        p: 2,
-                        borderRadius: 3,
-                        backgroundColor: '#ffffff',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
+                        width: '100%',
+                        maxWidth: 560,
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        background: '#ffffff',
+                        border: '1px solid rgba(0, 0, 0, 0.08)',
+                        boxShadow: '0 25px 80px rgba(0, 0, 0, 0.12)',
                       }}
                     >
-                      <Avatar sx={{ width: 36, height: 36, backgroundColor: alpha('#10b981', 0.1) }}>
-                        <CheckCircleIcon sx={{ color: '#10b981', fontSize: 20 }} />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="caption" sx={{ color: '#64748b' }}>
-                          {content.floatingTitle}
-                        </Typography>
-                        <Typography variant="subtitle2" sx={{ color: '#10b981', fontWeight: 600 }}>
-                          {content.floatingStatus}
-                        </Typography>
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                          backgroundColor: '#fafafa',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          {['#ff5f57', '#febc2e', '#28c840'].map((color) => (
+                            <Box
+                              key={color}
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                backgroundColor: color,
+                              }}
+                            />
+                          ))}
+                        </Box>
+                        <Box
+                          sx={{
+                            flex: 1,
+                            mx: 2,
+                            py: 0.75,
+                            px: 2,
+                            borderRadius: 1.5,
+                            backgroundColor: '#f1f5f9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}
+                        >
+                          <MonitorIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
+                          <Typography variant="caption" sx={{ color: '#64748b' }}>
+                            webmonitor.app/dashboard
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ p: 3 }}>
+                        <Grid container spacing={2} sx={{ mb: 3 }}>
+                          {PREVIEW_STATS.map((stat, i) => (
+                            <Grid key={stat.key} size={{ xs: 4 }}>
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={heroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                                transition={{ delay: 0.6 + i * 0.1 }}
+                              >
+                                <Box
+                                  sx={{
+                                    p: 2,
+                                    borderRadius: 2,
+                                    backgroundColor: alpha(stat.color, 0.08),
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  <Typography variant="h5" sx={{ fontWeight: 700, color: stat.color }}>
+                                    {stat.value}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                    {t(`home.previewStats.${stat.key}`)}
+                                  </Typography>
+                                </Box>
+                              </motion.div>
+                            </Grid>
+                          ))}
+                        </Grid>
+
+                        <Box sx={{ backgroundColor: '#f8fafc', borderRadius: 2, p: 2 }}>
+                          <Typography variant="subtitle2" sx={{ color: '#475569', mb: 2 }}>
+                            {t('home.activityTitle')}
+                          </Typography>
+                          {PREVIEW_ACTIVITIES.map((item, i) => (
+                            <motion.div
+                              key={`${item.url}-${item.statusKey}`}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={heroInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
+                              transition={{ delay: 0.8 + i * 0.1 }}
+                            >
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  py: 1.5,
+                                  borderBottom: i < PREVIEW_ACTIVITIES.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                  <Box
+                                    sx={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: '50%',
+                                      backgroundColor: item.statusColor,
+                                    }}
+                                  />
+                                  <Typography variant="body2" sx={{ color: '#475569' }}>
+                                    {item.url}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="caption" sx={{ color: item.statusColor, fontWeight: 500 }}>
+                                  {t(`home.previewActivities.${item.statusKey}`)}
+                                </Typography>
+                              </Box>
+                            </motion.div>
+                          ))}
+                        </Box>
                       </Box>
                     </Paper>
-                  </motion.div>
+
+                    <motion.div
+                      animate={{ y: [0, -10, 0] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                      style={{
+                        position: 'absolute',
+                        top: -20,
+                        right: -20,
+                      }}
+                    >
+                      <Paper
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          backgroundColor: '#ffffff',
+                          boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                        }}
+                      >
+                        <Avatar sx={{ width: 36, height: 36, backgroundColor: alpha('#10b981', 0.1) }}>
+                          <CheckCircleIcon sx={{ color: '#10b981', fontSize: 20 }} />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#64748b' }}>
+                            {t('home.floatingTitle')}
+                          </Typography>
+                          <Typography variant="subtitle2" sx={{ color: '#10b981', fontWeight: 600 }}>
+                            {t('home.floatingStatus')}
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </motion.div>
+                  </Box>
                 </Box>
               </motion.div>
             </Grid>
@@ -691,7 +625,7 @@ const HomePage = () => {
                   letterSpacing: 2,
                 }}
               >
-                {content.featuresOverline}
+                {t('home.featuresOverline')}
               </Typography>
               <Typography
                 variant="h3"
@@ -704,7 +638,7 @@ const HomePage = () => {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {content.featuresTitle}
+                {t('home.featuresTitle')}
               </Typography>
               <Typography
                 variant="body1"
@@ -715,14 +649,14 @@ const HomePage = () => {
                   lineHeight: 1.7,
                 }}
               >
-                {content.featuresSubtitle}
+                {t('home.featuresSubtitle')}
               </Typography>
             </Box>
           </motion.div>
 
           <Grid container spacing={3}>
-            {content.features.map((feature, index) => (
-              <Grid key={feature.title} size={{ xs: 12, sm: 6, md: 4 }}>
+            {features.map((feature, index) => (
+              <Grid key={feature.key} size={{ xs: 12, sm: 6, md: 4 }}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={featuresInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
@@ -756,7 +690,7 @@ const HomePage = () => {
                           color: feature.color,
                         }}
                       >
-                        {feature.icon}
+                        <feature.Icon sx={{ fontSize: 28 }} />
                       </Avatar>
                       <Typography variant="h6" component="h3" sx={{ fontWeight: 700, color: '#334155', mb: 1.5 }}>
                         {feature.title}
@@ -798,7 +732,7 @@ const HomePage = () => {
                   letterSpacing: 2,
                 }}
               >
-                {content.advantagesOverline}
+                {t('home.advantagesOverline')}
               </Typography>
               <Typography
                 variant="h3"
@@ -811,14 +745,14 @@ const HomePage = () => {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {content.advantagesTitle}
+                {t('home.advantagesTitle')}
               </Typography>
             </Box>
           </motion.div>
 
           <Grid container spacing={4} sx={{ alignItems: 'stretch' }}>
-            {content.advantages.map((advantage, index) => (
-              <Grid key={advantage.title} size={{ xs: 12, md: 4 }}>
+            {advantages.map((advantage, index) => (
+              <Grid key={advantage.key} size={{ xs: 12, md: 4 }}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={advantagesInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
@@ -854,7 +788,7 @@ const HomePage = () => {
                         mb: 3,
                       }}
                     >
-                      {advantage.icon}
+                      <advantage.Icon />
                     </Avatar>
                     <Typography variant="h6" component="h3" sx={{ fontWeight: 700, color: '#334155', mb: 2 }}>
                       {advantage.title}
@@ -922,7 +856,7 @@ const HomePage = () => {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {content.ctaTitle}
+                {t('home.ctaTitle')}
               </Typography>
               <Typography
                 variant="body1"
@@ -934,7 +868,7 @@ const HomePage = () => {
                   lineHeight: 1.7,
                 }}
               >
-                {content.ctaSubtitle}
+                {t('home.ctaSubtitle')}
               </Typography>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'center' }}>
@@ -958,7 +892,7 @@ const HomePage = () => {
                     }}
                     endIcon={<ArrowForwardIcon />}
                   >
-                    {content.heroPrimary}
+                    {t('home.heroPrimary')}
                   </Button>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -982,7 +916,7 @@ const HomePage = () => {
                       },
                     }}
                   >
-                    {content.heroSecondary}
+                    {t('home.heroSecondary')}
                   </Button>
                 </motion.div>
               </Stack>
@@ -1013,7 +947,7 @@ const HomePage = () => {
             © 2024 WebMonitor. All rights reserved.
           </Typography>
           <Typography variant="caption" sx={{ color: '#cbd5e1' }}>
-            {content.footerTagline}
+            {t('home.footerTagline')}
           </Typography>
           <Stack
             direction="row"

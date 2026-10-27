@@ -12,26 +12,27 @@ services:
       # 数据库配置 - 使用SQLite
       DATABASE_URL: sqlite:///./data/webmonitor.db
 
-      # JWT配置
-      SECRET_KEY: ${SECRET_KEY:-your_very_secure_secret_key_change_in_production}
+      # JWT配置 - SECRET_KEY 必须显式提供（至少 32 字符），没有默认值
+      SECRET_KEY: ${SECRET_KEY:?请设置 SECRET_KEY（至少 32 个字符的随机串）}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
-
-      # 监控配置
-      DEFAULT_CHECK_INTERVAL: 300
-      MAX_CHECK_INTERVAL: 86400
-      MIN_CHECK_INTERVAL: 10
-      SELENIUM_HEADLESS: "true"
-      SELENIUM_TIMEOUT: 30
 
       # 应用配置
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
-      # 默认管理员账户
+      # 首次启动引导管理员：库里已有管理员时这些值不会被使用。
+      # 没有管理员且 ADMIN_PASSWORD 为空时启动会失败，这是刻意的。
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@webmonitor.com}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+
+      # 部署级邮件回退配置：用户没有自己的邮件配置时才会用到
+      SMTP_SERVER: ${SMTP_SERVER:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      RECEIVER_EMAIL: ${RECEIVER_EMAIL:-}
 
     ports:
       # 页面与 API 共用这一个端口：http://localhost:8000/

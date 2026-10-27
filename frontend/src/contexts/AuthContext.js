@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
-// 前后端同源发布：页面与 API 走同一个 origin，请求一律用相对路径 /api/...。
-// 开发期由 CRA dev server 的 `proxy`（见 package.json）转发到后端。
-axios.defaults.baseURL = '';
+import api, { setAccessToken, setUnauthorizedHandler } from '../api/client';
 
 const AuthContext = createContext();
+
+const TOKEN_STORAGE_KEY = 'token';
+const USER_STORAGE_KEY = 'user';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -15,65 +16,146 @@ export const useAuth = () => {
   return context;
 };
 
+const readStoredToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // 每次会话切换递增，用来丢弃已经过期的恢复请求结果
+  const sessionEpoch = useRef(0);
 
-  // 初始化认证状态
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-
-    if (token && savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        // 设置axios默认header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      } catch (error) {
-        // 清除无效的已保存用户数据
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
+  const clearLocalSession = useCallback(() => {
+    setAccessToken(null);
+    setUser(null);
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(USER_STORAGE_KEY);
+    } catch {
+      // localStorage 不可用时内存状态已经清空，忽略
     }
-    setLoading(false);
   }, []);
 
-  const login = (userData, token) => {
-    setUser(userData);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  };
+  /** 清空本地会话与所有查询缓存；登出与 401 共用。 */
+  const endSession = useCallback(async () => {
+    // 递增 epoch 会作废进行中的恢复请求；这里同时结束 loading，
+    // 否则 401 之后守卫会一直停在加载态，而不是回到登录页。
+    sessionEpoch.current += 1;
+    setLoading(false);
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    clearLocalSession();
+  }, [clearLocalSession, queryClient]);
 
-  const logout = async () => {
+  const login = useCallback(
+    async (userData, token) => {
+      sessionEpoch.current += 1;
+      await queryClient.cancelQueries();
+      queryClient.clear();
+
+      setAccessToken(token);
+      setUser(userData);
+      setLoading(false);
+
+      try {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+      } catch {
+        // 存储不可用时仍然保持本次会话可用
+      }
+    },
+    [queryClient],
+  );
+
+  const logout = useCallback(async () => {
+    await endSession();
+  }, [endSession]);
+
+  /** 重新拉取当前用户；账户被停用时清空会话。 */
+  const refreshUser = useCallback(async () => {
     try {
-      // 调用后端登出接口（可选）
-      await axios.post('/api/auth/logout');
-    } finally {
-      // 清除本地数据
-      setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      delete axios.defaults.headers.common['Authorization'];
+      const response = await api.get('/api/auth/me');
+      setUser(response.data);
+      try {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data));
+      } catch {
+        // 忽略存储失败
+      }
+      return;
+    } catch (error) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        await endSession();
+      }
+      throw error;
     }
-  };
+  }, [endSession]);
 
-  const isAuthenticated = () => {
-    return !!user;
-  };
+  // 启动时：先用本地令牌恢复会话，再用 /auth/me 校验；本地缓存的 user 不授予任何权限。
+  useEffect(() => {
+    const epoch = sessionEpoch.current;
+    const token = readStoredToken();
 
-  const isAdmin = () => {
-    return user?.is_admin || false;
-  };
+    if (!token) {
+      setLoading(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setAccessToken(token);
+
+    api
+      .get('/api/auth/me', { signal: controller.signal })
+      .then((response) => {
+        if (sessionEpoch.current !== epoch) {
+          return;
+        }
+        setUser(response.data);
+        try {
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data));
+        } catch {
+          // 忽略存储失败
+        }
+      })
+      .catch((error) => {
+        if (controller.signal.aborted || sessionEpoch.current !== epoch) {
+          return;
+        }
+        if (error?.code === 'ERR_CANCELED') {
+          return;
+        }
+        clearLocalSession();
+      })
+      .finally(() => {
+        if (sessionEpoch.current === epoch) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [clearLocalSession]);
+
+  // 401 只清当前会话：旧令牌的迟到响应不能把新会话踢下线（client.js 里已比对令牌）。
+  useEffect(() => {
+    const unregister = setUnauthorizedHandler(() => {
+      endSession();
+    });
+    return unregister;
+  }, [endSession]);
 
   const value = {
     user,
     loading,
     login,
     logout,
-    isAuthenticated,
-    isAdmin,
+    refreshUser,
+    isAuthenticated: () => !!user,
+    isAdmin: () => !!user?.is_admin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

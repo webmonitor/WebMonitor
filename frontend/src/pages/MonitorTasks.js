@@ -43,195 +43,65 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 
+import api, { getApiErrorMessage } from '../api/client';
+import { keys, EMAIL_CONFIG_SIMPLE } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
-import { WebMonitorLogo } from '../components/WebMonitorLogo';
+import WebMonitorLogo from '../components/WebMonitorLogo';
 import FooterLinks from '../components/FooterLinks';
-import { isChineseLanguage } from '../utils/i18n';
+import FeedbackSnackbar from '../components/FeedbackSnackbar';
+import ConfirmDialog from '../components/ConfirmDialog';
+
+const emptyForm = {
+  name: '',
+  url: '',
+  xpath: '',
+  interval: 300,
+  is_active: true,
+  is_public: false,
+  description: '',
+  email_config_id: '',
+};
 
 const MonitorTasks = () => {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    url: '',
-    xpath: '',
-    interval: 300,
-    is_active: true,
-    is_public: false,
-    description: '',
-    email_config_id: '',
-  });
+  const [formData, setFormData] = useState(emptyForm);
+  const [dialogAlert, setDialogAlert] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
 
-  const content = isChinese ? {
-    title: '监控任务管理',
-    subtitle: '管理和配置您的网页监控任务',
-    createTask: '创建新任务',
-    blacklistTitle: '黑名单限制说明',
-    blacklistItem1: '普通用户无法监控黑名单中禁止的网站域名',
-    blacklistItem2: '如需监控被限制的网站，请联系管理员将域名从黑名单中移除',
-    blacklistItem3: '管理员可访问“黑名单管理”功能进行域名管理',
-    totalTasks: '总任务数',
-    activeTasks: '活跃任务',
-    pausedTasks: '暂停任务',
-    emailNotifications: '邮件通知',
-    taskList: '监控任务列表',
-    noTasks: '暂无监控任务',
-    noTasksSubtitle: '创建您的第一个监控任务开始监控网页内容变化',
-    createFirstTask: '创建第一个任务',
-    taskInfo: '任务信息',
-    monitorConfig: '监控配置',
-    interval: '检查间隔',
-    emailConfig: '邮件配置',
-    status: '状态',
-    actions: '操作',
-    notSet: '未设置',
-    unknownConfig: '未知配置',
-    seconds: '秒',
-    running: '运行中',
-    paused: '已暂停',
-    testMonitor: '测试监控',
-    editTask: '编辑任务',
-    deleteTask: '删除任务',
-    editDialogTitle: '编辑监控任务',
-    createDialogTitle: '创建新监控任务',
-    taskName: '任务名称',
-    monitorUrl: '监控 URL',
-    xpathSelector: 'XPath 选择器',
-    xpathHelper: '用于定位监控内容的 XPath 表达式',
-    intervalSeconds: '检查间隔（秒）',
-    emailConfigRequired: '邮箱配置 *',
-    noEmailConfigOption: '暂无邮箱配置，请先添加邮件配置',
-    addEmailConfigHint: '请先在“邮件通知配置”页面添加邮箱配置',
-    taskDescription: '任务描述',
-    taskDescriptionHelper: '可选的任务描述，公开任务时其他用户可以看到此描述',
-    publicTask: '公开任务',
-    publicTaskHelper: '公开后其他用户可以订阅此任务并收到变更通知',
-    enableMonitoring: '启用监控',
-    enableMonitoringHelper: '立即开始监控指定网页',
-    cancel: '取消',
-    updateTask: '更新任务',
-    submitCreateTask: '创建任务',
-    loadTasksError: '加载监控任务失败',
-    selectEmailBeforeCreate: '请选择邮件配置后再创建任务。如果您还没有配置邮箱，请先在“邮件通知配置”页面添加邮箱配置。',
-    deleteConfirm: '确定要删除这个监控任务吗？',
-    testSuccess: '测试成功！',
-    contentLabel: '内容',
-    testFailed: '测试失败',
-    blacklistAlertTitle: '⚠️ 黑名单限制',
-    blacklistAlertBody: '该域名在管理员设置的黑名单中，普通用户无法监控此网站。\n\n如需监控此网站，请联系管理员将其从黑名单中移除。',
-    createFailed: '创建监控任务失败',
-    updateFailed: '更新监控任务失败',
-  } : {
-    title: 'Monitor tasks',
-    subtitle: 'Manage and configure your web monitoring tasks.',
-    createTask: 'Create task',
-    blacklistTitle: 'Blacklist restrictions',
-    blacklistItem1: 'Regular users cannot monitor domains blocked by the blacklist.',
-    blacklistItem2: 'If you need to monitor a blocked site, ask an admin to remove the domain from the blacklist.',
-    blacklistItem3: 'Admins can manage domains in the blacklist management page.',
-    totalTasks: 'Total tasks',
-    activeTasks: 'Active tasks',
-    pausedTasks: 'Paused tasks',
-    emailNotifications: 'Email notifications',
-    taskList: 'Monitor task list',
-    noTasks: 'No monitor tasks yet',
-    noTasksSubtitle: 'Create your first task to start monitoring web content changes.',
-    createFirstTask: 'Create first task',
-    taskInfo: 'Task info',
-    monitorConfig: 'Monitor config',
-    interval: 'Interval',
-    emailConfig: 'Email config',
-    status: 'Status',
-    actions: 'Actions',
-    notSet: 'Not set',
-    unknownConfig: 'Unknown config',
-    seconds: 's',
-    running: 'Running',
-    paused: 'Paused',
-    testMonitor: 'Test monitor',
-    editTask: 'Edit task',
-    deleteTask: 'Delete task',
-    editDialogTitle: 'Edit monitor task',
-    createDialogTitle: 'Create new monitor task',
-    taskName: 'Task name',
-    monitorUrl: 'Monitor URL',
-    xpathSelector: 'XPath selector',
-    xpathHelper: 'XPath expression used to locate the monitored content',
-    intervalSeconds: 'Check interval (seconds)',
-    emailConfigRequired: 'Email config *',
-    noEmailConfigOption: 'No email config yet. Add one first.',
-    addEmailConfigHint: 'Please add an email config in the email configuration page first.',
-    taskDescription: 'Task description',
-    taskDescriptionHelper: 'Optional description visible to other users when the task is public',
-    publicTask: 'Public task',
-    publicTaskHelper: 'Other users can subscribe to this task and receive change notifications',
-    enableMonitoring: 'Enable monitoring',
-    enableMonitoringHelper: 'Start monitoring this page immediately',
-    cancel: 'Cancel',
-    updateTask: 'Update task',
-    submitCreateTask: 'Create task',
-    loadTasksError: 'Failed to load monitor tasks',
-    selectEmailBeforeCreate: 'Please select an email configuration before creating the task. If you do not have one yet, add it in the email configuration page first.',
-    deleteConfirm: 'Are you sure you want to delete this monitor task?',
-    testSuccess: 'Test succeeded!',
-    contentLabel: 'Content',
-    testFailed: 'Test failed',
-    blacklistAlertTitle: '⚠️ Blacklist restriction',
-    blacklistAlertBody: 'This domain is blocked by the admin blacklist, so regular users cannot monitor it.\n\nIf you need to monitor it, ask an admin to remove the domain from the blacklist.',
-    createFailed: 'Failed to create monitor task',
-    updateFailed: 'Failed to update monitor task',
-  };
+  const showFeedback = (message, severity = 'success') =>
+    setFeedback({ open: true, message, severity });
+
+  const closeFeedback = () => setFeedback((prev) => ({ ...prev, open: false }));
 
   const queryClient = useQueryClient();
 
-  const getReadableError = (error) => {
-    const errorDetail = error.response?.data?.detail;
-
-    if (typeof errorDetail === 'string') {
-      return errorDetail;
-    }
-
-    if (typeof errorDetail === 'object' && errorDetail !== null) {
-      return JSON.stringify(errorDetail);
-    }
-
-    if (error.message) {
-      return error.message;
-    }
-
-    return t('common.unknownError');
-  };
-
-  const getEmailConfigName = (task) => {
-    if (!task || !task.email_config_id) {
-      return content.notSet;
-    }
-    const config = emailConfigs.find((item) => item.id === task.email_config_id);
-    return config ? config.name : content.unknownConfig;
-  };
-
   const { data: tasks = [], error } = useQuery({
-    queryKey: ['monitor-tasks'],
-    queryFn: async () => {
-      const response = await axios.get('/api/monitor-tasks');
-      return response.data;
-    },
+    queryKey: keys.tasks(user?.id),
+    queryFn: ({ signal }) => api.get('/api/monitor-tasks', { signal }).then((response) => response.data),
+    enabled: !!user,
   });
 
   const { data: emailConfigs = [] } = useQuery({
-    queryKey: ['emailConfigs'],
-    queryFn: async () => {
-      const response = await axios.get('/api/email-configs/simple-list');
-      return response.data;
-    },
+    queryKey: keys.emailConfigs(user?.id, EMAIL_CONFIG_SIMPLE),
+    queryFn: ({ signal }) =>
+      api.get('/api/email-configs/simple-list', { signal }).then((response) => response.data),
+    enabled: !!user,
   });
 
-  // v5 dropped `onSuccess` on queries: preselect the only config the same way, from data.
+  const getEmailConfigName = (task) => {
+    if (!task || !task.email_config_id) {
+      return t('tasks.notSet');
+    }
+    const config = emailConfigs.find((item) => item.id === task.email_config_id);
+    return config ? config.name : t('tasks.unknownConfig');
+  };
+
+  // v5 dropped `onSuccess` on queries: preselect the only config from data.
   useEffect(() => {
     if (emailConfigs.length !== 1 || editingTask || formData.email_config_id) {
       return;
@@ -239,65 +109,86 @@ const MonitorTasks = () => {
     setFormData((prev) => ({ ...prev, email_config_id: emailConfigs[0].id }));
   }, [emailConfigs, editingTask, formData.email_config_id]);
 
-  const showBlacklistAlert = () => {
-    window.alert(`${content.blacklistAlertTitle}\n\n${content.blacklistAlertBody}`);
+  const invalidateTaskData = () => {
+    ['tasks', 'logs', 'publicTasks', 'subscriptions', 'subscriptionInfo'].forEach((key) => {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    });
+  };
+
+  const blacklistDetail = (errorValue) => {
+    const detail = errorValue?.response?.data?.detail;
+
+    if (errorValue?.response?.status !== 403 || typeof detail !== 'string' || !detail.trim()) {
+      return null;
+    }
+
+    return detail;
+  };
+
+  const handleMutationError = (errorValue, failureKey) => {
+    const detail = blacklistDetail(errorValue);
+
+    if (detail) {
+      setDialogAlert({ title: t('tasks.blacklistAlertTitle'), message: detail });
+      return;
+    }
+
+    showFeedback(
+      `${t(failureKey)}: ${getApiErrorMessage(errorValue, t('common.unknownError'))}`,
+      'error',
+    );
   };
 
   const createMutation = useMutation({
-    mutationFn: async (taskData) => {
-      const response = await axios.post('/api/monitor-tasks', taskData);
-      return response.data;
-    },
+    mutationFn: (payload) => api.post('/api/monitor-tasks', payload).then((response) => response.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monitor-tasks'] });
+      invalidateTaskData();
       handleClose();
+      showFeedback(t('tasks.created'));
     },
-    onError: (errorValue) => {
-      if (errorValue.response?.status === 403 && errorValue.response?.data?.detail?.includes('黑名单')) {
-        showBlacklistAlert();
-        return;
-      }
-
-      window.alert(`${content.createFailed}: ${getReadableError(errorValue)}`);
-    },
+    onError: (errorValue) => handleMutationError(errorValue, 'tasks.createFailed'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, taskData }) => {
-      const response = await axios.put(`/api/monitor-tasks/${id}`, taskData);
-      return response.data;
-    },
+    mutationFn: ({ id, payload }) =>
+      api.put(`/api/monitor-tasks/${id}`, payload).then((response) => response.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monitor-tasks'] });
+      invalidateTaskData();
       handleClose();
+      showFeedback(t('tasks.updated'));
     },
-    onError: (errorValue) => {
-      if (errorValue.response?.status === 403 && errorValue.response?.data?.detail?.includes('黑名单')) {
-        showBlacklistAlert();
-        return;
-      }
-
-      window.alert(`${content.updateFailed}: ${getReadableError(errorValue)}`);
-    },
+    onError: (errorValue) => handleMutationError(errorValue, 'tasks.updateFailed'),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id) => {
-      await axios.delete(`/api/monitor-tasks/${id}`);
-    },
+    mutationFn: (id) => api.delete(`/api/monitor-tasks/${id}`).then((response) => response.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monitor-tasks'] });
+      invalidateTaskData();
+      setConfirmTarget(null);
+      showFeedback(t('tasks.deleteSuccess'));
+    },
+    onError: (errorValue) => {
+      showFeedback(
+        `${t('tasks.deleteFailed')}: ${getApiErrorMessage(errorValue, t('common.unknownError'))}`,
+        'error',
+      );
     },
   });
 
   const testMutation = useMutation({
-    mutationFn: async (id) => {
-      const response = await axios.post(`/api/monitor-tasks/${id}/test`);
-      return response.data;
+    mutationFn: (id) =>
+      api.post(`/api/monitor-tasks/${id}/test`).then((response) => response.data),
+    onSuccess: (data) => {
+      const preview = data?.content ? data.content.substring(0, 100) : '';
+      showFeedback(`${t('tasks.testSuccess')} ${t('tasks.contentLabel')}: ${preview}...`);
+    },
+    onError: (errorValue) => {
+      showFeedback(getApiErrorMessage(errorValue, t('tasks.testFailed')), 'error');
     },
   });
 
   const handleOpen = (task = null) => {
+    setDialogAlert(null);
     if (task) {
       setEditingTask(task);
       setFormData({
@@ -313,13 +204,7 @@ const MonitorTasks = () => {
     } else {
       setEditingTask(null);
       setFormData({
-        name: '',
-        url: '',
-        xpath: '',
-        interval: 300,
-        is_active: true,
-        is_public: false,
-        description: '',
+        ...emptyForm,
         email_config_id: emailConfigs.length === 1 ? emailConfigs[0].id : '',
       });
     }
@@ -329,42 +214,40 @@ const MonitorTasks = () => {
   const handleClose = () => {
     setOpen(false);
     setEditingTask(null);
+    setDialogAlert(null);
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
     if (!formData.email_config_id) {
-      window.alert(content.selectEmailBeforeCreate);
+      setDialogAlert({ title: null, message: t('tasks.selectEmailBeforeCreate') });
       return;
     }
 
+    setDialogAlert(null);
+
     if (editingTask) {
-      updateMutation.mutate({ id: editingTask.id, taskData: formData });
+      updateMutation.mutate({ id: editingTask.id, payload: formData });
     } else {
       createMutation.mutate(formData);
     }
   };
 
   const handleDelete = (id) => {
-    if (window.confirm(content.deleteConfirm)) {
-      deleteMutation.mutate(id);
-    }
+    setConfirmTarget(id);
   };
 
   const handleTest = (id) => {
-    testMutation.mutate(id, {
-      onSuccess: (data) => {
-        window.alert(`${content.testSuccess}\n${content.contentLabel}: ${data.content?.substring(0, 100) || ''}...`);
-      },
-      onError: (errorValue) => {
-        window.alert(`${content.testFailed}: ${getReadableError(errorValue)}`);
-      },
-    });
+    testMutation.mutate(id);
   };
 
   if (error) {
-    return <Alert severity="error">{content.loadTasksError}: {error.message}</Alert>;
+    return (
+      <Alert severity="error">
+        {t('tasks.loadTasksError')}: {getApiErrorMessage(error, t('common.unknownError'))}
+      </Alert>
+    );
   }
 
   return (
@@ -389,10 +272,10 @@ const MonitorTasks = () => {
               mb: 1,
             }}
           >
-            {content.title}
+            {t('tasks.title')}
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {content.subtitle}
+            {t('tasks.subtitle')}
           </Typography>
         </Box>
         <Button
@@ -414,7 +297,7 @@ const MonitorTasks = () => {
             },
           }}
         >
-          {content.createTask}
+          {t('tasks.createTask')}
         </Button>
       </Box>
 
@@ -424,17 +307,17 @@ const MonitorTasks = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
               <WebMonitorLogo size={20} />
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#ef4444' }}>
-                {content.blacklistTitle}
+                {t('tasks.blacklistTitle')}
               </Typography>
             </Box>
             <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-              • {content.blacklistItem1}
+              • {t('tasks.blacklistItem1')}
             </Typography>
             <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-              • {content.blacklistItem2}
+              • {t('tasks.blacklistItem2')}
             </Typography>
             <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-              • {content.blacklistItem3}
+              • {t('tasks.blacklistItem3')}
             </Typography>
           </CardContent>
         </Card>
@@ -481,7 +364,7 @@ const MonitorTasks = () => {
                   {tasks.length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.totalTasks}
+                  {t('tasks.totalTasks')}
                 </Typography>
               </Box>
             </CardContent>
@@ -528,7 +411,7 @@ const MonitorTasks = () => {
                   {tasks.filter((task) => task.is_active).length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.activeTasks}
+                  {t('tasks.activeTasks')}
                 </Typography>
               </Box>
             </CardContent>
@@ -575,7 +458,7 @@ const MonitorTasks = () => {
                   {tasks.filter((task) => !task.is_active).length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.pausedTasks}
+                  {t('tasks.pausedTasks')}
                 </Typography>
               </Box>
             </CardContent>
@@ -622,7 +505,7 @@ const MonitorTasks = () => {
                   {tasks.filter((task) => task.email_config_id).length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.emailNotifications}
+                  {t('tasks.emailNotifications')}
                 </Typography>
               </Box>
             </CardContent>
@@ -639,7 +522,7 @@ const MonitorTasks = () => {
       >
         <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {content.taskList}
+            {t('tasks.taskList')}
           </Typography>
         </Box>
         {tasks.length === 0 ? (
@@ -656,10 +539,10 @@ const MonitorTasks = () => {
               <WebMonitorLogo size={48} />
             </Avatar>
             <Typography variant="h6" sx={{ mb: 1 }}>
-              {content.noTasks}
+              {t('tasks.noTasks')}
             </Typography>
             <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {content.noTasksSubtitle}
+              {t('tasks.noTasksSubtitle')}
             </Typography>
             <Button
               variant="contained"
@@ -671,7 +554,7 @@ const MonitorTasks = () => {
                 fontWeight: 'bold',
               }}
             >
-              {content.createFirstTask}
+              {t('tasks.createFirstTask')}
             </Button>
           </Box>
         ) : (
@@ -679,12 +562,12 @@ const MonitorTasks = () => {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.taskInfo}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.monitorConfig}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.interval}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.emailConfig}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.status}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.actions}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.taskInfo')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.monitorConfig')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.interval')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.emailConfig')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.status')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -734,14 +617,14 @@ const MonitorTasks = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {task.xpath ? `${task.xpath.substring(0, 50)}...` : content.notSet}
+                        {task.xpath ? `${task.xpath.substring(0, 50)}...` : t('tasks.notSet')}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <ScheduleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
                         <Typography variant="body2">
-                          {task.interval}{content.seconds}
+                          {task.interval}{t('tasks.seconds')}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -757,16 +640,17 @@ const MonitorTasks = () => {
                       <Chip
                         size="small"
                         icon={task.is_active ? <SuccessIcon /> : <PauseIcon />}
-                        label={task.is_active ? content.running : content.paused}
+                        label={task.is_active ? t('tasks.running') : t('tasks.paused')}
                         color={task.is_active ? 'success' : 'error'}
                       />
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title={content.testMonitor}>
+                        <Tooltip title={t('tasks.testMonitor')}>
                           <IconButton
                             size="small"
                             onClick={() => handleTest(task.id)}
+                            disabled={testMutation.isPending}
                             sx={{
                               color: '#10b981',
                               '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
@@ -775,7 +659,7 @@ const MonitorTasks = () => {
                             <TestIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={content.editTask}>
+                        <Tooltip title={t('tasks.editTask')}>
                           <IconButton
                             size="small"
                             onClick={() => handleOpen(task)}
@@ -787,7 +671,7 @@ const MonitorTasks = () => {
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={content.deleteTask}>
+                        <Tooltip title={t('tasks.deleteTask')}>
                           <IconButton
                             size="small"
                             onClick={() => handleDelete(task.id)}
@@ -833,14 +717,28 @@ const MonitorTasks = () => {
             },
           }}
         >
-          {editingTask ? content.editDialogTitle : content.createDialogTitle}
+          {editingTask ? t('tasks.editDialogTitle') : t('tasks.createDialogTitle')}
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent sx={{ pt: 3 }}>
+            {dialogAlert && (
+              <Alert
+                severity="error"
+                sx={{ mb: 3 }}
+                onClose={() => setDialogAlert(null)}
+              >
+                {dialogAlert.title && (
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    {dialogAlert.title}
+                  </Typography>
+                )}
+                {dialogAlert.message}
+              </Alert>
+            )}
             <Grid container spacing={3}>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.taskName}
+                  label={t('tasks.taskName')}
                   fullWidth
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -860,7 +758,7 @@ const MonitorTasks = () => {
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.monitorUrl}
+                  label={t('tasks.monitorUrl')}
                   fullWidth
                   value={formData.url}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
@@ -880,11 +778,11 @@ const MonitorTasks = () => {
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.xpathSelector}
+                  label={t('tasks.xpathSelector')}
                   fullWidth
                   value={formData.xpath}
                   onChange={(e) => setFormData({ ...formData, xpath: e.target.value })}
-                  helperText={content.xpathHelper}
+                  helperText={t('tasks.xpathHelper')}
                   required
                   rows={1}
                   sx={{
@@ -902,7 +800,7 @@ const MonitorTasks = () => {
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
-                  label={content.intervalSeconds}
+                  label={t('tasks.intervalSeconds')}
                   type="number"
                   fullWidth
                   value={formData.interval}
@@ -928,11 +826,11 @@ const MonitorTasks = () => {
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth required>
-                  <InputLabel id="email-config-label">{content.emailConfigRequired}</InputLabel>
+                  <InputLabel id="email-config-label">{t('tasks.emailConfigRequired')}</InputLabel>
                   <Select
                     labelId="email-config-label"
                     value={formData.email_config_id}
-                    label={content.emailConfigRequired}
+                    label={t('tasks.emailConfigRequired')}
                     onChange={(e) => setFormData({ ...formData, email_config_id: e.target.value })}
                     required
                     sx={{
@@ -949,7 +847,7 @@ const MonitorTasks = () => {
                   >
                     {emailConfigs.length === 0 ? (
                       <MenuItem disabled value="">
-                        <em>{content.noEmailConfigOption}</em>
+                        <em>{t('tasks.noEmailConfigOption')}</em>
                       </MenuItem>
                     ) : (
                       emailConfigs.map((config) => (
@@ -961,20 +859,20 @@ const MonitorTasks = () => {
                   </Select>
                   {emailConfigs.length === 0 && (
                     <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-                      {content.addEmailConfigHint}
+                      {t('tasks.addEmailConfigHint')}
                     </Typography>
                   )}
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.taskDescription}
+                  label={t('tasks.taskDescription')}
                   fullWidth
                   multiline
                   rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  helperText={content.taskDescriptionHelper}
+                  helperText={t('tasks.taskDescriptionHelper')}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
@@ -1004,10 +902,10 @@ const MonitorTasks = () => {
                   />
                   <Box sx={{ ml: 2 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {content.publicTask}
+                      {t('tasks.publicTask')}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {content.publicTaskHelper}
+                      {t('tasks.publicTaskHelper')}
                     </Typography>
                   </Box>
                 </Box>
@@ -1028,10 +926,10 @@ const MonitorTasks = () => {
                   />
                   <Box sx={{ ml: 2 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {content.enableMonitoring}
+                      {t('tasks.enableMonitoring')}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {content.enableMonitoringHelper}
+                      {t('tasks.enableMonitoringHelper')}
                     </Typography>
                   </Box>
                 </Box>
@@ -1047,7 +945,7 @@ const MonitorTasks = () => {
                 '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
               }}
             >
-              {content.cancel}
+              {t('common.cancel')}
             </Button>
             <Button
               type="submit"
@@ -1066,11 +964,33 @@ const MonitorTasks = () => {
                 },
               }}
             >
-              {editingTask ? content.updateTask : content.submitCreateTask}
+              {editingTask ? t('tasks.updateTask') : t('tasks.submitCreateTask')}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title={t('tasks.deleteConfirmTitle')}
+        message={t('tasks.deleteConfirm')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        pending={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(confirmTarget)}
+        onClose={() => {
+          if (!deleteMutation.isPending) {
+            setConfirmTarget(null);
+          }
+        }}
+      />
+
+      <FeedbackSnackbar
+        open={feedback.open}
+        message={feedback.message}
+        severity={feedback.severity}
+        onClose={closeFeedback}
+      />
 
       <Box
         sx={{

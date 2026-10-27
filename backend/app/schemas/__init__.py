@@ -1,15 +1,5 @@
 """
-数据模式模块
-"""
-from .schemas import MonitorTaskCreate, MonitorTaskUpdate, MonitorTaskResponse, MonitorLogResponse, MonitorTaskWithLogs, EmailConfigCreate, EmailConfigUpdate, EmailConfigResponse
+数据模式模块。
 
-__all__ = [
-    "MonitorTaskCreate",
-    "MonitorTaskUpdate",
-    "MonitorTaskResponse",
-    "MonitorLogResponse",
-    "MonitorTaskWithLogs",
-    "EmailConfigCreate",
-    "EmailConfigUpdate",
-    "EmailConfigResponse",
-]
+按需从 `app.schemas.schemas` 导入具体模型。
+"""

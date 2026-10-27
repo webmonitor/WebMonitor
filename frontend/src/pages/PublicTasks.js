@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -7,7 +7,6 @@ import {
   Button,
   Chip,
   Alert,
-  Snackbar,
   Tooltip,
   alpha,
   Grid,
@@ -28,6 +27,7 @@ import {
   TableHead,
   TableRow,
   Avatar,
+  CircularProgress,
 } from '@mui/material';
 import {
   Public as PublicIcon,
@@ -40,20 +40,21 @@ import {
   Link as LinkIcon,
   CheckCircle as SuccessIcon,
 } from '@mui/icons-material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 
-import { WebMonitorLogo } from '../components/WebMonitorLogo';
+import api, { getApiErrorMessage } from '../api/client';
+import { keys, EMAIL_CONFIG_SIMPLE } from '../api/queryKeys';
+import { useAuth } from '../contexts/AuthContext';
+import FeedbackSnackbar from '../components/FeedbackSnackbar';
+import WebMonitorLogo from '../components/WebMonitorLogo';
 import { formatDateTime } from '../utils/date';
-import { isChineseLanguage } from '../utils/i18n';
 
 const PublicTasks = () => {
-  const [tasks, setTasks] = useState([]);
-  const [subscriptionInfo, setSubscriptionInfo] = useState({
-    current_subscriptions: 0,
-    max_subscriptions: 10,
-    remaining_slots: 10,
-  });
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { t, i18n } = useTranslation();
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -61,204 +62,111 @@ const PublicTasks = () => {
   });
   const [selectedTask, setSelectedTask] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [emailConfigs, setEmailConfigs] = useState([]);
+  const [subscribeTaskId, setSubscribeTaskId] = useState(null);
   const [emailConfigDialogOpen, setEmailConfigDialogOpen] = useState(false);
   const [selectedEmailConfig, setSelectedEmailConfig] = useState('');
-  const { i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
 
-  const content = isChinese ? {
-    title: '公开任务市场',
-    subtitle: '发现和订阅其他用户分享的监控任务',
-    publicTasks: '公开任务',
-    mySubscriptions: '我的订阅',
-    remainingSlots: '剩余额度',
-    totalSubscriptions: '总订阅数',
-    usageTitle: '订阅使用情况',
-    usageLine1: `当前已订阅 ${subscriptionInfo.current_subscriptions} 个任务，最多可订阅 ${subscriptionInfo.max_subscriptions} 个`,
-    usageLine2: `剩余订阅额度：${subscriptionInfo.remaining_slots} 个`,
-    usageLine3: '订阅任务后，当任务监控到内容变化时，您会收到邮件通知',
-    taskList: '公开任务列表',
-    noTasks: '暂无公开任务',
-    noTasksSubtitle: '当前没有用户分享公开的监控任务',
-    taskInfo: '任务信息',
-    creator: '创建者',
-    subscriptions: '订阅数',
-    interval: '检查间隔',
-    createdAt: '创建时间',
-    actions: '操作',
-    subscribe: '订阅',
-    unsubscribe: '取消订阅',
-    subscribeTask: '订阅任务',
-    unsubscribeTask: '取消订阅',
-    viewDetails: '查看详情',
-    taskDetails: '任务详情',
-    noDescription: '暂无描述',
-    monitorUrl: '监控 URL',
-    subscriberCount: '订阅人数',
-    close: '关闭',
-    chooseEmailConfig: '选择邮箱配置',
-    chooseEmailConfigSubtitle: '订阅任务需要配置邮件通知，请选择要使用的邮箱配置',
-    noEmailConfig: '您还没有配置邮箱通知设置。请先在“邮件通知配置”页面添加邮箱配置后再订阅任务。',
-    emailConfig: '邮箱配置',
-    cancel: '取消',
-    confirmSubscribe: '确认订阅',
-    fetchPublicTasksFailed: '获取公开任务失败',
-    toggleFailed: '操作失败',
-    subscribeWithEmailFailed: '操作失败',
-    unknownError: '未知错误',
-    seconds: '秒',
-    createdByLabel: '创建者',
-    createdAtLabel: '创建时间',
-  } : {
-    title: 'Public task marketplace',
-    subtitle: 'Discover and subscribe to monitoring tasks shared by other users.',
-    publicTasks: 'Public tasks',
-    mySubscriptions: 'My subscriptions',
-    remainingSlots: 'Remaining slots',
-    totalSubscriptions: 'Total subscriptions',
-    usageTitle: 'Subscription usage',
-    usageLine1: `You are currently subscribed to ${subscriptionInfo.current_subscriptions} tasks and can subscribe to up to ${subscriptionInfo.max_subscriptions}.`,
-    usageLine2: `Remaining subscription slots: ${subscriptionInfo.remaining_slots}`,
-    usageLine3: 'You will receive email notifications when subscribed tasks detect content changes.',
-    taskList: 'Public task list',
-    noTasks: 'No public tasks yet',
-    noTasksSubtitle: 'No users have shared public monitoring tasks yet.',
-    taskInfo: 'Task info',
-    creator: 'Creator',
-    subscriptions: 'Subscriptions',
-    interval: 'Interval',
-    createdAt: 'Created at',
-    actions: 'Actions',
-    subscribe: 'Subscribe',
-    unsubscribe: 'Unsubscribe',
-    subscribeTask: 'Subscribe to task',
-    unsubscribeTask: 'Unsubscribe',
-    viewDetails: 'View details',
-    taskDetails: 'Task details',
-    noDescription: 'No description',
-    monitorUrl: 'Monitor URL',
-    subscriberCount: 'Subscribers',
-    close: 'Close',
-    chooseEmailConfig: 'Choose email configuration',
-    chooseEmailConfigSubtitle: 'Task subscriptions require email notifications. Choose the email configuration to use.',
-    noEmailConfig: 'You have not configured email notifications yet. Add an email configuration on the email configuration page before subscribing.',
-    emailConfig: 'Email configuration',
-    cancel: 'Cancel',
-    confirmSubscribe: 'Confirm subscription',
-    fetchPublicTasksFailed: 'Failed to fetch public tasks',
-    toggleFailed: 'Operation failed',
-    subscribeWithEmailFailed: 'Operation failed',
-    unknownError: 'Unknown error',
-    seconds: 's',
-    createdByLabel: 'Created by',
-    createdAtLabel: 'Created at',
+  const emptyValue = t('common.emptyValue');
+
+  const tasksQuery = useQuery({
+    queryKey: keys.publicTasks(user?.id),
+    queryFn: ({ signal }) => api.get('/api/public-tasks', { signal }).then((response) => response.data),
+    enabled: !!user,
+  });
+
+  const subscriptionInfoQuery = useQuery({
+    queryKey: keys.subscriptionInfo(user?.id),
+    queryFn: ({ signal }) => api.get('/api/subscription-info', { signal }).then((response) => response.data),
+    enabled: !!user,
+  });
+
+  const emailConfigsQuery = useQuery({
+    queryKey: keys.emailConfigs(user?.id, EMAIL_CONFIG_SIMPLE),
+    queryFn: ({ signal }) =>
+      api.get('/api/email-configs/simple-list', { signal }).then((response) => response.data),
+    enabled: !!user,
+  });
+
+  const tasks = tasksQuery.data || [];
+  const subscriptionInfo = subscriptionInfoQuery.data;
+  const emailConfigs = emailConfigsQuery.data || [];
+  const remainingSlots = subscriptionInfo?.remaining_slots;
+  const slotsExhausted = typeof remainingSlots === 'number' && remainingSlots <= 0;
+
+  const showError = (message) => {
+    setSnackbar({ open: true, message, severity: 'error' });
   };
 
-  const getErrorMessage = useCallback((error) => {
-    return error.response?.data?.detail || content.unknownError;
-  }, [content.unknownError]);
-
-  const requiresEmailConfig = (message) => {
-    const normalized = String(message || '').toLowerCase();
-    return normalized.includes('邮箱配置')
-      || normalized.includes('邮件通知设置')
-      || normalized.includes('email config')
-      || normalized.includes('email notification');
+  const showSuccess = (message) => {
+    setSnackbar({ open: true, message, severity: 'success' });
   };
 
-  const fetchPublicTasks = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/public-tasks');
-      setTasks(response.data);
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: `${content.fetchPublicTasksFailed}: ${getErrorMessage(error)}`,
-        severity: 'error',
-      });
-    }
-  }, [content.fetchPublicTasksFailed, getErrorMessage]);
-
-  const fetchSubscriptionInfo = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/subscription-info');
-      setSubscriptionInfo(response.data);
-    } catch (error) {
-      console.error('Failed to fetch subscription info:', error);
-    }
-  }, []);
-
-  const fetchEmailConfigs = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/email-configs/simple-list');
-      setEmailConfigs(response.data);
-    } catch (error) {
-      console.error('Failed to fetch email configs:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPublicTasks();
-    fetchSubscriptionInfo();
-    fetchEmailConfigs();
-  }, [fetchPublicTasks, fetchSubscriptionInfo, fetchEmailConfigs]);
-
-  const handleToggleSubscription = async (taskId) => {
-    try {
-      const response = await axios.post(`/api/subscriptions/${taskId}/toggle`);
-
-      setSnackbar({
-        open: true,
-        message: response.data.message,
-        severity: 'success',
-      });
-
-      fetchPublicTasks();
-      fetchSubscriptionInfo();
-    } catch (error) {
-      const errorMessage = getErrorMessage(error);
-
-      if (requiresEmailConfig(errorMessage)) {
-        setSelectedTask(taskId);
-        setSelectedEmailConfig('');
-        setEmailConfigDialogOpen(true);
-        return;
-      }
-
-      setSnackbar({
-        open: true,
-        message: `${content.toggleFailed}: ${errorMessage}`,
-        severity: 'error',
-      });
-    }
+  const invalidateSubscriptions = () => {
+    queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    queryClient.invalidateQueries({ queryKey: ['publicTasks'] });
+    queryClient.invalidateQueries({ queryKey: ['subscriptionInfo'] });
   };
 
-  const handleSubscribeWithEmail = async () => {
-    try {
-      const response = await axios.post(
-        `/api/subscriptions/${selectedTask}/subscribe-with-email`,
-        { email_config_id: selectedEmailConfig }
-      );
+  const toggleMutation = useMutation({
+    mutationFn: (taskId) =>
+      api.post(`/api/subscriptions/${taskId}/toggle`).then((response) => response.data),
+    onSuccess: (data) => {
+      invalidateSubscriptions();
+      showSuccess(t(data?.subscribed ? 'publicTasks.subscribed' : 'publicTasks.unsubscribed'));
+    },
+    onError: (error) => {
+      // 服务端 detail（例如"请先配置邮箱通知设置后再订阅任务"）原样展示，不做字符串判定。
+      showError(getApiErrorMessage(error, t('publicTasks.toggleFailed')));
+    },
+  });
 
-      setSnackbar({
-        open: true,
-        message: response.data.message,
-        severity: 'success',
-      });
-
+  const subscribeWithEmailMutation = useMutation({
+    mutationFn: ({ taskId, emailConfigId }) =>
+      api
+        .post(`/api/subscriptions/${taskId}/subscribe-with-email`, {
+          email_config_id: emailConfigId,
+        })
+        .then((response) => response.data),
+    onSuccess: () => {
+      invalidateSubscriptions();
+      showSuccess(t('publicTasks.subscribed'));
       setEmailConfigDialogOpen(false);
-      setSelectedTask(null);
+      setSubscribeTaskId(null);
       setSelectedEmailConfig('');
-      fetchPublicTasks();
-      fetchSubscriptionInfo();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: `${content.subscribeWithEmailFailed}: ${getErrorMessage(error)}`,
-        severity: 'error',
-      });
+    },
+    onError: (error) => {
+      // 服务端 detail 原样展示（例如未配置邮箱通知），保留弹窗与当前选择。
+      showError(getApiErrorMessage(error, t('publicTasks.subscribeWithEmailFailed')));
+    },
+  });
+
+  const handleSubscribe = (taskId) => {
+    setSubscribeTaskId(taskId);
+    setSelectedEmailConfig('');
+    setEmailConfigDialogOpen(true);
+  };
+
+  const handleCloseEmailConfigDialog = () => {
+    if (subscribeWithEmailMutation.isPending) {
+      return;
     }
+    setEmailConfigDialogOpen(false);
+    setSubscribeTaskId(null);
+    setSelectedEmailConfig('');
+  };
+
+  const handleConfirmSubscribe = () => {
+    if (!subscribeTaskId || !selectedEmailConfig) {
+      return;
+    }
+    subscribeWithEmailMutation.mutate({
+      taskId: subscribeTaskId,
+      emailConfigId: selectedEmailConfig,
+    });
+  };
+
+  const handleToggleSubscription = (taskId) => {
+    toggleMutation.mutate(taskId);
   };
 
   const handleViewDetails = (task) => {
@@ -292,13 +200,26 @@ const PublicTasks = () => {
               mb: 1,
             }}
           >
-            {content.title}
+            {t('publicTasks.title')}
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {content.subtitle}
+            {t('publicTasks.subtitle')}
           </Typography>
         </Box>
       </Box>
+
+      {tasksQuery.error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {t('publicTasks.loadFailed')}:{' '}
+          {getApiErrorMessage(tasksQuery.error, t('common.unknownError'))}
+        </Alert>
+      )}
+
+      {subscriptionInfoQuery.error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {getApiErrorMessage(subscriptionInfoQuery.error, t('common.unknownError'))}
+        </Alert>
+      )}
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -340,10 +261,10 @@ const PublicTasks = () => {
               </Box>
               <Box>
                 <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasks.length}
+                  {tasksQuery.isLoading ? emptyValue : tasks.length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.publicTasks}
+                  {t('publicTasks.publicTasks')}
                 </Typography>
               </Box>
             </CardContent>
@@ -388,10 +309,10 @@ const PublicTasks = () => {
               </Box>
               <Box>
                 <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {subscriptionInfo.current_subscriptions}
+                  {subscriptionInfo?.current_subscriptions ?? emptyValue}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.mySubscriptions}
+                  {t('publicTasks.mySubscriptions')}
                 </Typography>
               </Box>
             </CardContent>
@@ -425,21 +346,21 @@ const PublicTasks = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Avatar
                   sx={{
-                    bgcolor: subscriptionInfo.remaining_slots > 0 ? 'rgba(34, 211, 238, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: subscriptionInfo.remaining_slots > 0 ? '#22d3ee' : '#ef4444',
+                    bgcolor: slotsExhausted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 211, 238, 0.1)',
+                    color: slotsExhausted ? '#ef4444' : '#22d3ee',
                     width: 48,
                     height: 48,
                   }}
                 >
-                  {subscriptionInfo.remaining_slots > 0 ? <SuccessIcon /> : <PeopleIcon />}
+                  {slotsExhausted ? <PeopleIcon /> : <SuccessIcon />}
                 </Avatar>
               </Box>
               <Box>
                 <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {subscriptionInfo.remaining_slots}
+                  {remainingSlots ?? emptyValue}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.remainingSlots}
+                  {t('publicTasks.remainingSlots')}
                 </Typography>
               </Box>
             </CardContent>
@@ -483,10 +404,12 @@ const PublicTasks = () => {
               </Box>
               <Box>
                 <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasks.reduce((sum, task) => sum + task.subscription_count, 0)}
+                  {tasksQuery.isLoading
+                    ? emptyValue
+                    : tasks.reduce((sum, task) => sum + (task.subscription_count || 0), 0)}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.totalSubscriptions}
+                  {t('publicTasks.totalSubscriptions')}
                 </Typography>
               </Box>
             </CardContent>
@@ -499,17 +422,21 @@ const PublicTasks = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
             <PeopleIcon sx={{ fontSize: 20, color: '#1976d2' }} />
             <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2' }}>
-              {content.usageTitle}
+              {t('publicTasks.usageTitle')}
             </Typography>
           </Box>
           <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {content.usageLine1}
+            •{' '}
+            {t('publicTasks.usageLine1', {
+              current: subscriptionInfo?.current_subscriptions ?? emptyValue,
+              max: subscriptionInfo?.max_subscriptions ?? emptyValue,
+            })}
           </Typography>
           <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {content.usageLine2}
+            • {t('publicTasks.usageLine2', { remaining: remainingSlots ?? emptyValue })}
           </Typography>
           <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {content.usageLine3}
+            • {t('publicTasks.usageLine3')}
           </Typography>
         </CardContent>
       </Card>
@@ -523,10 +450,14 @@ const PublicTasks = () => {
       >
         <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {content.taskList}
+            {t('publicTasks.taskList')}
           </Typography>
         </Box>
-        {tasks.length === 0 ? (
+        {tasksQuery.isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+            <CircularProgress />
+          </Box>
+        ) : tasks.length === 0 ? (
           <Box sx={{ textAlign: 'center', p: 8 }}>
             <Avatar
               sx={{
@@ -541,10 +472,10 @@ const PublicTasks = () => {
               <PublicIcon sx={{ fontSize: 40 }} />
             </Avatar>
             <Typography variant="h6" sx={{ mb: 1 }}>
-              {content.noTasks}
+              {t('publicTasks.noTasks')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {content.noTasksSubtitle}
+              {t('publicTasks.noTasksSubtitle')}
             </Typography>
           </Box>
         ) : (
@@ -552,12 +483,12 @@ const PublicTasks = () => {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.taskInfo}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.creator}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.subscriptions}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.interval}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.createdAt}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.actions}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.taskInfo')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.creator')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.subscriptions')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.interval')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.createdAt')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -622,7 +553,7 @@ const PublicTasks = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <ScheduleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
                         <Typography variant="body2">
-                          {task.interval}{content.seconds}
+                          {task.interval}{t('publicTasks.seconds')}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -633,19 +564,28 @@ const PublicTasks = () => {
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Tooltip title={task.user_subscribed ? content.unsubscribeTask : content.subscribeTask}>
+                        <Tooltip title={task.user_subscribed ? t('publicTasks.unsubscribeTask') : t('publicTasks.subscribeTask')}>
                           <Button
                             size="small"
                             variant={task.user_subscribed ? 'outlined' : 'contained'}
                             color={task.user_subscribed ? 'secondary' : 'primary'}
                             startIcon={task.user_subscribed ? <UnsubscribeIcon /> : <SubscribeIcon />}
-                            onClick={() => handleToggleSubscription(task.id)}
-                            disabled={!task.user_subscribed && subscriptionInfo.remaining_slots <= 0}
+                            onClick={() => {
+                              if (task.user_subscribed) {
+                                handleToggleSubscription(task.id);
+                              } else {
+                                handleSubscribe(task.id);
+                              }
+                            }}
+                            disabled={
+                              toggleMutation.isPending ||
+                              (!task.user_subscribed && slotsExhausted)
+                            }
                           >
-                            {task.user_subscribed ? content.unsubscribe : content.subscribe}
+                            {task.user_subscribed ? t('publicTasks.unsubscribe') : t('publicTasks.subscribe')}
                           </Button>
                         </Tooltip>
-                        <Tooltip title={content.viewDetails}>
+                        <Tooltip title={t('publicTasks.viewDetails')}>
                           <IconButton
                             size="small"
                             onClick={() => handleViewDetails(task)}
@@ -672,7 +612,7 @@ const PublicTasks = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <PublicIcon sx={{ fontSize: 24, color: 'primary.main' }} />
             <Typography variant="h5" component="div">
-              {content.taskDetails}
+              {t('publicTasks.taskDetails')}
             </Typography>
           </Box>
         </DialogTitle>
@@ -683,35 +623,42 @@ const PublicTasks = () => {
                 {selectedTask.name}
               </Typography>
               <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                {content.createdByLabel}: {selectedTask.owner_username} | {content.createdAtLabel}: {formatDateTime(selectedTask.created_at, i18n.language)}
+                {t('publicTasks.createdByLabel')}: {selectedTask.owner_username} | {t('publicTasks.createdAtLabel')}: {formatDateTime(selectedTask.created_at, i18n.language)}
               </Typography>
               <Typography variant="body1" sx={{ mb: 2 }}>
-                {selectedTask.description || content.noDescription}
+                {selectedTask.description || t('publicTasks.noDescription')}
               </Typography>
               <Typography variant="body2" sx={{ wordBreak: 'break-all', color: 'text.secondary' }}>
-                {content.monitorUrl}: {selectedTask.url}
+                {t('publicTasks.monitorUrl')}: {selectedTask.url}
               </Typography>
               <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                {content.subscriberCount}: {selectedTask.subscription_count}
+                {t('publicTasks.subscriberCount')}: {selectedTask.subscription_count}
               </Typography>
             </Box>
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setDetailDialogOpen(false)} color="inherit">
-            {content.close}
+            {t('publicTasks.close')}
           </Button>
           {selectedTask && typeof selectedTask === 'object' && (
             <Button
               onClick={() => {
-                handleToggleSubscription(selectedTask.id);
+                if (selectedTask.user_subscribed) {
+                  handleToggleSubscription(selectedTask.id);
+                } else {
+                  handleSubscribe(selectedTask.id);
+                }
                 setDetailDialogOpen(false);
               }}
               variant={selectedTask.user_subscribed ? 'outlined' : 'contained'}
               color={selectedTask.user_subscribed ? 'secondary' : 'primary'}
-              disabled={!selectedTask.user_subscribed && subscriptionInfo.remaining_slots <= 0}
+              disabled={
+                toggleMutation.isPending ||
+                (!selectedTask.user_subscribed && slotsExhausted)
+              }
             >
-              {selectedTask.user_subscribed ? content.unsubscribeTask : content.subscribeTask}
+              {selectedTask.user_subscribed ? t('publicTasks.unsubscribeTask') : t('publicTasks.subscribeTask')}
             </Button>
           )}
         </DialogActions>
@@ -719,30 +666,38 @@ const PublicTasks = () => {
 
       <Dialog
         open={emailConfigDialogOpen}
-        onClose={() => setEmailConfigDialogOpen(false)}
+        onClose={handleCloseEmailConfigDialog}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {content.chooseEmailConfig}
+            {t('publicTasks.chooseEmailConfig')}
           </Typography>
           <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-            {content.chooseEmailConfigSubtitle}
+            {t('publicTasks.chooseEmailConfigSubtitle')}
           </Typography>
         </DialogTitle>
         <DialogContent>
-          {emailConfigs.length === 0 ? (
+          {emailConfigsQuery.isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : emailConfigsQuery.error ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {getApiErrorMessage(emailConfigsQuery.error, t('common.unknownError'))}
+            </Alert>
+          ) : emailConfigs.length === 0 ? (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              {content.noEmailConfig}
+              {t('publicTasks.noEmailConfig')}
             </Alert>
           ) : (
             <FormControl fullWidth sx={{ mt: 2 }}>
-              <InputLabel id="email-config-select-label">{content.emailConfig}</InputLabel>
+              <InputLabel id="email-config-select-label">{t('publicTasks.emailConfig')}</InputLabel>
               <Select
                 labelId="email-config-select-label"
                 value={selectedEmailConfig}
-                label={content.emailConfig}
+                label={t('publicTasks.emailConfig')}
                 onChange={(event) => setSelectedEmailConfig(event.target.value)}
               >
                 {emailConfigs.map((config) => (
@@ -755,31 +710,31 @@ const PublicTasks = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEmailConfigDialogOpen(false)} color="inherit">
-            {content.cancel}
+          <Button
+            onClick={handleCloseEmailConfigDialog}
+            color="inherit"
+            disabled={subscribeWithEmailMutation.isPending}
+          >
+            {t('publicTasks.cancel')}
           </Button>
           {emailConfigs.length > 0 && (
             <Button
-              onClick={handleSubscribeWithEmail}
+              onClick={handleConfirmSubscribe}
               variant="contained"
-              disabled={!selectedEmailConfig}
+              disabled={!selectedEmailConfig || subscribeWithEmailMutation.isPending}
             >
-              {content.confirmSubscribe}
+              {t('publicTasks.confirmSubscribe')}
             </Button>
           )}
         </DialogActions>
       </Dialog>
 
-      <Snackbar
+      <FeedbackSnackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        message={snackbar.message}
+        severity={snackbar.severity}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      />
     </Box>
   );
 };

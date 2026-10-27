@@ -31,20 +31,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# curl/wget serve the healthcheck; Chromium comes from apt (drives Selenium Manager).
+# curl serves the healthcheck; Chromium comes from apt (Selenium finds it on PATH).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    gnupg \
-    gpg \
-    unzip \
     curl \
     chromium \
     chromium-driver \
     && rm -rf /var/lib/apt/lists/*
 
-ENV CHROME_BIN=/usr/bin/chromium \
-    CHROME_DRIVER=/usr/bin/chromedriver \
-    FRONTEND_DIST=/app/web
+ENV FRONTEND_DIST=/app/web
 
 # Hashed dependency transaction, generated from pyproject.toml.
 COPY requirements.txt pyproject.toml ./

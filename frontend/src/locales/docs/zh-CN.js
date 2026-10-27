@@ -1,9 +1,4 @@
 const docsZhCN = {
-  sidebarTitle: '文档目录',
-  badge: '文档',
-  backHome: '返回首页',
-  login: '登录',
-  register: '免费注册',
   title: '使用文档',
   subtitle: '了解如何使用 WebMonitor 监控网页内容变化并获取即时通知。',
   footerCta: {

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { Suspense, useMemo, useState } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -39,83 +39,56 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '../contexts/AuthContext';
 import LanguageSwitcher from './LanguageSwitcher';
-import { isChineseLanguage } from '../utils/i18n';
+import PageLoading from './PageLoading';
 
 const drawerWidth = 280;
 
-function Layout({ children }) {
+// 菜单只有一份：图标在这里，文案来自 i18n
+const BASE_MENU_ITEMS = [
+  { key: 'dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+  { key: 'tasks', icon: <TaskIcon />, path: '/tasks' },
+  { key: 'publicTasks', icon: <PublicIcon />, path: '/public-tasks' },
+  { key: 'mySubscriptions', icon: <SubscriptionsIcon />, path: '/my-subscriptions' },
+  { key: 'logs', icon: <LogIcon />, path: '/logs' },
+  { key: 'emailConfig', icon: <MailIcon />, path: '/email-config' },
+];
+
+const ADMIN_MENU_ITEMS = [
+  { key: 'blacklist', icon: <SecurityIcon />, path: '/blacklist-management' },
+  { key: 'users', icon: <PeopleIcon />, path: '/user-management' },
+];
+
+const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isAdmin } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const faviconSrc = `${process.env.PUBLIC_URL || ''}/favicon.svg`;
 
-  const isChinese = isChineseLanguage(i18n.language);
+  const menuItems = useMemo(() => {
+    const items = BASE_MENU_ITEMS.map((item) => ({
+      ...item,
+      text: t(`navigation.${item.key}`),
+      description: t(`navigation.${item.key}Hint`),
+    }));
 
-  const baseMenuItems = useMemo(() => ([
-    {
-      text: isChinese ? '仪表板' : 'Dashboard',
-      icon: <DashboardIcon />,
-      path: '/dashboard',
-      description: isChinese ? '监控概览' : 'Monitoring overview',
-    },
-    {
-      text: isChinese ? '监控任务' : 'Monitor tasks',
-      icon: <TaskIcon />,
-      path: '/tasks',
-      description: isChinese ? '管理任务' : 'Manage tasks',
-    },
-    {
-      text: isChinese ? '公开任务' : 'Public tasks',
-      icon: <PublicIcon />,
-      path: '/public-tasks',
-      description: isChinese ? '任务市场' : 'Task marketplace',
-    },
-    {
-      text: isChinese ? '我的订阅' : 'My subscriptions',
-      icon: <SubscriptionsIcon />,
-      path: '/my-subscriptions',
-      description: isChinese ? '订阅管理' : 'Manage subscriptions',
-    },
-    {
-      text: isChinese ? '监控日志' : 'Monitor logs',
-      icon: <LogIcon />,
-      path: '/logs',
-      description: isChinese ? '查看日志' : 'View logs',
-    },
-    {
-      text: isChinese ? '邮件配置' : 'Email configuration',
-      icon: <MailIcon />,
-      path: '/email-config',
-      description: isChinese ? '通知设置' : 'Notification settings',
-    },
-  ]), [isChinese]);
-
-  const dynamicMenuItems = useMemo(() => {
     if (!isAdmin()) {
-      return baseMenuItems;
+      return items;
     }
 
     return [
-      ...baseMenuItems,
-      {
-        text: isChinese ? '黑名单管理' : 'Blacklist management',
-        icon: <SecurityIcon />,
-        path: '/blacklist-management',
-        description: isChinese ? '域名黑名单' : 'Blocked domains',
-      },
-      {
-        text: isChinese ? '用户管理' : 'User management',
-        icon: <PeopleIcon />,
-        path: '/user-management',
-        description: isChinese ? '用户管理' : 'Manage users',
-      },
+      ...items,
+      ...ADMIN_MENU_ITEMS.map((item) => ({
+        ...item,
+        text: t(`navigation.${item.key}`),
+        description: t(`navigation.${item.key}Hint`),
+      })),
     ];
-  }, [baseMenuItems, isAdmin, isChinese]);
+  }, [isAdmin, t]);
 
-  const currentMenuItem = dynamicMenuItems.find((item) => item.path === location.pathname);
+  const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -126,17 +99,10 @@ function Layout({ children }) {
     setMobileOpen(false);
   };
 
-  const handleUserMenuClick = (event) => {
-    setUserMenuAnchor(event.currentTarget);
-  };
-
-  const handleUserMenuClose = () => {
-    setUserMenuAnchor(null);
-  };
-
   const handleLogout = async () => {
+    setUserMenuAnchor(null);
     await logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const drawer = (
@@ -147,13 +113,7 @@ function Layout({ children }) {
             component="img"
             src={faviconSrc}
             alt="WebMonitor"
-            sx={{
-              width: 40,
-              height: 40,
-              mr: 2,
-              display: 'block',
-              objectFit: 'contain',
-            }}
+            sx={{ width: 40, height: 40, mr: 2, display: 'block', objectFit: 'contain' }}
           />
           <Box>
             <Typography
@@ -169,7 +129,7 @@ function Layout({ children }) {
               WebMonitor
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {isChinese ? '网页监控系统' : 'Web monitoring platform'}
+              {t('navigation.platformTagline')}
             </Typography>
           </Box>
         </Box>
@@ -181,10 +141,10 @@ function Layout({ children }) {
 
       <Box sx={{ flexGrow: 1, py: 2 }}>
         <List sx={{ p: 0 }}>
-          {dynamicMenuItems.map((item) => {
+          {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <ListItem key={item.text} disablePadding sx={{ px: 2, mb: 1 }}>
+              <ListItem key={item.key} disablePadding sx={{ px: 2, mb: 1 }}>
                 <ListItemButton
                   selected={isActive}
                   onClick={() => handleMenuItemClick(item.path)}
@@ -199,22 +159,16 @@ function Layout({ children }) {
                       transform: 'translateX(4px)',
                     },
                     '&.Mui-selected': {
-                      background: 'linear-gradient(45deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
+                      background:
+                        'linear-gradient(45deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
                       borderLeft: '3px solid #10b981',
                       '&:hover': {
                         backgroundColor: 'rgba(16, 185, 129, 0.2)',
                         transform: 'translateX(0)',
                       },
-                      '& .MuiListItemIcon-root': {
-                        color: '#10b981',
-                      },
-                      '& .MuiListItemText-primary': {
-                        color: '#1a1a1a',
-                        fontWeight: 600,
-                      },
-                      '& .MuiListItemText-secondary': {
-                        color: 'rgba(16, 185, 129, 0.8)',
-                      },
+                      '& .MuiListItemIcon-root': { color: '#10b981' },
+                      '& .MuiListItemText-primary': { color: '#1a1a1a', fontWeight: 600 },
+                      '& .MuiListItemText-secondary': { color: 'rgba(16, 185, 129, 0.8)' },
                     },
                   }}
                 >
@@ -222,9 +176,7 @@ function Layout({ children }) {
                     sx={{
                       minWidth: 40,
                       color: isActive ? '#10b981' : 'rgba(0, 0, 0, 0.6)',
-                      '& svg': {
-                        fontSize: 20,
-                      },
+                      '& svg': { fontSize: 20 },
                     }}
                   >
                     {item.icon}
@@ -234,14 +186,9 @@ function Layout({ children }) {
                     secondary={item.description}
                     slotProps={{
                       primary: {
-                        sx: {
-                          fontSize: '0.9rem',
-                          fontWeight: isActive ? 600 : 500,
-                        },
+                        sx: { fontSize: '0.9rem', fontWeight: isActive ? 600 : 500 },
                       },
-                      secondary: {
-                        sx: { fontSize: '0.75rem' },
-                      },
+                      secondary: { sx: { fontSize: '0.75rem' } },
                     }}
                   />
                 </ListItemButton>
@@ -252,7 +199,15 @@ function Layout({ children }) {
       </Box>
 
       <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.06)', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, borderRadius: 2, backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: 2,
+            backgroundColor: 'rgba(16, 185, 129, 0.05)',
+          }}
+        >
           <Avatar
             sx={{
               width: 36,
@@ -265,10 +220,10 @@ function Layout({ children }) {
             {user?.username?.charAt(0).toUpperCase() || 'U'}
           </Avatar>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, truncate: true }}>
+            <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
               {user?.username || t('common.user')}
             </Typography>
-            <Typography variant="caption" sx={{ truncate: true, color: 'text.secondary' }}>
+            <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block' }}>
               {user?.email || ''}
             </Typography>
           </Box>
@@ -283,7 +238,6 @@ function Layout({ children }) {
                 fontSize: '0.7rem',
                 height: 20,
                 alignSelf: 'flex-start',
-                marginTop: 0,
               }}
             />
           )}
@@ -310,7 +264,7 @@ function Layout({ children }) {
         <Toolbar sx={{ minHeight: 72 }}>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label={t('common.openDrawer')}
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ mr: 2, display: { sm: 'none' }, color: '#10b981' }}
@@ -323,13 +277,7 @@ function Layout({ children }) {
                 component="img"
                 src={faviconSrc}
                 alt="WebMonitor"
-                sx={{
-                  width: 32,
-                  height: 32,
-                  mr: 1.5,
-                  display: 'block',
-                  objectFit: 'contain',
-                }}
+                sx={{ width: 32, height: 32, mr: 1.5, display: 'block', objectFit: 'contain' }}
               />
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a1a1a', lineHeight: 1.2 }}>
@@ -363,14 +311,11 @@ function Layout({ children }) {
             <Tooltip title={t('common.userMenu')}>
               <IconButton
                 size="small"
-                aria-label="account of current user"
+                aria-label={t('common.userMenu')}
                 aria-controls="menu-appbar"
                 aria-haspopup="true"
-                onClick={handleUserMenuClick}
-                sx={{
-                  p: 0.5,
-                  '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-                }}
+                onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+                sx={{ p: 0.5, '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}
               >
                 <Avatar
                   sx={{
@@ -388,17 +333,11 @@ function Layout({ children }) {
             <Menu
               id="menu-appbar"
               anchorEl={userMenuAnchor}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
               open={Boolean(userMenuAnchor)}
-              onClose={handleUserMenuClose}
+              onClose={() => setUserMenuAnchor(null)}
               slotProps={{
                 paper: {
                   sx: {
@@ -411,10 +350,7 @@ function Layout({ children }) {
                 },
               }}
             >
-              <MenuItem
-                onClick={handleUserMenuClose}
-                sx={{ py: 2, '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}
-              >
+              <MenuItem disabled sx={{ py: 2, opacity: '1 !important' }}>
                 <AccountIcon sx={{ mr: 2, color: '#2563eb' }} />
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -426,13 +362,18 @@ function Layout({ children }) {
                 </Box>
               </MenuItem>
               <Divider />
-              <MenuItem
-                onClick={() => { handleUserMenuClose(); navigate('/user-management'); }}
-                sx={{ display: isAdmin() ? 'flex' : 'none', py: 1.5, '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}
-              >
-                <PeopleIcon sx={{ mr: 2, color: '#10b981' }} />
-                {isChinese ? '用户管理' : 'User management'}
-              </MenuItem>
+              {isAdmin() && (
+                <MenuItem
+                  onClick={() => {
+                    setUserMenuAnchor(null);
+                    navigate('/user-management');
+                  }}
+                  sx={{ py: 1.5, '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}
+                >
+                  <PeopleIcon sx={{ mr: 2, color: '#10b981' }} />
+                  {t('navigation.users')}
+                </MenuItem>
+              )}
               <MenuItem
                 onClick={handleLogout}
                 sx={{ py: 1.5, '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'error.main' } }}
@@ -444,18 +385,12 @@ function Layout({ children }) {
           </Box>
         </Toolbar>
       </AppBar>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        aria-label="mailbox folders"
-      >
+      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }} aria-label={t('navigation.dashboard')}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
+          ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
@@ -487,6 +422,8 @@ function Layout({ children }) {
         component="main"
         sx={{
           flexGrow: 1,
+          // minWidth: 0 让 flex 子项可以被压缩：否则宽表格会撑开整页并产生横向滚动
+          minWidth: 0,
           minHeight: '100vh',
           backgroundColor: '#f8fafc',
           width: { sm: `calc(100% - ${drawerWidth}px)` },
@@ -494,11 +431,14 @@ function Layout({ children }) {
       >
         <Toolbar />
         <Box sx={{ p: 3 }}>
-          {children}
+          {/* 页面级 Suspense：切换私有页时只替换内容，侧栏不卸载 */}
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
         </Box>
       </Box>
     </Box>
   );
-}
+};
 
 export default Layout;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -16,6 +16,7 @@ import {
   Chip,
   Alert,
   Pagination,
+  CircularProgress,
   Grid,
   Card,
   CardContent,
@@ -28,108 +29,76 @@ import {
   Warning as WarningIcon,
   Schedule as ScheduleIcon,
 } from '@mui/icons-material';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 
 import { formatDateTime } from '../utils/date';
-import { isChineseLanguage } from '../utils/i18n';
 import FooterLinks from '../components/FooterLinks';
+import { useAuth } from '../contexts/AuthContext';
+import api, { getApiErrorMessage } from '../api/client';
+import { keys } from '../api/queryKeys';
 
 const MonitorLogs = () => {
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const { t, i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
+  const { user } = useAuth();
 
-  const content = isChinese ? {
-    title: '监控日志',
-    subtitle: '查看和分析监控任务的执行记录',
-    selectTask: '选择监控任务',
-    loadError: '加载监控日志失败',
-    totalLogs: '总日志数',
-    unchanged: '无变化',
-    changed: '内容变化',
-    error: '错误',
-    tableTitle: '监控日志记录',
-    checkTime: '检查时间',
-    status: '状态',
-    newContent: '新内容',
-    errorInfo: '错误信息',
-    noLogs: '暂无监控日志',
-    noLogsSubtitle: '该任务还没有执行过监控',
-    showing: '显示第',
-    to: '-',
-    of: '条，共',
-    records: '条记录',
-    rowsPerPage: '每页显示',
-    selectTaskEmpty: '请选择监控任务',
-    selectTaskSubtitle: '选择一个监控任务查看其执行日志',
-  } : {
-    title: 'Monitor logs',
-    subtitle: 'View and analyze execution records for your monitoring tasks.',
-    selectTask: 'Select monitor task',
-    loadError: 'Failed to load monitor logs',
-    totalLogs: 'Total logs',
-    unchanged: 'Unchanged',
-    changed: 'Changed',
-    error: 'Error',
-    tableTitle: 'Monitoring log records',
-    checkTime: 'Checked at',
-    status: 'Status',
-    newContent: 'New content',
-    errorInfo: 'Error message',
-    noLogs: 'No monitor logs yet',
-    noLogsSubtitle: 'This task has not run yet.',
-    showing: 'Showing',
-    to: '-',
-    of: 'of',
-    records: 'records',
-    rowsPerPage: 'Rows per page',
-    selectTaskEmpty: 'Please select a monitor task',
-    selectTaskSubtitle: 'Choose a task to view its execution logs.',
-  };
-
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['monitor-tasks'],
-    queryFn: async () => {
-      const response = await axios.get('/api/monitor-tasks');
-      return response.data;
-    },
+  const tasksQuery = useQuery({
+    queryKey: keys.tasks(user?.id),
+    queryFn: ({ signal }) => api.get('/api/monitor-tasks', { signal }).then((response) => response.data),
+    enabled: !!user,
   });
 
-  const { data: logsData = [], error } = useQuery({
-    queryKey: ['monitor-logs', selectedTaskId, page, rowsPerPage],
-    queryFn: async () => {
-      if (!selectedTaskId) return [];
-      const response = await axios.get(
-        `/api/monitor-tasks/${selectedTaskId}/logs?page=${page}&limit=${rowsPerPage}`
-      );
-      return response.data;
-    },
-    enabled: !!selectedTaskId,
-    placeholderData: keepPreviousData,
+  const tasks = tasksQuery.data ?? [];
+  const hasTasks = tasks.length > 0;
+
+  const logsQuery = useQuery({
+    queryKey: keys.taskLogs(user?.id, selectedTaskId, page, rowsPerPage),
+    queryFn: ({ signal }) =>
+      api
+        .get(`/api/monitor-tasks/${selectedTaskId}/logs`, {
+          params: { page, limit: rowsPerPage },
+          signal,
+        })
+        .then((response) => ({ ...response.data, taskId: selectedTaskId })),
+    enabled: !!user && !!selectedTaskId,
+    // 只有同一个任务翻页时才复用上一页数据；换任务绝不能闪出上一个任务的日志。
+    placeholderData: (prev) => (prev && prev.taskId === selectedTaskId ? prev : undefined),
   });
 
-  const logs = Array.isArray(logsData) ? logsData : logsData?.logs || [];
-  const totalCount = logsData?.total || logs.length || 0;
+  const logsResult =
+    logsQuery.data && logsQuery.data.taskId === selectedTaskId ? logsQuery.data : null;
+  const logs = logsResult?.logs ?? [];
+  const totalCount = logsResult?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / rowsPerPage));
+
+  // 只有真实（非 placeholder）结果能触发页码校正：总数变小后停在越界页会一直空着。
+  useEffect(() => {
+    if (!logsResult || logsQuery.isPlaceholderData) return;
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [logsResult, logsQuery.isPlaceholderData, page, totalPages]);
+
+  const logsError = logsQuery.error;
+  const logsLoading = !!selectedTaskId && (logsQuery.isLoading || (!logsResult && logsQuery.isFetching));
 
   const truncateContent = (value, maxLength = 100) => {
     if (!value) return '-';
     return value.length > maxLength ? `${value.substring(0, maxLength)}...` : value;
   };
 
-  const getPaginationSummary = () => {
-    const start = (page - 1) * rowsPerPage + 1;
-    const end = Math.min(page * rowsPerPage, totalCount);
-
-    if (isChinese) {
-      return `显示第 ${start} - ${end} 条，共 ${totalCount} 条记录`;
-    }
-
-    return `Showing ${start}-${end} of ${totalCount} records`;
-  };
+  const paginationSummary = logsError || !logsResult
+    ? t('common.emptyValue')
+    : totalCount === 0
+      ? t('logs.emptySummary', { total: totalCount })
+      : t('logs.paginationSummary', {
+          start: (page - 1) * rowsPerPage + 1,
+          end: Math.min(page * rowsPerPage, totalCount),
+          total: totalCount,
+        });
 
   const handleChangePage = (_, newPage) => {
     setPage(newPage);
@@ -167,17 +136,17 @@ const MonitorLogs = () => {
               mb: 1,
             }}
           >
-            {content.title}
+            {t('logs.title')}
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {content.subtitle}
+            {t('logs.subtitle')}
           </Typography>
         </Box>
-        <FormControl sx={{ minWidth: 220 }}>
-          <InputLabel>{content.selectTask}</InputLabel>
+        <FormControl sx={{ minWidth: 220 }} disabled={!hasTasks}>
+          <InputLabel>{t('logs.selectTask')}</InputLabel>
           <Select
             value={selectedTaskId}
-            label={content.selectTask}
+            label={t('logs.selectTask')}
             onChange={handleTaskChange}
             sx={{
               '& .MuiOutlinedInput-root': {
@@ -200,9 +169,15 @@ const MonitorLogs = () => {
         </FormControl>
       </Box>
 
-      {error && (
+      {!hasTasks && !tasksQuery.isLoading && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          {t('logs.noTasks')}
+        </Alert>
+      )}
+
+      {logsError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {content.loadError}: {error.message}
+          {t('logs.loadError')}: {getApiErrorMessage(logsError, t('common.unknownError'))}
         </Alert>
       )}
 
@@ -248,10 +223,10 @@ const MonitorLogs = () => {
                   </Box>
                   <Box>
                     <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {totalCount}
+                      {logsError ? t('common.emptyValue') : totalCount}
                     </Typography>
                     <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {content.totalLogs}
+                      {t('logs.totalLogs')}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -296,10 +271,10 @@ const MonitorLogs = () => {
                   </Box>
                   <Box>
                     <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {logs.filter((log) => !log.error_message && !log.is_changed).length}
+                      {logsError ? t('common.emptyValue') : logs.filter((log) => !log.error_message && !log.is_changed).length}
                     </Typography>
                     <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {content.unchanged}
+                      {t('logs.unchanged')}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -344,10 +319,10 @@ const MonitorLogs = () => {
                   </Box>
                   <Box>
                     <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {logs.filter((log) => log.is_changed && !log.error_message).length}
+                      {logsError ? t('common.emptyValue') : logs.filter((log) => log.is_changed && !log.error_message).length}
                     </Typography>
                     <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {content.changed}
+                      {t('logs.changed')}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -392,10 +367,10 @@ const MonitorLogs = () => {
                   </Box>
                   <Box>
                     <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {logs.filter((log) => log.error_message).length}
+                      {logsError ? t('common.emptyValue') : logs.filter((log) => log.error_message).length}
                     </Typography>
                     <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {content.error}
+                      {t('logs.error')}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -412,89 +387,100 @@ const MonitorLogs = () => {
           >
             <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
               <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                {content.tableTitle}
+                {t('logs.tableTitle')}
               </Typography>
             </Box>
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.05)' }}>
-                    <TableCell sx={{ fontWeight: 600 }}>{content.checkTime}</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>{content.status}</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>{content.newContent}</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>{content.errorInfo}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{t('logs.checkTime')}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{t('logs.status')}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{t('logs.newContent')}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{t('logs.errorInfo')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {logs.map((log) => (
-                    <TableRow
-                      key={log.id}
-                      sx={{
-                        '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.03)' },
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <ScheduleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                          <Typography variant="body2">
-                            {formatDateTime(log.check_time, i18n.language)}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        {log.error_message ? (
-                          <Chip
-                            label={content.error}
-                            color="error"
-                            size="small"
-                            icon={<ErrorIcon />}
-                            variant="outlined"
-                          />
-                        ) : log.is_changed ? (
-                          <Chip
-                            label={content.changed}
-                            color="warning"
-                            size="small"
-                            icon={<WarningIcon />}
-                            variant="outlined"
-                          />
-                        ) : (
-                          <Chip
-                            label={content.unchanged}
-                            color="success"
-                            size="small"
-                            icon={<CheckCircleIcon />}
-                            variant="outlined"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{maxWidth: 300,
-                            wordBreak: 'break-word',
-                            color: 'text.secondary',
-                          }}
-                        >
-                          {truncateContent(log.new_content)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          color="error"
-                          sx={{
-                            maxWidth: 300,
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {truncateContent(log.error_message)}
+                  {logsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} sx={{ textAlign: 'center', py: 8 }}>
+                        <CircularProgress size={32} sx={{ color: '#1976d2' }} />
+                        <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                          {t('common.loading')}
                         </Typography>
                       </TableCell>
                     </TableRow>
-                  ))}
-                  {logs.length === 0 && (
+                  ) : (
+                    logs.map((log) => (
+                      <TableRow
+                        key={log.id}
+                        sx={{
+                          '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.03)' },
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <ScheduleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2">
+                              {formatDateTime(log.check_time, i18n.language)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {log.error_message ? (
+                            <Chip
+                              label={t('logs.error')}
+                              color="error"
+                              size="small"
+                              icon={<ErrorIcon />}
+                              variant="outlined"
+                            />
+                          ) : log.is_changed ? (
+                            <Chip
+                              label={t('logs.changed')}
+                              color="warning"
+                              size="small"
+                              icon={<WarningIcon />}
+                              variant="outlined"
+                            />
+                          ) : (
+                            <Chip
+                              label={t('logs.unchanged')}
+                              color="success"
+                              size="small"
+                              icon={<CheckCircleIcon />}
+                              variant="outlined"
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            sx={{maxWidth: 300,
+                              wordBreak: 'break-word',
+                              color: 'text.secondary',
+                            }}
+                          >
+                            {truncateContent(log.new_content)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            color="error"
+                            sx={{
+                              maxWidth: 300,
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {truncateContent(log.error_message)}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                  {!logsLoading && !logsError && logs.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} sx={{ textAlign: 'center', py: 8 }}>
                         <Avatar
@@ -510,10 +496,10 @@ const MonitorLogs = () => {
                           <ListAltIcon sx={{ fontSize: 40 }} />
                         </Avatar>
                         <Typography variant="h6" sx={{ mb: 1 }}>
-                          {content.noLogs}
+                          {t('logs.noLogs')}
                         </Typography>
                         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {content.noLogsSubtitle}
+                          {t('logs.noLogsSubtitle')}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -522,43 +508,41 @@ const MonitorLogs = () => {
               </Table>
             </TableContainer>
 
-            {totalCount > 0 && (
-              <Box sx={{ p: 3, borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ p: 3, borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {paginationSummary}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {getPaginationSummary()}
+                    {t('logs.rowsPerPage')}:
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      {content.rowsPerPage}:
-                    </Typography>
-                    <Select
-                      size="small"
-                      value={rowsPerPage}
-                      onChange={handleChangeRowsPerPage}
-                      sx={{ minWidth: 80 }}
-                    >
-                      <MenuItem value={10}>10</MenuItem>
-                      <MenuItem value={20}>20</MenuItem>
-                      <MenuItem value={50}>50</MenuItem>
-                      <MenuItem value={100}>100</MenuItem>
-                    </Select>
-                    <Pagination
-                      count={Math.ceil(totalCount / rowsPerPage)}
-                      page={page}
-                      onChange={handleChangePage}
-                      color="primary"
-                      showFirstButton
-                      showLastButton
-                      shape="rounded"
-                      size="medium"
-                      siblingCount={2}
-                      boundaryCount={1}
-                    />
-                  </Box>
+                  <Select
+                    size="small"
+                    value={rowsPerPage}
+                    onChange={handleChangeRowsPerPage}
+                    sx={{ minWidth: 80 }}
+                  >
+                    <MenuItem value={10}>10</MenuItem>
+                    <MenuItem value={20}>20</MenuItem>
+                    <MenuItem value={50}>50</MenuItem>
+                    <MenuItem value={100}>100</MenuItem>
+                  </Select>
+                  <Pagination
+                    count={totalPages}
+                    page={Math.min(page, totalPages)}
+                    onChange={handleChangePage}
+                    color="primary"
+                    showFirstButton
+                    showLastButton
+                    shape="rounded"
+                    size="medium"
+                    siblingCount={2}
+                    boundaryCount={1}
+                  />
                 </Box>
               </Box>
-            )}
+            </Box>
           </Paper>
         </>
       ) : (
@@ -583,10 +567,10 @@ const MonitorLogs = () => {
             <ListAltIcon sx={{ fontSize: 40 }} />
           </Avatar>
           <Typography variant="h6" sx={{ mb: 1 }}>
-            {content.selectTaskEmpty}
+            {t('logs.selectTaskEmpty')}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {content.selectTaskSubtitle}
+            {t('logs.selectTaskSubtitle')}
           </Typography>
         </Paper>
       )}

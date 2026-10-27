@@ -103,16 +103,24 @@ pnpm start
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `SECRET_KEY` | JWT 签名密钥，生产环境必须修改 | - |
-| `ADMIN_USERNAME` | 默认管理员用户名 | `admin` |
-| `ADMIN_PASSWORD` | 默认管理员密码 | `admin123` |
-| `ADMIN_EMAIL` | 默认管理员邮箱 | `admin@example.com` |
+| `SECRET_KEY` | JWT 签名密钥。**必填**，至少 32 个字符，示例值会被拒绝 | - |
+| `ADMIN_USERNAME` | 引导管理员用户名（仅在没有管理员时使用） | `admin` |
+| `ADMIN_PASSWORD` | 引导管理员密码。**首次启动必填**；没有管理员且留空时启动失败。已有管理员时绝不重置密码 | - |
+| `ADMIN_EMAIL` | 引导管理员邮箱 | `admin@example.com` |
 | `DATABASE_URL` | 数据库连接字符串 | `sqlite:///./data/webmonitor.db` |
-| `SMTP_SERVER` | 通知邮件使用的 SMTP 服务器 | - |
+| `SMTP_SERVER` | 部署级 SMTP 回退服务器（仅对没有任何邮件配置的用户生效） | - |
 | `SMTP_PORT` | SMTP 端口 | `465` |
 | `SMTP_USER` | SMTP 用户名 | - |
 | `SMTP_PASSWORD` | SMTP 密码或应用专用密码 | - |
-| `DEFAULT_CHECK_INTERVAL` | 默认监控间隔（秒） | `300` |
+| `RECEIVER_EMAIL` | 回退通知收件人 | - |
+| `LOG_LEVEL` | 输出到 stdout 的日志级别 | `INFO` |
+| `FRONTEND_DIST` | 前端构建产物目录 | `web` |
+
+生成签名密钥：
+
+```sh
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
 完整配置模板请查看 `.env.example`。
 

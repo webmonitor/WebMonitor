@@ -31,11 +31,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
-import { WebMonitorLogo } from '../components/WebMonitorLogo';
+import WebMonitorLogo from '../components/WebMonitorLogo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import docsEn from '../locales/docs/en';
 import docsZhCN from '../locales/docs/zh-CN';
-import { isChineseLanguage } from '../utils/i18n';
+import { normalizeLanguage } from '../utils/i18n';
 import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
 
 const iconMap = {
@@ -238,7 +238,7 @@ const Documentation = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('quick-start');
 
-  const content = isChineseLanguage(i18n.language) ? docsZhCN : docsEn;
+  const content = normalizeLanguage(i18n.language) === 'zh-CN' ? docsZhCN : docsEn;
   const sections = useMemo(
     () => content.sections.map((section) => ({
       ...section,
@@ -299,7 +299,7 @@ const Documentation = () => {
           display: 'block',
         }}
       >
-        {content.sidebarTitle}
+        {t('documentation.contents')}
       </Typography>
       <List sx={{ pt: 0 }}>
         {sections.map((section) => (
@@ -391,6 +391,7 @@ const Documentation = () => {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <IconButton
+                aria-label={t('documentation.openNavigation')}
                 onClick={() => setMobileOpen(true)}
                 sx={{ display: { md: 'none' }, color: '#64748b' }}
               >
@@ -407,7 +408,7 @@ const Documentation = () => {
                   '&:hover': { opacity: 0.8 },
                 }}
               >
-                <WebMonitorLogo size={36} showPulse />
+                <WebMonitorLogo size={36} />
                 <Typography
                   variant="h6"
                   sx={{
@@ -421,7 +422,7 @@ const Documentation = () => {
               </Box>
 
               <Chip
-                label={content.badge}
+                label={t('documentation.badge')}
                 size="small"
                 sx={{
                   backgroundColor: alpha('#10b981', 0.1),
@@ -446,14 +447,14 @@ const Documentation = () => {
                   '&:hover': { color: '#10b981' },
                 }}
               >
-                {content.backHome}
+                {t('common.backHome')}
               </Button>
               <Button
                 variant="text"
                 onClick={() => navigate('/login')}
                 sx={{ color: '#64748b', '&:hover': { color: '#10b981' } }}
               >
-                {content.login}
+                {t('common.login')}
               </Button>
               <Button
                 variant="contained"
@@ -469,7 +470,7 @@ const Documentation = () => {
                   },
                 }}
               >
-                {content.register}
+                {t('common.register')}
               </Button>
             </Stack>
           </Box>

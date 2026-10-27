@@ -1,19 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   IconButton,
   Chip,
   Alert,
-  Snackbar,
   FormControlLabel,
   Switch,
   Tooltip,
@@ -38,13 +33,20 @@ import {
   Language as LanguageIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { formatDateTime } from '../utils/date';
-import { isChineseLanguage } from '../utils/i18n';
+import api, { getApiErrorMessage } from '../api/client';
+import { keys } from '../api/queryKeys';
+import { useAuth } from '../contexts/AuthContext';
+import ConfirmDialog from '../components/ConfirmDialog';
+import FeedbackSnackbar from '../components/FeedbackSnackbar';
+import FormDialog from '../components/FormDialog';
 
 const BlacklistManagement = () => {
-  const [domains, setDomains] = useState([]);
+  const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState(null);
   const [formData, setFormData] = useState({
@@ -52,122 +54,68 @@ const BlacklistManagement = () => {
     description: '',
     is_active: true,
   });
-  const [snackbar, setSnackbar] = useState({
+  const [feedback, setFeedback] = useState({
     open: false,
     message: '',
     severity: 'success',
   });
-  const { i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
+  const [confirmTarget, setConfirmTarget] = useState(null);
 
-  const content = isChinese ? {
-    title: '黑名单管理',
-    subtitle: '管理禁止普通用户监控的网站域名',
-    addDomain: '添加域名',
-    totalDomains: '总域名数',
-    active: '启用中',
-    disabled: '已禁用',
-    wildcardDomains: '通配符域名',
-    guideTitle: '功能说明',
-    guideLine1: '普通用户无法监控黑名单中的域名',
-    guideLine2: '管理员可以监控任何网站，包括黑名单中的域名',
-    guideLine3: '黑名单支持通配符匹配（如 *.example.com 会阻止所有子域名）',
-    guideLine4: '支持部分匹配（如 example 会阻止包含 example 的所有域名）',
-    listTitle: '黑名单域名列表',
-    noDomains: '暂无黑名单域名',
-    noDomainsSubtitle: '添加需要禁止普通用户监控的域名',
-    addFirstDomain: '添加第一个域名',
-    domain: '域名',
-    description: '描述',
-    status: '状态',
-    createdAt: '创建时间',
-    actions: '操作',
-    wildcard: '通配符域名',
-    enabled: '启用',
-    disabledLabel: '禁用',
-    edit: '编辑',
-    delete: '删除',
-    editDialogTitle: '编辑黑名单域名',
-    createDialogTitle: '添加黑名单域名',
-    domainPlaceholder: '例如: example.com, *.example.com, example',
-    descriptionPlaceholder: '可选的域名描述信息',
-    enabledStatus: '启用状态',
-    cancel: '取消',
-    update: '更新',
-    create: '添加',
-    fetchFailed: '获取黑名单失败',
-    updateSuccess: '黑名单更新成功',
-    createSuccess: '黑名单添加成功',
-    saveFailed: '保存失败',
-    deleteConfirm: '确定要删除这个黑名单域名吗？',
-    deleteSuccess: '黑名单删除成功',
-    deleteFailed: '删除失败',
-    unknownError: '未知错误',
-  } : {
-    title: 'Blacklist management',
-    subtitle: 'Manage domains that regular users are not allowed to monitor.',
-    addDomain: 'Add domain',
-    totalDomains: 'Total domains',
-    active: 'Active',
-    disabled: 'Disabled',
-    wildcardDomains: 'Wildcard domains',
-    guideTitle: 'How it works',
-    guideLine1: 'Regular users cannot monitor domains on the blacklist.',
-    guideLine2: 'Admins can monitor any site, including blacklisted domains.',
-    guideLine3: 'The blacklist supports wildcard matching, for example *.example.com blocks all subdomains.',
-    guideLine4: 'Partial matching is supported, for example example blocks any domain containing example.',
-    listTitle: 'Blacklisted domains',
-    noDomains: 'No blacklisted domains yet',
-    noDomainsSubtitle: 'Add domains that regular users should not be allowed to monitor.',
-    addFirstDomain: 'Add first domain',
-    domain: 'Domain',
-    description: 'Description',
-    status: 'Status',
-    createdAt: 'Created at',
-    actions: 'Actions',
-    wildcard: 'Wildcard domain',
-    enabled: 'Enabled',
-    disabledLabel: 'Disabled',
-    edit: 'Edit',
-    delete: 'Delete',
-    editDialogTitle: 'Edit blacklisted domain',
-    createDialogTitle: 'Add blacklisted domain',
-    domainPlaceholder: 'For example: example.com, *.example.com, example',
-    descriptionPlaceholder: 'Optional description for this domain',
-    enabledStatus: 'Enabled status',
-    cancel: 'Cancel',
-    update: 'Update',
-    create: 'Add',
-    fetchFailed: 'Failed to fetch blacklist',
-    updateSuccess: 'Blacklist updated successfully',
-    createSuccess: 'Domain added to blacklist successfully',
-    saveFailed: 'Failed to save',
-    deleteConfirm: 'Are you sure you want to delete this blacklisted domain?',
-    deleteSuccess: 'Blacklisted domain deleted successfully',
-    deleteFailed: 'Failed to delete',
-    unknownError: 'Unknown error',
+  const showFeedback = (message, severity = 'success') => {
+    setFeedback({ open: true, message, severity });
   };
 
-  const getErrorMessage = useCallback((error) => {
-    return error.response?.data?.detail || content.unknownError;
-  }, [content.unknownError]);
+  const closeFeedback = () => {
+    setFeedback((previous) => ({ ...previous, open: false }));
+  };
 
-  const fetchDomains = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/blacklist-domains');
-      setDomains(response.data);
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: `${content.fetchFailed}: ${getErrorMessage(error)}`,
-        severity: 'error',
-      });
-    }
-  }, [content.fetchFailed, getErrorMessage]);
+  const { data: domains = [], error: loadError } = useQuery({
+    queryKey: keys.blacklist(user?.id),
+    queryFn: ({ signal }) =>
+      api.get('/api/blacklist-domains', { signal }).then((response) => response.data),
+    enabled: !!user,
+  });
 
-  useEffect(() => {
-    fetchDomains();
-  }, [fetchDomains]);
+  const createMutation = useMutation({
+    mutationFn: (payload) =>
+      api.post('/api/blacklist-domains', payload).then((response) => response.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blacklist'] });
+      handleCloseDialog();
+      showFeedback(t('blacklist.createSuccess'));
+    },
+    onError: (mutationError) => {
+      // 403 只提示：表单保持打开、输入保留，会话不动。
+      showFeedback(getApiErrorMessage(mutationError, t('common.unknownError')), 'error');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }) =>
+      api.put(`/api/blacklist-domains/${id}`, payload).then((response) => response.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blacklist'] });
+      handleCloseDialog();
+      showFeedback(t('blacklist.updateSuccess'));
+    },
+    onError: (mutationError) => {
+      showFeedback(getApiErrorMessage(mutationError, t('common.unknownError')), 'error');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/api/blacklist-domains/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blacklist'] });
+      setConfirmTarget(null);
+      showFeedback(t('blacklist.deleteSuccess'));
+    },
+    onError: (mutationError) => {
+      showFeedback(getApiErrorMessage(mutationError, t('common.unknownError')), 'error');
+    },
+  });
+
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   const handleOpenDialog = (domain = null) => {
     setEditingDomain(domain);
@@ -189,58 +137,37 @@ const BlacklistManagement = () => {
     });
   };
 
-  const handleSubmit = async () => {
-    try {
-      if (editingDomain) {
-        await axios.put(`/api/blacklist-domains/${editingDomain.id}`, formData);
-        setSnackbar({
-          open: true,
-          message: content.updateSuccess,
-          severity: 'success',
-        });
-      } else {
-        await axios.post('/api/blacklist-domains', formData);
-        setSnackbar({
-          open: true,
-          message: content.createSuccess,
-          severity: 'success',
-        });
-      }
-      handleCloseDialog();
-      fetchDomains();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: `${content.saveFailed}: ${getErrorMessage(error)}`,
-        severity: 'error',
-      });
-    }
-  };
+  const handleSubmit = (event) => {
+    event.preventDefault();
 
-  const handleDelete = async (domainId) => {
-    if (!window.confirm(content.deleteConfirm)) {
+    if (!formData.domain.trim()) {
       return;
     }
 
-    try {
-      await axios.delete(`/api/blacklist-domains/${domainId}`);
-      setSnackbar({
-        open: true,
-        message: content.deleteSuccess,
-        severity: 'success',
-      });
-      fetchDomains();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: `${content.deleteFailed}: ${getErrorMessage(error)}`,
-        severity: 'error',
-      });
+    if (editingDomain) {
+      updateMutation.mutate({ id: editingDomain.id, payload: formData });
+      return;
     }
+
+    createMutation.mutate(formData);
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar((previous) => ({ ...previous, open: false }));
+  const handleDelete = (domain) => {
+    setConfirmTarget(domain);
+  };
+
+  const handleCloseConfirm = () => {
+    if (deleteMutation.isPending) {
+      return;
+    }
+    setConfirmTarget(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!confirmTarget) {
+      return;
+    }
+    deleteMutation.mutate(confirmTarget.id);
   };
 
   return (
@@ -265,10 +192,10 @@ const BlacklistManagement = () => {
               mb: 1,
             }}
           >
-            {content.title}
+            {t('blacklist.title')}
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {content.subtitle}
+            {t('blacklist.subtitle')}
           </Typography>
         </Box>
         <Button
@@ -290,7 +217,7 @@ const BlacklistManagement = () => {
             },
           }}
         >
-          {content.addDomain}
+          {t('blacklist.addDomain')}
         </Button>
       </Box>
 
@@ -337,7 +264,7 @@ const BlacklistManagement = () => {
                   {domains.length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.totalDomains}
+                  {t('blacklist.totalDomains')}
                 </Typography>
               </Box>
             </CardContent>
@@ -385,7 +312,7 @@ const BlacklistManagement = () => {
                   {domains.filter((domain) => domain.is_active).length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.active}
+                  {t('blacklist.active')}
                 </Typography>
               </Box>
             </CardContent>
@@ -433,7 +360,7 @@ const BlacklistManagement = () => {
                   {domains.filter((domain) => !domain.is_active).length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.disabled}
+                  {t('blacklist.disabled')}
                 </Typography>
               </Box>
             </CardContent>
@@ -481,7 +408,7 @@ const BlacklistManagement = () => {
                   {domains.filter((domain) => domain.domain.startsWith('*')).length}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {content.wildcardDomains}
+                  {t('blacklist.wildcardDomains')}
                 </Typography>
               </Box>
             </CardContent>
@@ -494,23 +421,29 @@ const BlacklistManagement = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
             <SecurityIcon sx={{ fontSize: 20, color: '#1976d2' }} />
             <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2' }}>
-              {content.guideTitle}
+              {t('blacklist.guideTitle')}
             </Typography>
           </Box>
           <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {content.guideLine1}
+            • {t('blacklist.guideLine1')}
           </Typography>
           <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {content.guideLine2}
+            • {t('blacklist.guideLine2')}
           </Typography>
           <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {content.guideLine3}
+            • {t('blacklist.guideLine3')}
           </Typography>
           <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {content.guideLine4}
+            • {t('blacklist.guideLine4')}
           </Typography>
         </CardContent>
       </Card>
+
+      {loadError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {t('blacklist.fetchFailed')}: {getApiErrorMessage(loadError, t('common.unknownError'))}
+        </Alert>
+      )}
 
       <Paper
         sx={{
@@ -521,7 +454,7 @@ const BlacklistManagement = () => {
       >
         <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {content.listTitle}
+            {t('blacklist.listTitle')}
           </Typography>
         </Box>
         {domains.length === 0 ? (
@@ -539,10 +472,10 @@ const BlacklistManagement = () => {
               <SecurityIcon sx={{ fontSize: 40 }} />
             </Avatar>
             <Typography variant="h6" sx={{ mb: 1 }}>
-              {content.noDomains}
+              {t('blacklist.noDomains')}
             </Typography>
             <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {content.noDomainsSubtitle}
+              {t('blacklist.noDomainsSubtitle')}
             </Typography>
             <Button
               variant="contained"
@@ -554,7 +487,7 @@ const BlacklistManagement = () => {
                 fontWeight: 'bold',
               }}
             >
-              {content.addFirstDomain}
+              {t('blacklist.addFirstDomain')}
             </Button>
           </Box>
         ) : (
@@ -562,11 +495,11 @@ const BlacklistManagement = () => {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.domain}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.description}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.status}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.createdAt}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.actions}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.domain')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.description')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.status')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.createdAt')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -599,7 +532,7 @@ const BlacklistManagement = () => {
                           </Typography>
                           {domain.domain.startsWith('*') && (
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              {content.wildcard}
+                              {t('blacklist.wildcard')}
                             </Typography>
                           )}
                         </Box>
@@ -613,7 +546,7 @@ const BlacklistManagement = () => {
                     <TableCell>
                       <Chip
                         size="small"
-                        label={domain.is_active ? content.enabled : content.disabledLabel}
+                        label={domain.is_active ? t('blacklist.enabled') : t('blacklist.disabledLabel')}
                         color={domain.is_active ? 'error' : 'default'}
                         icon={domain.is_active ? <BlockIcon /> : null}
                         variant="outlined"
@@ -626,7 +559,7 @@ const BlacklistManagement = () => {
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title={content.edit}>
+                        <Tooltip title={t('blacklist.edit')}>
                           <IconButton
                             size="small"
                             onClick={() => handleOpenDialog(domain)}
@@ -638,10 +571,10 @@ const BlacklistManagement = () => {
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={content.delete}>
+                        <Tooltip title={t('blacklist.delete')}>
                           <IconButton
                             size="small"
-                            onClick={() => handleDelete(domain.id)}
+                            onClick={() => handleDelete(domain)}
                             sx={{
                               color: '#ef4444',
                               '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
@@ -660,70 +593,69 @@ const BlacklistManagement = () => {
         )}
       </Paper>
 
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <SecurityIcon sx={{ fontSize: 24, color: 'primary.main' }} />
-            <Typography variant="h5" component="div">
-              {editingDomain ? content.editDialogTitle : content.createDialogTitle}
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label={content.domain}
-            fullWidth
-            variant="outlined"
-            value={formData.domain}
-            onChange={(event) => setFormData({ ...formData, domain: event.target.value })}
-            sx={{ mb: 2 }}
-            placeholder={content.domainPlaceholder}
-          />
-          <TextField
-            margin="dense"
-            label={content.description}
-            fullWidth
-            variant="outlined"
-            multiline
-            rows={3}
-            value={formData.description}
-            onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-            sx={{ mb: 2 }}
-            placeholder={content.descriptionPlaceholder}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.is_active}
-                onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })}
-                color="primary"
-              />
-            }
-            label={content.enabledStatus}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={handleCloseDialog} color="inherit">
-            {content.cancel}
-          </Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={!formData.domain.trim()}>
-            {editingDomain ? content.update : content.create}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      <FormDialog
+        open={dialogOpen}
+        title={editingDomain ? t('blacklist.editDialogTitle') : t('blacklist.createDialogTitle')}
+        icon={<SecurityIcon sx={{ fontSize: 24, color: 'primary.main' }} />}
+        submitLabel={editingDomain ? t('blacklist.update') : t('blacklist.create')}
+        cancelLabel={t('common.cancel')}
+        onSubmit={handleSubmit}
+        onClose={handleCloseDialog}
+        pending={saving}
+        submitDisabled={!formData.domain.trim()}
       >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        <TextField
+          autoFocus
+          margin="dense"
+          label={t('blacklist.domain')}
+          fullWidth
+          variant="outlined"
+          value={formData.domain}
+          onChange={(event) => setFormData({ ...formData, domain: event.target.value })}
+          sx={{ mb: 2 }}
+          placeholder={t('blacklist.domainPlaceholder')}
+        />
+        <TextField
+          margin="dense"
+          label={t('blacklist.description')}
+          fullWidth
+          variant="outlined"
+          multiline
+          rows={3}
+          value={formData.description}
+          onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+          sx={{ mb: 2 }}
+          placeholder={t('blacklist.descriptionPlaceholder')}
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={formData.is_active}
+              onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })}
+              color="primary"
+            />
+          }
+          label={t('blacklist.enabledStatus')}
+        />
+      </FormDialog>
+
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title={t('blacklist.deleteConfirmTitle')}
+        message={t('blacklist.deleteConfirm')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        pending={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={handleCloseConfirm}
+      />
+
+      <FeedbackSnackbar
+        open={feedback.open}
+        message={feedback.message}
+        severity={feedback.severity}
+        onClose={closeFeedback}
+      />
     </Box>
   );
 };

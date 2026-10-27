@@ -42,9 +42,12 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 
-import { isChineseLanguage } from '../utils/i18n';
+import api, { getApiErrorMessage } from '../api/client';
+import { keys } from '../api/queryKeys';
+import { useAuth } from '../contexts/AuthContext';
+import ConfirmDialog from '../components/ConfirmDialog';
+import FeedbackSnackbar from '../components/FeedbackSnackbar';
 import FooterLinks from '../components/FooterLinks';
 
 const UserManagement = () => {
@@ -60,158 +63,76 @@ const UserManagement = () => {
     is_admin: false,
     max_subscriptions: 10,
   });
-  const { t, i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
+  const { t } = useTranslation();
+  const { user: currentUser, refreshUser } = useAuth();
+  const queryClient = useQueryClient();
+  const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
+  const [confirmTarget, setConfirmTarget] = useState(null);
 
-  const content = isChinese ? {
-    title: '用户管理',
-    subtitle: '管理系统用户账户和权限',
-    createUser: '创建新用户',
-    totalUsers: '总用户数',
-    activeUsers: '活跃用户',
-    admins: '管理员',
-    securityLevel: '安全级别',
-    high: '高',
-    listTitle: '用户列表',
-    guideText: '管理员可以创建、编辑和删除用户账户。注意：不能删除自己的账户。',
-    noUsers: '暂无用户',
-    noUsersSubtitle: '创建第一个用户开始使用系统',
-    createFirstUser: '创建第一个用户',
-    userInfo: '用户信息',
-    emailAddress: '邮箱地址',
-    rolePermission: '角色权限',
-    subscriptionLimit: '订阅限制',
-    accountStatus: '账户状态',
-    actions: '操作',
-    fullNameNotSet: '未设置全名',
-    admin: '管理员',
-    regularUser: '普通用户',
-    subscriptionUnit: '个',
-    enabled: '启用',
-    disabled: '禁用',
-    editUser: '编辑用户',
-    deleteUser: '删除用户',
-    deleteConfirm: '确定要删除这个用户吗？',
-    loadFailed: '加载用户列表失败',
-    editDialogTitle: '编辑用户',
-    createDialogTitle: '创建新用户',
-    editDialogSubtitle: '修改用户信息和权限',
-    createDialogSubtitle: '添加新的系统用户',
-    username: '用户名',
-    fullName: '全名',
-    password: '密码',
-    passwordHelperEdit: '留空则不修改密码',
-    passwordHelperCreate: '请设置安全密码',
-    maxSubscriptions: '最大订阅数量',
-    maxSubscriptionsHelper: '该用户最多可以订阅的公开任务数量',
-    adminPermission: '管理员权限',
-    adminPermissionHelper: '拥有系统管理权限',
-    activeAccount: '启用账户',
-    activeAccountHelper: '允许用户登录系统',
-    cancel: '取消',
-    updateUser: '更新用户',
-    createUserAction: '创建用户',
-    togglePasswordVisibility: '切换密码可见性',
-  } : {
-    title: 'User management',
-    subtitle: 'Manage user accounts and permissions for the system.',
-    createUser: 'Create user',
-    totalUsers: 'Total users',
-    activeUsers: 'Active users',
-    admins: 'Admins',
-    securityLevel: 'Security level',
-    high: 'High',
-    listTitle: 'User list',
-    guideText: 'Admins can create, edit, and delete user accounts. Note: you cannot delete your own account.',
-    noUsers: 'No users yet',
-    noUsersSubtitle: 'Create the first user to get started.',
-    createFirstUser: 'Create first user',
-    userInfo: 'User info',
-    emailAddress: 'Email address',
-    rolePermission: 'Role',
-    subscriptionLimit: 'Subscription limit',
-    accountStatus: 'Account status',
-    actions: 'Actions',
-    fullNameNotSet: 'Full name not set',
-    admin: 'Admin',
-    regularUser: 'Regular user',
-    subscriptionUnit: '',
-    enabled: 'Enabled',
-    disabled: 'Disabled',
-    editUser: 'Edit user',
-    deleteUser: 'Delete user',
-    deleteConfirm: 'Are you sure you want to delete this user?',
-    loadFailed: 'Failed to load users',
-    editDialogTitle: 'Edit user',
-    createDialogTitle: 'Create user',
-    editDialogSubtitle: 'Update user details and permissions',
-    createDialogSubtitle: 'Add a new system user',
-    username: 'Username',
-    fullName: 'Full name',
-    password: 'Password',
-    passwordHelperEdit: 'Leave blank to keep the current password',
-    passwordHelperCreate: 'Set a secure password',
-    maxSubscriptions: 'Max subscriptions',
-    maxSubscriptionsHelper: 'Maximum number of public tasks this user can subscribe to',
-    adminPermission: 'Admin permission',
-    adminPermissionHelper: 'Gives access to system management features',
-    activeAccount: 'Active account',
-    activeAccountHelper: 'Allows the user to sign in',
-    cancel: 'Cancel',
-    updateUser: 'Update user',
-    createUserAction: 'Create user',
-    togglePasswordVisibility: 'Toggle password visibility',
+  const showFeedback = (message, severity = 'success') => {
+    setFeedback({ open: true, message, severity });
   };
 
-  const queryClient = useQueryClient();
+  const closeFeedback = () => {
+    setFeedback((previous) => ({ ...previous, open: false }));
+  };
 
   const { data: users = [], error } = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const response = await axios.get('/api/auth/users');
-      return response.data;
-    },
+    queryKey: keys.users(currentUser?.id),
+    queryFn: ({ signal }) => api.get('/api/auth/users', { signal }).then((response) => response.data),
+    enabled: !!currentUser,
   });
 
-  const { data: currentUser } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: async () => {
-      const response = await axios.get('/api/auth/me');
-      return response.data;
-    },
-  });
+  const handleClose = () => {
+    setOpen(false);
+    setTimeout(() => {
+      setEditingUser(null);
+    }, 100);
+  };
 
   const createMutation = useMutation({
-    mutationFn: async (userData) => {
-      const response = await axios.post('/api/auth/register', userData);
-      return response.data;
-    },
+    mutationFn: (payload) => api.post('/api/auth/users', payload).then((response) => response.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       handleClose();
+      showFeedback(t('users.createSuccess'));
+    },
+    onError: (mutationError) => {
+      showFeedback(getApiErrorMessage(mutationError, t('common.unknownError')), 'error');
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, userData }) => {
-      const response = await axios.put(`/api/auth/users/${id}`, userData);
-      return response.data;
-    },
-    onSuccess: () => {
+    mutationFn: ({ id, payload }) =>
+      api.put(`/api/auth/users/${id}`, payload).then((response) => response.data),
+    onSuccess: async (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       handleClose();
+      showFeedback(t('users.updateSuccess'));
+
+      // 改的是自己：导航里的角色/名字要立刻跟着变。
+      if (variables.id === currentUser?.id) {
+        await refreshUser();
+      }
     },
     onError: (mutationError) => {
-      console.error('Update user error:', mutationError.response?.data || mutationError.message);
+      showFeedback(getApiErrorMessage(mutationError, t('common.unknownError')), 'error');
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id) => {
-      await axios.delete(`/api/auth/users/${id}`);
-    },
+    mutationFn: (id) => api.delete(`/api/auth/users/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      // 用户级联删除任务/日志/订阅，公开任务与订阅页面要重新取数。
+      queryClient.invalidateQueries({ queryKey: ['publicTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['subscriptionInfo'] });
+      setConfirmTarget(null);
+      showFeedback(t('users.deleteSuccess'));
+    },
+    onError: (mutationError) => {
+      showFeedback(getApiErrorMessage(mutationError, t('common.unknownError')), 'error');
     },
   });
 
@@ -242,47 +163,56 @@ const UserManagement = () => {
     setOpen(true);
   };
 
-  const handleClose = () => {
-    setOpen(false);
-    setTimeout(() => {
-      setEditingUser(null);
-    }, 100);
-  };
-
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    const cleanFormData = { ...formData };
-
-    if (editingUser && (!cleanFormData.password || cleanFormData.password === '')) {
-      delete cleanFormData.password;
-    }
-
-    Object.keys(cleanFormData).forEach((key) => {
-      if (cleanFormData[key] === null || cleanFormData[key] === undefined || cleanFormData[key] === '') {
-        if (key !== 'password') {
-          delete cleanFormData[key];
-        }
-      }
-    });
-
-    console.log('Submitting user update:', cleanFormData);
-
     if (editingUser) {
-      updateMutation.mutate({ id: editingUser.id, userData: cleanFormData });
-    } else {
-      createMutation.mutate(formData);
+      const payload = { ...formData };
+
+      // 留空表示保留原密码：直接把字段省掉，后端就不会动密码。
+      if (!payload.password) {
+        delete payload.password;
+      }
+
+      Object.keys(payload).forEach((key) => {
+        if (payload[key] === null || payload[key] === undefined || payload[key] === '') {
+          if (key !== 'password') {
+            delete payload[key];
+          }
+        }
+      });
+
+      updateMutation.mutate({ id: editingUser.id, payload });
+      return;
     }
+
+    createMutation.mutate(formData);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm(content.deleteConfirm)) {
-      deleteMutation.mutate(id);
+  const handleDelete = (user) => {
+    setConfirmTarget(user);
+  };
+
+  const handleCloseConfirm = () => {
+    if (deleteMutation.isPending) {
+      return;
     }
+    setConfirmTarget(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!confirmTarget) {
+      return;
+    }
+    deleteMutation.mutate(confirmTarget.id);
   };
 
   if (error) {
-    return <Alert severity="error">{content.loadFailed}: {error.message}</Alert>;
+    return (
+      <Alert severity="error">
+        {t('users.loadFailed')}: {getApiErrorMessage(error, t('common.unknownError'))}
+      </Alert>
+    );
   }
 
   return (
@@ -307,10 +237,10 @@ const UserManagement = () => {
               mb: 1,
             }}
           >
-            {content.title}
+            {t('users.title')}
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {content.subtitle}
+            {t('users.subtitle')}
           </Typography>
         </Box>
         <Button
@@ -332,7 +262,7 @@ const UserManagement = () => {
             },
           }}
         >
-          {content.createUser}
+          {t('users.createUser')}
         </Button>
       </Box>
 
@@ -364,7 +294,7 @@ const UserManagement = () => {
                     {users.length}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {content.totalUsers}
+                    {t('users.totalUsers')}
                   </Typography>
                 </Box>
               </Box>
@@ -398,7 +328,7 @@ const UserManagement = () => {
                     {users.filter((user) => user.is_active).length}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {content.activeUsers}
+                    {t('users.activeUsers')}
                   </Typography>
                 </Box>
               </Box>
@@ -432,7 +362,7 @@ const UserManagement = () => {
                     {users.filter((user) => user.is_admin).length}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {content.admins}
+                    {t('users.admins')}
                   </Typography>
                 </Box>
               </Box>
@@ -463,10 +393,10 @@ const UserManagement = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {content.securityLevel}
+                    {t('users.securityLevel')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {content.high}
+                    {t('users.high')}
                   </Typography>
                 </Box>
               </Box>
@@ -484,7 +414,7 @@ const UserManagement = () => {
       >
         <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {content.listTitle}
+            {t('users.listTitle')}
           </Typography>
         </Box>
 
@@ -492,7 +422,7 @@ const UserManagement = () => {
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <SecurityIcon sx={{ mr: 2, color: '#a78bfa' }} />
             <Typography variant="body2">
-              {content.guideText}
+              {t('users.guideText')}
             </Typography>
           </Box>
         </Box>
@@ -512,10 +442,10 @@ const UserManagement = () => {
               <PeopleIcon sx={{ fontSize: 40 }} />
             </Avatar>
             <Typography variant="h6" sx={{ mb: 1 }}>
-              {content.noUsers}
+              {t('users.noUsers')}
             </Typography>
             <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {content.noUsersSubtitle}
+              {t('users.noUsersSubtitle')}
             </Typography>
             <Button
               variant="contained"
@@ -527,7 +457,7 @@ const UserManagement = () => {
                 fontWeight: 'bold',
               }}
             >
-              {content.createFirstUser}
+              {t('users.createFirstUser')}
             </Button>
           </Box>
         ) : (
@@ -535,12 +465,12 @@ const UserManagement = () => {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'rgba(167, 139, 250, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.userInfo}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.emailAddress}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.rolePermission}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.subscriptionLimit}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.accountStatus}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{content.actions}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('users.userInfo')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('users.emailAddress')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('users.rolePermission')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('users.subscriptionLimit')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('users.accountStatus')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{t('users.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -572,7 +502,7 @@ const UserManagement = () => {
                             {user.username}
                           </Typography>
                           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {user.full_name || content.fullNameNotSet}
+                            {user.full_name || t('users.fullNameNotSet')}
                           </Typography>
                         </Box>
                       </Box>
@@ -589,14 +519,14 @@ const UserManagement = () => {
                       <Chip
                         size="small"
                         icon={user.is_admin ? <AdminIcon /> : <PersonIcon />}
-                        label={user.is_admin ? content.admin : content.regularUser}
+                        label={user.is_admin ? t('users.admin') : t('users.regularUser')}
                         color={user.is_admin ? 'warning' : 'primary'}
                       />
                     </TableCell>
                     <TableCell>
                       <Chip
                         size="small"
-                        label={isChinese ? `${user.max_subscriptions || 10} ${content.subscriptionUnit}` : `${user.max_subscriptions || 10}`}
+                        label={`${user.max_subscriptions || 10} ${t('users.subscriptionUnit')}`.trim()}
                         color="info"
                         variant="outlined"
                       />
@@ -605,13 +535,13 @@ const UserManagement = () => {
                       <Chip
                         size="small"
                         icon={user.is_active ? <SuccessIcon /> : <ErrorIcon />}
-                        label={user.is_active ? content.enabled : content.disabled}
+                        label={user.is_active ? t('users.enabled') : t('users.disabled')}
                         color={user.is_active ? 'success' : 'error'}
                       />
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title={content.editUser}>
+                        <Tooltip title={t('users.editUser')}>
                           <IconButton
                             size="small"
                             onClick={() => handleOpen(user)}
@@ -623,19 +553,27 @@ const UserManagement = () => {
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={content.deleteUser}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDelete(user.id)}
-                            disabled={currentUser?.username === user.username}
-                            sx={{
-                              color: '#ef4444',
-                              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-                              '&:disabled': { color: 'rgba(0, 0, 0, 0.3)' },
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                        <Tooltip
+                          title={
+                            currentUser?.id === user.id
+                              ? t('users.cannotDeleteSelf')
+                              : t('users.deleteUser')
+                          }
+                        >
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(user)}
+                              disabled={currentUser?.id === user.id}
+                              sx={{
+                                color: '#ef4444',
+                                '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
+                                '&:disabled': { color: 'rgba(0, 0, 0, 0.3)' },
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </Box>
                     </TableCell>
@@ -686,10 +624,10 @@ const UserManagement = () => {
             </Avatar>
             <Box>
               <Typography variant="h6" component="span">
-                {editingUser ? content.editDialogTitle : content.createDialogTitle}
+                {editingUser ? t('users.editDialogTitle') : t('users.createDialogTitle')}
               </Typography>
               <Typography variant="body2" component="div" sx={{ opacity: 0.9 }}>
-                {editingUser ? content.editDialogSubtitle : content.createDialogSubtitle}
+                {editingUser ? t('users.editDialogSubtitle') : t('users.createDialogSubtitle')}
               </Typography>
             </Box>
           </Box>
@@ -699,7 +637,7 @@ const UserManagement = () => {
             <Grid container spacing={3}>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.username}
+                  label={t('users.username')}
                   fullWidth
                   value={formData.username}
                   onChange={(event) => setFormData({ ...formData, username: event.target.value })}
@@ -729,7 +667,7 @@ const UserManagement = () => {
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.fullName}
+                  label={t('users.fullName')}
                   fullWidth
                   value={formData.full_name}
                   onChange={(event) => setFormData({ ...formData, full_name: event.target.value })}
@@ -757,7 +695,7 @@ const UserManagement = () => {
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.emailAddress}
+                  label={t('users.emailAddress')}
                   fullWidth
                   type="email"
                   value={formData.email}
@@ -787,13 +725,13 @@ const UserManagement = () => {
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label={content.password}
+                  label={t('users.password')}
                   type={showPassword ? 'text' : 'password'}
                   fullWidth
                   value={formData.password}
                   onChange={(event) => setFormData({ ...formData, password: event.target.value })}
                   required={!editingUser}
-                  helperText={editingUser ? content.passwordHelperEdit : content.passwordHelperCreate}
+                  helperText={editingUser ? t('users.passwordHelperEdit') : t('users.passwordHelperCreate')}
                   slotProps={{
                     input: {
                       startAdornment: (
@@ -804,7 +742,7 @@ const UserManagement = () => {
                       endAdornment: (
                         <InputAdornment position="end">
                           <IconButton
-                            aria-label={content.togglePasswordVisibility}
+                            aria-label={t('common.togglePasswordVisibility')}
                             onClick={() => setShowPassword(!showPassword)}
                             edge="end"
                             sx={{ color: 'rgba(0, 0, 0, 0.6)' }}
@@ -830,13 +768,13 @@ const UserManagement = () => {
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
-                  label={content.maxSubscriptions}
+                  label={t('users.maxSubscriptions')}
                   type="number"
                   fullWidth
                   value={formData.max_subscriptions}
                   onChange={(event) => setFormData({ ...formData, max_subscriptions: parseInt(event.target.value, 10) || 10 })}
                   slotProps={{ htmlInput: { min: 1, max: 100 } }}
-                  helperText={content.maxSubscriptionsHelper}
+                  helperText={t('users.maxSubscriptionsHelper')}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
@@ -866,10 +804,10 @@ const UserManagement = () => {
                   />
                   <Box sx={{ ml: 2 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {content.adminPermission}
+                      {t('users.adminPermission')}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {content.adminPermissionHelper}
+                      {t('users.adminPermissionHelper')}
                     </Typography>
                   </Box>
                 </Box>
@@ -890,10 +828,10 @@ const UserManagement = () => {
                   />
                   <Box sx={{ ml: 2 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {content.activeAccount}
+                      {t('users.activeAccount')}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {content.activeAccountHelper}
+                      {t('users.activeAccountHelper')}
                     </Typography>
                   </Box>
                 </Box>
@@ -909,7 +847,7 @@ const UserManagement = () => {
                 '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
               }}
             >
-              {content.cancel}
+              {t('common.cancel')}
             </Button>
             <Button
               type="submit"
@@ -928,11 +866,29 @@ const UserManagement = () => {
                 },
               }}
             >
-              {editingUser ? content.updateUser : content.createUserAction}
+              {editingUser ? t('users.updateUser') : t('users.createUserAction')}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title={t('users.deleteConfirmTitle')}
+        message={t('users.deleteConfirm')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        pending={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={handleCloseConfirm}
+      />
+
+      <FeedbackSnackbar
+        open={feedback.open}
+        message={feedback.message}
+        severity={feedback.severity}
+        onClose={closeFeedback}
+      />
 
       <Box
         sx={{

@@ -25,10 +25,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { WebMonitorLogo } from '../components/WebMonitorLogo';
+import api, { getApiErrorMessage } from '../api/client';
+import WebMonitorLogo from '../components/WebMonitorLogo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import { isChineseLanguage } from '../utils/i18n';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -42,38 +41,8 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated } = useAuth();
-  const { i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
-
-  const content = isChinese ? {
-    title: '欢迎回来',
-    subtitle: '登录您的账户，继续监控您关心的网页内容变化',
-    badges: ['实时监控', '即时通知', '安全可靠'],
-    formTitle: '用户登录',
-    formSubtitle: '请输入您的账户信息',
-    username: '用户名',
-    password: '密码',
-    submit: '登录',
-    submitting: '登录中...',
-    noAccount: '还没有账户？',
-    registerNow: '立即注册',
-    footer: '基于 Selenium 的专业网页监控解决方案',
-    defaultError: '登录失败，请检查用户名和密码',
-  } : {
-    title: 'Welcome back',
-    subtitle: 'Sign in to continue monitoring the pages and content changes that matter to you.',
-    badges: ['Real-time monitoring', 'Instant alerts', 'Reliable and secure'],
-    formTitle: 'Log in',
-    formSubtitle: 'Enter your account details below',
-    username: 'Username',
-    password: 'Password',
-    submit: 'Log in',
-    submitting: 'Logging in...',
-    noAccount: 'Don\'t have an account?',
-    registerNow: 'Sign up now',
-    footer: 'A professional web monitoring solution powered by Selenium',
-    defaultError: 'Login failed. Please check your username and password.',
-  };
+  const { t } = useTranslation();
+  const badges = t('login.badges', { returnObjects: true });
 
   React.useEffect(() => {
     if (isAuthenticated()) {
@@ -100,23 +69,19 @@ const Login = () => {
       formFormData.append('username', formData.username);
       formFormData.append('password', formData.password);
 
-      const response = await axios.post('/api/auth/login', formFormData, {
+      const response = await api.post('/api/auth/login', formFormData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
       const { access_token, user } = response.data;
-      login(user, access_token);
+      await login(user, access_token);
 
       const from = location.state?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        content.defaultError
-      );
+      setError(getApiErrorMessage(err, t('login.defaultError')));
     } finally {
       setLoading(false);
     }
@@ -189,6 +154,7 @@ const Login = () => {
               <Box sx={{ pr: { md: 6 } }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                   <IconButton
+                    aria-label={t('common.backHome')}
                     onClick={() => navigate('/')}
                     sx={{
                       color: '#64748b',
@@ -207,7 +173,7 @@ const Login = () => {
 
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
                   <Box sx={{ mr: 2 }}>
-                    <WebMonitorLogo size={48} showPulse />
+                    <WebMonitorLogo size={48} />
                   </Box>
                   <Typography
                     variant="h5"
@@ -232,7 +198,7 @@ const Login = () => {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  {content.title}
+                  {t('login.heroTitle')}
                 </Typography>
                 <Typography
                   variant="h6"
@@ -244,11 +210,11 @@ const Login = () => {
                     fontWeight: 400,
                   }}
                 >
-                  {content.subtitle}
+                  {t('login.heroSubtitle')}
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                  {content.badges.map((label, index) => {
+                  {badges.map((label, index) => {
                     const color = ['#10b981', '#2563eb', '#f59e0b'][index];
                     return (
                       <motion.div
@@ -307,10 +273,10 @@ const Login = () => {
               >
                 <Box sx={{ mb: 4 }}>
                   <Typography component="h2" variant="h4" sx={{ fontWeight: 700, color: '#334155', mb: 1 }}>
-                    {content.formTitle}
+                    {t('login.formTitle')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    {content.formSubtitle}
+                    {t('login.formSubtitle')}
                   </Typography>
                 </Box>
 
@@ -341,7 +307,7 @@ const Login = () => {
                     required
                     fullWidth
                     id="username"
-                    label={content.username}
+                    label={t('login.username')}
                     name="username"
                     autoComplete="username"
                     autoFocus
@@ -385,7 +351,7 @@ const Login = () => {
                     required
                     fullWidth
                     name="password"
-                    label={content.password}
+                    label={t('login.password')}
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     autoComplete="current-password"
@@ -425,7 +391,7 @@ const Login = () => {
                         endAdornment: (
                           <InputAdornment position="end">
                             <IconButton
-                              aria-label="toggle password visibility"
+                              aria-label={t('common.togglePasswordVisibility')}
                               onClick={handleTogglePasswordVisibility}
                               edge="end"
                               disabled={loading}
@@ -483,10 +449,10 @@ const Login = () => {
                               },
                             }}
                           />
-                          {content.submitting}
+                          {t('login.submitting')}
                         </Box>
                       ) : (
-                        content.submit
+                        t('login.submit')
                       )}
                     </Button>
                   </motion.div>
@@ -494,7 +460,7 @@ const Login = () => {
 
                 <Box sx={{ mt: 4, width: '100%', textAlign: 'center' }}>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    {content.noAccount}
+                    {t('login.noAccount')}
                     <Link
                       component="button"
                       variant="body2"
@@ -509,14 +475,14 @@ const Login = () => {
                         },
                       }}
                     >
-                      {content.registerNow}
+                      {t('login.registerNow')}
                     </Link>
                   </Typography>
                 </Box>
 
                 <Box sx={{ mt: 3, width: '100%', textAlign: 'center' }}>
                   <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                    {content.footer}
+                    {t('login.footer')}
                   </Typography>
                 </Box>
               </Paper>

@@ -29,10 +29,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { WebMonitorLogo } from '../components/WebMonitorLogo';
+import api, { getApiErrorMessage } from '../api/client';
+import WebMonitorLogo from '../components/WebMonitorLogo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import { isChineseLanguage } from '../utils/i18n';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -50,70 +49,8 @@ const Register = () => {
 
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { i18n } = useTranslation();
-  const isChinese = isChineseLanguage(i18n.language);
-
-  const content = isChinese ? {
-    heroTitleStart: '创建您的',
-    heroTitleAccent: '监控账户',
-    heroSubtitle: '注册 WebMonitor，开始监控您关心的网页内容变化。',
-    benefitsTitle: '注册后您将获得：',
-    benefits: ['实时网页内容监控', '邮件变化通知', '自定义监控频率', '基于 Selenium 的精准抓取'],
-    formTitle: '创建账户',
-    formSubtitle: '填写以下信息完成注册',
-    username: '用户名',
-    email: '邮箱地址',
-    password: '密码',
-    confirmPassword: '确认密码',
-    passwordStrength: '密码强度',
-    weak: '弱',
-    medium: '中等',
-    strong: '强',
-    submitting: '注册中...',
-    submit: '创建账户',
-    existingAccount: '已有账户？',
-    loginNow: '立即登录',
-    footer: '注册即表示您同意我们的服务条款和隐私政策',
-    validation: {
-      required: '请填写所有必填字段',
-      username: '用户名长度至少为3位',
-      mismatch: '两次输入的密码不一致',
-      password: '密码长度至少为6位',
-      email: '请输入有效的邮箱地址',
-      success: '注册成功！正在跳转到登录页面...',
-      failed: '注册失败，请稍后重试',
-    },
-  } : {
-    heroTitleStart: 'Create your',
-    heroTitleAccent: 'monitoring account',
-    heroSubtitle: 'Join WebMonitor and start tracking the web pages you care about.',
-    benefitsTitle: 'With an account you get:',
-    benefits: ['Real-time page monitoring', 'Email change notifications', 'Custom monitoring intervals', 'Precise Selenium-based extraction'],
-    formTitle: 'Create account',
-    formSubtitle: 'Fill in the details below to get started',
-    username: 'Username',
-    email: 'Email address',
-    password: 'Password',
-    confirmPassword: 'Confirm password',
-    passwordStrength: 'Password strength',
-    weak: 'Weak',
-    medium: 'Medium',
-    strong: 'Strong',
-    submitting: 'Creating account...',
-    submit: 'Create account',
-    existingAccount: 'Already have an account?',
-    loginNow: 'Log in now',
-    footer: 'By registering, you agree to our terms of service and privacy policy',
-    validation: {
-      required: 'Please fill in all required fields.',
-      username: 'Username must be at least 3 characters long.',
-      mismatch: 'The two passwords do not match.',
-      password: 'Password must be at least 6 characters long.',
-      email: 'Please enter a valid email address.',
-      success: 'Registration successful. Redirecting to the login page...',
-      failed: 'Registration failed. Please try again later.',
-    },
-  };
+  const { t } = useTranslation();
+  const benefits = t('register.benefits', { returnObjects: true });
 
   React.useEffect(() => {
     if (isAuthenticated()) {
@@ -143,28 +80,28 @@ const Register = () => {
 
   const validateForm = () => {
     if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError(content.validation.required);
+      setError(t('register.validation.required'));
       return false;
     }
 
     if (formData.username.length < 3) {
-      setError(content.validation.username);
+      setError(t('register.validation.username'));
       return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError(content.validation.mismatch);
+      setError(t('register.validation.mismatch'));
       return false;
     }
 
     if (formData.password.length < 6) {
-      setError(content.validation.password);
+      setError(t('register.validation.password'));
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError(content.validation.email);
+      setError(t('register.validation.email'));
       return false;
     }
 
@@ -189,9 +126,9 @@ const Register = () => {
   };
 
   const getPasswordStrengthText = () => {
-    if (passwordStrength < 30) return content.weak;
-    if (passwordStrength < 70) return content.medium;
-    return content.strong;
+    if (passwordStrength < 30) return t('register.weak');
+    if (passwordStrength < 70) return t('register.medium');
+    return t('register.strong');
   };
 
   const handleSubmit = async (e) => {
@@ -212,23 +149,15 @@ const Register = () => {
         password: formData.password,
       };
 
-      await axios.post('/api/auth/register', registerData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      await api.post('/api/auth/register', registerData);
 
-      setSuccess(content.validation.success);
+      setSuccess(t('register.validation.success'));
 
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        content.validation.failed
-      );
+      setError(getApiErrorMessage(err, t('register.validation.failed')));
     } finally {
       setLoading(false);
     }
@@ -297,6 +226,7 @@ const Register = () => {
               <Box sx={{ pr: { md: 6 } }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                   <IconButton
+                    aria-label={t('common.backHome')}
                     onClick={() => navigate('/')}
                     sx={{
                       color: '#64748b',
@@ -315,7 +245,7 @@ const Register = () => {
 
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
                   <Box sx={{ mr: 2 }}>
-                    <WebMonitorLogo size={48} showPulse />
+                    <WebMonitorLogo size={48} />
                   </Box>
                   <Typography variant="h5" sx={{ fontWeight: 700, color: '#334155' }}>
                     WebMonitor
@@ -334,7 +264,7 @@ const Register = () => {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  {content.heroTitleStart}
+                  {t('register.heroTitleStart')}
                   <br />
                   <Box
                     component="span"
@@ -345,7 +275,7 @@ const Register = () => {
                       backgroundClip: 'text',
                     }}
                   >
-                    {content.heroTitleAccent}
+                    {t('register.heroTitleAccent')}
                   </Box>
                 </Typography>
                 <Typography
@@ -358,14 +288,14 @@ const Register = () => {
                     fontWeight: 400,
                   }}
                 >
-                  {content.heroSubtitle}
+                  {t('register.heroSubtitle')}
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <Typography variant="subtitle2" sx={{ color: '#475569', fontWeight: 600 }}>
-                    {content.benefitsTitle}
+                    {t('register.benefitsTitle')}
                   </Typography>
-                  {content.benefits.map((benefit, index) => {
+                  {benefits.map((benefit, index) => {
                     const colors = ['#10b981', '#2563eb', '#f59e0b', '#8b5cf6'];
                     return (
                       <motion.div
@@ -418,11 +348,11 @@ const Register = () => {
                       <PersonAddIcon sx={{ fontSize: 22 }} />
                     </Avatar>
                     <Typography component="h2" variant="h4" sx={{ fontWeight: 700, color: '#334155' }}>
-                      {content.formTitle}
+                      {t('register.formTitle')}
                     </Typography>
                   </Box>
                   <Typography variant="body2" sx={{ color: '#64748b', ml: 7 }}>
-                    {content.formSubtitle}
+                    {t('register.formSubtitle')}
                   </Typography>
                 </Box>
 
@@ -474,7 +404,7 @@ const Register = () => {
                     required
                     fullWidth
                     id="username"
-                    label={content.username}
+                    label={t('register.username')}
                     name="username"
                     autoComplete="username"
                     autoFocus
@@ -518,7 +448,7 @@ const Register = () => {
                     required
                     fullWidth
                     id="email"
-                    label={content.email}
+                    label={t('register.email')}
                     name="email"
                     autoComplete="email"
                     type="email"
@@ -563,7 +493,7 @@ const Register = () => {
                     required
                     fullWidth
                     name="password"
-                    label={content.password}
+                    label={t('register.password')}
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     autoComplete="new-password"
@@ -603,7 +533,7 @@ const Register = () => {
                         endAdornment: (
                           <InputAdornment position="end">
                             <IconButton
-                              aria-label="toggle password visibility"
+                              aria-label={t('common.togglePasswordVisibility')}
                               onClick={() => setShowPassword(!showPassword)}
                               edge="end"
                               disabled={loading}
@@ -622,7 +552,7 @@ const Register = () => {
                       <Box sx={{ mt: 1.5, mb: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <Typography variant="caption" sx={{ color: '#64748b', flexGrow: 1 }}>
-                            {content.passwordStrength}:
+                            {t('register.passwordStrength')}:
                           </Typography>
                           <Typography variant="caption" sx={{ color: getPasswordStrengthColor(), fontWeight: 600 }}>
                             {getPasswordStrengthText()}
@@ -648,7 +578,7 @@ const Register = () => {
                     required
                     fullWidth
                     name="confirmPassword"
-                    label={content.confirmPassword}
+                    label={t('register.confirmPassword')}
                     type={showConfirmPassword ? 'text' : 'password'}
                     id="confirmPassword"
                     autoComplete="new-password"
@@ -688,7 +618,7 @@ const Register = () => {
                         endAdornment: (
                           <InputAdornment position="end">
                             <IconButton
-                              aria-label="toggle confirm password visibility"
+                              aria-label={t('common.togglePasswordVisibility')}
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               edge="end"
                               disabled={loading}
@@ -746,10 +676,10 @@ const Register = () => {
                               },
                             }}
                           />
-                          {content.submitting}
+                          {t('register.submitting')}
                         </Box>
                       ) : (
-                        content.submit
+                        t('register.submit')
                       )}
                     </Button>
                   </motion.div>
@@ -757,7 +687,7 @@ const Register = () => {
 
                 <Box sx={{ mt: 4, width: '100%', textAlign: 'center' }}>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    {content.existingAccount}
+                    {t('register.existingAccount')}
                     <Link
                       component="button"
                       variant="body2"
@@ -772,14 +702,14 @@ const Register = () => {
                         },
                       }}
                     >
-                      {content.loginNow}
+                      {t('register.loginNow')}
                     </Link>
                   </Typography>
                 </Box>
 
                 <Box sx={{ mt: 3, width: '100%', textAlign: 'center' }}>
                   <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                    {content.footer}
+                    {t('register.footer')}
                   </Typography>
                 </Box>
               </Paper>

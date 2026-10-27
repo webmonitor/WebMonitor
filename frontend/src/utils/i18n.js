@@ -27,7 +27,3 @@ export const getInitialLanguage = () => {
 
   return normalizeLanguage(window.navigator.language || window.navigator.userLanguage);
 };
-
-export const isChineseLanguage = (language) => normalizeLanguage(language) === 'zh-CN';
-
-export const getLanguageLabel = (language) => (isChineseLanguage(language) ? '中文' : 'EN');
