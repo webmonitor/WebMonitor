@@ -36,6 +36,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import docsEn from '../locales/docs/en';
 import docsZhCN from '../locales/docs/zh-CN';
 import { isChineseLanguage } from '../utils/i18n';
+import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
 
 const iconMap = {
   'quick-start': <RocketIcon />,
@@ -626,6 +627,28 @@ const Documentation = () => {
             </Typography>
             <Typography variant="caption" sx={{ color: '#cbd5e1' }}>
               {t('common.footerCta')}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#cbd5e1' }}>
+              <Box
+                component="a"
+                href={PROJECT_REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ color: '#94a3b8', textDecoration: 'none', '&:hover': { color: '#10b981' } }}
+              >
+                {t('common.repoLink')}
+              </Box>
+              {' · '}
+              {t('common.author')}{' '}
+              <Box
+                component="a"
+                href={PROJECT_AUTHOR_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ color: '#94a3b8', textDecoration: 'none', '&:hover': { color: '#10b981' } }}
+              >
+                ox0pine
+              </Box>
             </Typography>
           </Box>
         </Container>

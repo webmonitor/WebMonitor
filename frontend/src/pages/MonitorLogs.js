@@ -19,11 +19,9 @@ import {
   Grid,
   Card,
   CardContent,
-  Button,
   Avatar,
 } from '@mui/material';
 import {
-  Code as CodeIcon,
   ListAlt as ListAltIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
@@ -36,6 +34,7 @@ import axios from 'axios';
 
 import { formatDateTime } from '../utils/date';
 import { isChineseLanguage } from '../utils/i18n';
+import FooterLinks from '../components/FooterLinks';
 
 const MonitorLogs = () => {
   const [selectedTaskId, setSelectedTaskId] = useState('');
@@ -603,26 +602,7 @@ const MonitorLogs = () => {
         <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<CodeIcon />}
-          href="https://github.com/qfpqhyl"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{
-            borderColor: 'rgba(25, 118, 210, 0.5)',
-            color: '#1976d2',
-            textTransform: 'none',
-            borderRadius: 2,
-            '&:hover': {
-              borderColor: '#1976d2',
-              backgroundColor: 'rgba(25, 118, 210, 0.1)',
-            },
-          }}
-        >
-          {t('common.visitGithub')}
-        </Button>
+        <FooterLinks accent="#1976d2" />
       </Box>
     </Box>
   );

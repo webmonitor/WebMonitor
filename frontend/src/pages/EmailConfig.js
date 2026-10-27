@@ -38,13 +38,13 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   Email as EmailIcon,
-  Code as CodeIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
 import { isChineseLanguage } from '../utils/i18n';
+import FooterLinks from '../components/FooterLinks';
 
 const EmailConfig = () => {
   const [openDialog, setOpenDialog] = useState(false);
@@ -917,26 +917,7 @@ const EmailConfig = () => {
         <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<CodeIcon />}
-          href="https://github.com/qfpqhyl"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{
-            borderColor: 'rgba(37, 99, 235, 0.5)',
-            color: '#2563eb',
-            textTransform: 'none',
-            borderRadius: 2,
-            '&:hover': {
-              borderColor: '#2563eb',
-              backgroundColor: 'rgba(37, 99, 235, 0.1)',
-            },
-          }}
-        >
-          {t('common.visitGithub')}
-        </Button>
+        <FooterLinks accent="#2563eb" />
       </Box>
     </Box>
   );

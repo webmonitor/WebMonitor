@@ -18,6 +18,8 @@ const en = {
     vsLastWeek: 'vs last week',
     footerCta: 'This project is open source and contributions are welcome',
     visitGithub: 'Visit GitHub repository',
+    repoLink: 'Project repository',
+    author: 'Maintainer',
   },
   language: {
     label: 'Language',

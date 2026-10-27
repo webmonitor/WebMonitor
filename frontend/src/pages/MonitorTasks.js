@@ -40,7 +40,6 @@ import {
   CheckCircle as SuccessIcon,
   Pause as PauseIcon,
   Link as LinkIcon,
-  Code as CodeIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +47,7 @@ import axios from 'axios';
 
 import { useAuth } from '../contexts/AuthContext';
 import { WebMonitorLogo } from '../components/WebMonitorLogo';
+import FooterLinks from '../components/FooterLinks';
 import { isChineseLanguage } from '../utils/i18n';
 
 const MonitorTasks = () => {
@@ -1083,26 +1083,7 @@ const MonitorTasks = () => {
         <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<CodeIcon />}
-          href="https://github.com/qfpqhyl"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{
-            borderColor: 'rgba(16, 185, 129, 0.5)',
-            color: '#10b981',
-            textTransform: 'none',
-            borderRadius: 2,
-            '&:hover': {
-              borderColor: '#10b981',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            },
-          }}
-        >
-          {t('common.visitGithub')}
-        </Button>
+        <FooterLinks accent="#10b981" />
       </Box>
     </Box>
   );

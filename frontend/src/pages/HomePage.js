@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { WebMonitorLogo } from '../components/WebMonitorLogo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { isChineseLanguage } from '../utils/i18n';
+import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
 
 const GitHubIcon = (props) => (
   <svg
@@ -304,7 +305,7 @@ const HomePage = () => {
               </Button>
               <Tooltip title="GitHub" arrow>
                 <IconButton
-                  href="https://github.com/qfpqhyl"
+                  href={PROJECT_REPO_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{
@@ -1014,6 +1015,42 @@ const HomePage = () => {
           <Typography variant="caption" sx={{ color: '#cbd5e1' }}>
             {content.footerTagline}
           </Typography>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ mt: 2, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}
+          >
+            <Box
+              component="a"
+              href={PROJECT_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.75,
+                color: '#94a3b8',
+                textDecoration: 'none',
+                fontSize: '0.8125rem',
+                '&:hover': { color: '#10b981' },
+              }}
+            >
+              <GitHubIcon width="16" height="16" />
+              {t('common.repoLink')}
+            </Box>
+            <Typography variant="caption" sx={{ color: '#cbd5e1' }}>
+              {t('common.author')}{' '}
+              <Box
+                component="a"
+                href={PROJECT_AUTHOR_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ color: '#94a3b8', textDecoration: 'none', '&:hover': { color: '#10b981' } }}
+              >
+                ox0pine
+              </Box>
+            </Typography>
+          </Stack>
           <Box sx={{ mt: 2 }}>
             <Typography variant="caption" sx={{ color: '#94a3b8' }}>
               {t('common.footerCta')}

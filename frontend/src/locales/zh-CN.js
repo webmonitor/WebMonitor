@@ -18,6 +18,8 @@ const zhCN = {
     vsLastWeek: '较上周',
     footerCta: '项目开源，欢迎贡献代码',
     visitGithub: '访问 GitHub 仓库',
+    repoLink: '项目地址',
+    author: '维护者',
   },
   language: {
     label: '语言',

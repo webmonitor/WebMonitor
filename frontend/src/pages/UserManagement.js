@@ -39,13 +39,13 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   Email as EmailIcon,
-  Code as CodeIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
 import { isChineseLanguage } from '../utils/i18n';
+import FooterLinks from '../components/FooterLinks';
 
 const UserManagement = () => {
   const [open, setOpen] = useState(false);
@@ -945,26 +945,7 @@ const UserManagement = () => {
         <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {t('common.footerCta')}
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<CodeIcon />}
-          href="https://github.com/qfpqhyl"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{
-            borderColor: 'rgba(167, 139, 250, 0.5)',
-            color: '#a78bfa',
-            textTransform: 'none',
-            borderRadius: 2,
-            '&:hover': {
-              borderColor: '#a78bfa',
-              backgroundColor: 'rgba(167, 139, 250, 0.1)',
-            },
-          }}
-        >
-          {t('common.visitGithub')}
-        </Button>
+        <FooterLinks accent="#a78bfa" />
       </Box>
     </Box>
   );
