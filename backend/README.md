@@ -2,111 +2,77 @@
 
 WebMonitor 后端服务，基于 FastAPI + SQLite + Selenium 构建的网页内容监控系统。
 
+同源发布：同一个进程既提供 `/api`，也提供前端构建产物（`FRONTEND_DIST`）。
+
 ## 项目结构
 
 ```
 backend/
-├── main.py                 # 应用主入口文件
-├── .env.example           # 环境变量模板
-├── README.md              # 项目说明
-├── app/                   # 应用主目录
-│   ├── __init__.py
-│   ├── api/               # API路由
-│   │   ├── __init__.py
-│   │   └── routes.py      # API路由定义
-│   ├── core/              # 核心模块
-│   │   ├── __init__.py
-│   │   └── config.py      # 配置设置
-│   ├── db/                # 数据库模块
-│   │   ├── __init__.py
-│   │   ├── database.py    # 数据库连接
-│   │   ├── models.py      # 数据模型
-│   │   └── crud.py        # 数据库操作
-│   ├── schemas/           # 数据模式
-│   │   ├── __init__.py
-│   │   └── schemas.py     # Pydantic模型
-│   ├── services/          # 服务模块
-│   │   ├── __init__.py
-│   │   ├── email_service.py      # 邮件服务
-│   │   ├── monitor_service.py    # 监控服务
-│   │   └── scheduler.py          # 调度器
-│   └── utils/             # 工具模块
-│       ├── __init__.py
-│       └── logger.py      # 日志工具
-├── static/                # 静态文件
-└── logs/                  # 日志文件
+├── main.py                # 唯一入口：日志、lifespan（建表 → 引导管理员 → 调度器）、SPA 兜底
+├── app/
+│   ├── api/
+│   │   ├── auth.py        # /auth 注册/登录/me/用户管理
+│   │   └── routes.py      # 任务、日志、邮件配置、黑名单、公开任务、订阅
+│   ├── core/
+│   │   ├── config.py      # Settings（唯一的环境变量来源）
+│   │   └── passwords.py   # 密码策略（最少 6 字符、UTF-8 ≤72 字节）
+│   ├── db/
+│   │   ├── database.py    # engine / SessionLocal / get_db
+│   │   ├── models.py      # User, MonitorTask, MonitorLog, EmailConfig, BlacklistDomain, TaskSubscription
+│   │   └── crud.py        # 持久化函数（不含权限判定）
+│   ├── schemas/
+│   │   └── schemas.py     # 全部 Pydantic 模型
+│   └── services/
+│       ├── task_service.py          # 任务归属、黑名单、提交后调度同步
+│       ├── subscription_service.py  # 订阅的唯一写入实现
+│       ├── user_service.py          # 用户唯一性冲突与删除
+│       ├── monitor_service.py       # Selenium 采集 + 变化判定 + 通知
+│       ├── scheduler.py             # APScheduler 作业同步
+│       ├── email_service.py         # 按用户解析 SMTP 配置并发送
+│       ├── auth_service.py          # 密码哈希、JWT、依赖注入
+│       ├── bootstrap.py             # 建表 + 首次管理员
+│       └── errors.py                # ServiceError → {"detail": ...}
+└── tests → ../tests       # 测试在仓库根的 tests/
 ```
 
 ## 快速开始
 
-### 1. 安装依赖
 依赖清单在仓库根目录（`../pyproject.toml` 为源，`../requirements.txt` 由 `uv pip compile` 生成）：
+
 ```bash
 pip install -r ../requirements.txt
 ```
 
-### 2. 配置环境变量
+环境变量放在**仓库根目录**的 `.env`（`backend/.env` 是指向它的符号链接）：
+
 ```bash
-cp .env.example .env
-# 编辑 .env 文件配置邮件参数
+cd .. && cp .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"   # 填进 SECRET_KEY
 ```
 
-### 3. 启动服务
 ```bash
-python main.py
+python main.py      # 或 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-## 环境变量配置
+## 环境变量
 
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
-| `SMTP_SERVER` | SMTP服务器地址 | None |
-| `SMTP_PORT` | SMTP端口 | 465 |
-| `SMTP_USER` | 发件人邮箱 | None |
-| `SMTP_PASSWORD` | 邮箱密码/授权码 | None |
-| `RECEIVER_EMAIL` | 接收通知邮箱 | None |
-| `DEBUG` | 调试模式 | False |
-| `LOG_LEVEL` | 日志级别 | INFO |
+| `SECRET_KEY` | JWT 签名密钥，**必填**，至少 32 字符，示例值会被拒绝 | — |
+| `ADMIN_USERNAME` | 引导管理员用户名（仅在没有管理员时使用） | `admin` |
+| `ADMIN_EMAIL` | 引导管理员邮箱 | `admin@example.com` |
+| `ADMIN_PASSWORD` | 引导管理员密码，**首次启动必填**；已有管理员时不会重置 | — |
+| `DATABASE_URL` | 数据库连接串 | `sqlite:///./data/webmonitor.db` |
+| `DEBUG` | 调试模式 | `False` |
+| `LOG_LEVEL` | 输出到 stdout 的日志级别 | `INFO` |
+| `ALGORITHM` | JWT 算法 | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | 令牌有效期（分钟） | `30` |
+| `FRONTEND_DIST` | 前端构建产物目录 | `web` |
 
-## API文档
+**没有部署级 SMTP 配置。** 邮件服务器与收件人只存在数据库里，按用户各自配置
+（“邮件配置”页面），因此通知只会发到用户自己填写的地址。监控任务可以不绑定
+邮件配置：那样照常采集、记录日志、查看历史，只是不发邮件。
 
-启动服务后访问 http://localhost:8000/docs 查看完整的API文档。
+## API 文档
 
-## 主要功能模块
-
-### API模块 (app/api/)
-- **routes.py**: 定义所有API路由和端点
-
-### 核心模块 (app/core/)
-- **config.py**: 应用配置管理，使用Pydantic Settings
-
-### 数据库模块 (app/db/)
-- **database.py**: 数据库连接和会话管理
-- **models.py**: SQLAlchemy数据模型定义
-- **crud.py**: 数据库CRUD操作
-
-### 服务模块 (app/services/)
-- **email_service.py**: 邮件通知服务
-- **monitor_service.py**: 网页监控核心服务
-- **scheduler.py**: 定时任务调度器
-
-### 数据模式 (app/schemas/)
-- **schemas.py**: Pydantic数据验证模型
-
-## 开发注意事项
-
-1. **代码组织**: 按功能模块组织代码，便于维护
-2. **配置管理**: 使用Pydantic Settings统一管理配置
-3. **数据库**: 使用SQLAlchemy ORM进行数据操作
-4. **异步操作**: 使用async/await处理异步任务
-5. **日志记录**: 配置统一的日志系统
-6. **错误处理**: 完善的异常处理机制
-
-## 依赖说明
-
-- **FastAPI**: 现代化的Python Web框架
-- **SQLAlchemy**: Python SQL工具包和ORM
-- **Pydantic**: 数据验证和设置管理
-- **Selenium**: Web浏览器自动化
-- **APScheduler**: 高级Python调度器
-- **aiofiles**: 异步文件操作
+启动服务后访问 http://localhost:8000/docs 。
