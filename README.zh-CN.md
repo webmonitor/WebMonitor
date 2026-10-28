@@ -115,11 +115,6 @@ pnpm start
 | `ADMIN_PASSWORD` | 引导管理员密码。**首次启动必填**；没有管理员且留空时启动失败。已有管理员时绝不重置密码 | - |
 | `ADMIN_EMAIL` | 引导管理员邮箱 | `admin@example.com` |
 | `DATABASE_URL` | 数据库连接字符串 | `sqlite:///./data/webmonitor.db` |
-| `SMTP_SERVER` | 部署级 SMTP 回退服务器（仅对没有任何邮件配置的用户生效） | - |
-| `SMTP_PORT` | SMTP 端口 | `465` |
-| `SMTP_USER` | SMTP 用户名 | - |
-| `SMTP_PASSWORD` | SMTP 密码或应用专用密码 | - |
-| `RECEIVER_EMAIL` | 回退通知收件人 | - |
 | `LOG_LEVEL` | 输出到 stdout 的日志级别 | `INFO` |
 | `FRONTEND_DIST` | 前端构建产物目录 | `web` |
 
@@ -130,6 +125,10 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 完整配置模板请查看 `.env.example`。
+
+没有部署级 SMTP 配置：邮件服务器与收件人只按用户在应用内（“邮件配置”页面）
+保存，因此通知只会发到用户自己填写的地址。监控任务可以不绑定邮件配置——
+那样照常采集、记录日志、查看历史，只是不发邮件。
 
 ---
 

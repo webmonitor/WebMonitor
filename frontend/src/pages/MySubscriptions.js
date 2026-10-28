@@ -655,6 +655,7 @@ const MySubscriptions = () => {
                     labelId="subscription-email-config-label"
                     value={formData.email_config_id}
                     label={t('subscriptions.emailConfigLabel')}
+                    displayEmpty
                     onChange={(event) =>
                       setFormData({ ...formData, email_config_id: event.target.value })
                     }

@@ -1,13 +1,14 @@
 """
 邮件服务：配置解析 + SMTP 发送。
 
-配置解析顺序（只对本人生效）：
+邮件配置只存在于数据库里，并且只对本人生效：
 1. 显式 `email_config_id`：必须存在且属于该用户，否则失败并记录告警，
    绝不回退到别人的配置；
 2. 未指定 ID：该用户 id 最小的配置；
-3. 该用户没有配置：部署级 `SMTP_*` 环境变量。
+3. 该用户没有任何配置：不发送，只记录一条告警。
 
-任何情况下都不会读取"全库第一条配置"。
+没有部署级 SMTP 回退：环境变量不是收件人的来源，邮件只能发到用户自己
+配置的地址。
 """
 import logging
 import smtplib
@@ -17,7 +18,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
 
-from ..core.config import settings
 from ..db.crud import get_email_config as get_email_config_row
 from ..db.crud import get_user_default_email_config
 from ..db.database import SessionLocal
@@ -48,18 +48,6 @@ class EmailService:
         finally:
             db.close()
 
-    def get_config_from_env(self) -> dict:
-        """从环境变量获取配置作为回退选项"""
-        smtp_password = settings.SMTP_PASSWORD
-        return {
-            "smtp_server": settings.SMTP_SERVER,
-            "smtp_port": settings.SMTP_PORT,
-            "smtp_user": settings.SMTP_USER,
-            "smtp_password": smtp_password.get_secret_value() if smtp_password else None,
-            "receiver_email": settings.RECEIVER_EMAIL,
-            "is_ssl": True,
-        }
-
     def _resolve_config(self, user_id: int, email_config_id: Optional[int]) -> Optional[dict]:
         """解析本次发送实际使用的 SMTP 参数；无法确定时返回 None。"""
         if email_config_id is not None:
@@ -81,17 +69,18 @@ class EmailService:
             }
 
         config = self.get_email_config(user_id)
-        if config is not None:
-            return {
-                "smtp_server": config.smtp_server,
-                "smtp_port": config.smtp_port,
-                "smtp_user": config.smtp_user,
-                "smtp_password": config.smtp_password,
-                "receiver_email": config.receiver_email,
-                "is_ssl": config.is_ssl,
-            }
+        if config is None:
+            logger.warning("用户没有邮件配置，跳过发送：user_id=%s", user_id)
+            return None
 
-        return self.get_config_from_env()
+        return {
+            "smtp_server": config.smtp_server,
+            "smtp_port": config.smtp_port,
+            "smtp_user": config.smtp_user,
+            "smtp_password": config.smtp_password,
+            "receiver_email": config.receiver_email,
+            "is_ssl": config.is_ssl,
+        }
 
     def send_change_notification(
         self,

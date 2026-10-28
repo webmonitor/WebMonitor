@@ -62,12 +62,6 @@ def bootstrap_environment() -> dict:
             "DATABASE_URL": f"sqlite:///{db_path}",
             "FRONTEND_DIST": os.path.join(tmpdir, "no-frontend"),
             "LOG_LEVEL": "WARNING",
-            # 部署级邮件回退配置必须留空，否则测试可能真的发信
-            "SMTP_SERVER": "",
-            "SMTP_PORT": "465",
-            "SMTP_USER": "",
-            "SMTP_PASSWORD": "",
-            "RECEIVER_EMAIL": "",
         }
     )
 

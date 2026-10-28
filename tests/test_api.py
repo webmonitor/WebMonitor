@@ -366,6 +366,35 @@ class ApiTestCase(unittest.TestCase):
         self.assertTrue(task["is_public"])
         self.assertEqual(task["description"], "public description")
 
+    def test_task_can_be_created_without_email_config(self):
+        response = self.server.post(
+            "/api/monitor-tasks",
+            token=self.alice_token,
+            json_body={
+                "name": "no-mail",
+                "url": "http://example.com/a",
+                "xpath": "//div",
+                "interval": 60,
+            },
+        )
+        self.assertEqual(response.status, 200, response.body)
+        self.assertIsNone(response.json()["email_config_id"])
+
+    def test_task_with_foreign_email_config_is_rejected(self):
+        alice_config = self._email_config(self.alice_token)
+        response = self.server.post(
+            "/api/monitor-tasks",
+            token=self.bob_token,
+            json_body={
+                "name": "hijack",
+                "url": "http://example.com/a",
+                "xpath": "//div",
+                "interval": 60,
+                "email_config_id": alice_config,
+            },
+        )
+        self.assertEqual(response.status, 400)
+
     def test_update_rejects_null_for_required_columns(self):
         config_id = self._email_config(self.alice_token)
         task = self._task(self.alice_token, config_id)

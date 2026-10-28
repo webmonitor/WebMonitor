@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -72,6 +72,8 @@ const MonitorTasks = () => {
   const [dialogAlert, setDialogAlert] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
+  // 用户是否已亲手改过"邮件配置"下拉框
+  const emailConfigTouched = useRef(false);
 
   const showFeedback = (message, severity = 'success') =>
     setFeedback({ open: true, message, severity });
@@ -102,8 +104,12 @@ const MonitorTasks = () => {
   };
 
   // v5 dropped `onSuccess` on queries: preselect the only config from data.
+  // 只在用户还没动过这个字段时预选——否则选“不发送通知”后会被立刻改回去。
   useEffect(() => {
-    if (emailConfigs.length !== 1 || editingTask || formData.email_config_id) {
+    if (emailConfigTouched.current || emailConfigs.length !== 1 || editingTask) {
+      return;
+    }
+    if (formData.email_config_id) {
       return;
     }
     setFormData((prev) => ({ ...prev, email_config_id: emailConfigs[0].id }));
@@ -189,6 +195,7 @@ const MonitorTasks = () => {
 
   const handleOpen = (task = null) => {
     setDialogAlert(null);
+    emailConfigTouched.current = false;
     if (task) {
       setEditingTask(task);
       setFormData({
@@ -215,22 +222,25 @@ const MonitorTasks = () => {
     setOpen(false);
     setEditingTask(null);
     setDialogAlert(null);
+    emailConfigTouched.current = false;
   };
+
+  // 选择器的空字符串必须变成 null：后端只接受 int | null，"" 会 422。
+  const toPayload = () => ({
+    ...formData,
+    email_config_id: formData.email_config_id === '' ? null : formData.email_config_id,
+  });
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!formData.email_config_id) {
-      setDialogAlert({ title: null, message: t('tasks.selectEmailBeforeCreate') });
-      return;
-    }
-
+    // 邮件配置是可选项：留空表示只采集、不发通知。
     setDialogAlert(null);
 
     if (editingTask) {
-      updateMutation.mutate({ id: editingTask.id, payload: formData });
+      updateMutation.mutate({ id: editingTask.id, payload: toPayload() });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(toPayload());
     }
   };
 
@@ -825,14 +835,17 @@ const MonitorTasks = () => {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth required>
-                  <InputLabel id="email-config-label">{t('tasks.emailConfigRequired')}</InputLabel>
+                <FormControl fullWidth>
+                  <InputLabel id="email-config-label">{t('tasks.emailConfig')}</InputLabel>
                   <Select
                     labelId="email-config-label"
                     value={formData.email_config_id}
-                    label={t('tasks.emailConfigRequired')}
-                    onChange={(e) => setFormData({ ...formData, email_config_id: e.target.value })}
-                    required
+                    label={t('tasks.emailConfig')}
+                    displayEmpty
+                    onChange={(e) => {
+                      emailConfigTouched.current = true;
+                      setFormData({ ...formData, email_config_id: e.target.value });
+                    }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         '&:hover fieldset': {
@@ -845,23 +858,20 @@ const MonitorTasks = () => {
                       },
                     }}
                   >
-                    {emailConfigs.length === 0 ? (
-                      <MenuItem disabled value="">
-                        <em>{t('tasks.noEmailConfigOption')}</em>
+                    <MenuItem value="">
+                      <em>{t('tasks.emailConfigNone')}</em>
+                    </MenuItem>
+                    {emailConfigs.map((config) => (
+                      <MenuItem key={config.id} value={config.id}>
+                        {config.name} ({config.smtp_user} → {config.receiver_email})
                       </MenuItem>
-                    ) : (
-                      emailConfigs.map((config) => (
-                        <MenuItem key={config.id} value={config.id}>
-                          {config.name} ({config.smtp_user} → {config.receiver_email})
-                        </MenuItem>
-                      ))
-                    )}
+                    ))}
                   </Select>
-                  {emailConfigs.length === 0 && (
-                    <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-                      {t('tasks.addEmailConfigHint')}
-                    </Typography>
-                  )}
+                  <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>
+                    {emailConfigs.length === 0
+                      ? t('tasks.addEmailConfigHint')
+                      : t('tasks.emailConfigHelper')}
+                  </Typography>
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 12 }}>

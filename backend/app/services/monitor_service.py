@@ -112,19 +112,23 @@ class MonitorService:
             if is_changed:
                 logger.info("任务 %s 检测到内容变化", task.name)
 
-                try:
-                    self.email_service.send_change_notification(
-                        task_name=task.name,
-                        url=task.url,
-                        title=title or "未知标题",
-                        old_content=old_content or "无历史内容",
-                        new_content=current_content,
-                        check_time=check_time,
-                        email_config_id=task.email_config_id,
-                        user_id=task.owner_id,
-                    )
-                except Exception as exc:
-                    logger.error("发送任务所有者邮件通知失败: %s", exc)
+                # 任务可以完全没有邮件配置：那样只采集与记录，不发通知。
+                if task.email_config_id is None:
+                    logger.info("任务 %s 未配置邮件通知，跳过所有者通知", task.name)
+                else:
+                    try:
+                        self.email_service.send_change_notification(
+                            task_name=task.name,
+                            url=task.url,
+                            title=title or "未知标题",
+                            old_content=old_content or "无历史内容",
+                            new_content=current_content,
+                            check_time=check_time,
+                            email_config_id=task.email_config_id,
+                            user_id=task.owner_id,
+                        )
+                    except Exception as exc:
+                        logger.error("发送任务所有者邮件通知失败: %s", exc)
 
                 if task.is_public:
                     self._notify_subscribers(task, title, current_content, old_content, check_time)

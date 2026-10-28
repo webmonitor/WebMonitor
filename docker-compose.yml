@@ -27,12 +27,8 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
 
-      # 部署级邮件回退配置：用户没有自己的邮件配置时才会用到
-      SMTP_SERVER: ${SMTP_SERVER:-}
-      SMTP_PORT: ${SMTP_PORT:-465}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      RECEIVER_EMAIL: ${RECEIVER_EMAIL:-}
+      # 没有部署级邮件配置：通知只会发到用户自己在应用里配置的 SMTP 地址。
+      # 任务可以不配邮件，那样只采集并记录日志。
 
     ports:
       # 页面与 API 共用这一个端口：http://localhost:8000/

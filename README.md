@@ -119,11 +119,6 @@ Copy `.env.example` to `.env` and update the values as needed.
 | `ADMIN_PASSWORD` | Bootstrap admin password. **Required on first start**; startup fails if no admin exists and this is empty. Never resets an existing admin. | - |
 | `ADMIN_EMAIL` | Bootstrap admin email | `admin@example.com` |
 | `DATABASE_URL` | Database connection string | `sqlite:///./data/webmonitor.db` |
-| `SMTP_SERVER` | Deployment-level SMTP fallback host (used only for users with no email config) | - |
-| `SMTP_PORT` | SMTP port | `465` |
-| `SMTP_USER` | SMTP username | - |
-| `SMTP_PASSWORD` | SMTP password or app password | - |
-| `RECEIVER_EMAIL` | Fallback notification recipient | - |
 | `LOG_LEVEL` | Log level written to stdout | `INFO` |
 | `FRONTEND_DIST` | Directory containing the built SPA | `web` |
 
@@ -134,6 +129,12 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 See `.env.example` for the current full configuration template.
+
+There is **no** deployment-level SMTP configuration. Mail servers and recipients
+are stored per user in the app (the "Email configuration" page), so notifications
+only ever go to an address that user entered themselves. A monitor task may be
+created without an email config: it still collects, logs and shows history, it
+just never sends mail.
 
 ---
 

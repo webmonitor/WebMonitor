@@ -39,13 +39,6 @@ class Settings(BaseSettings):
     # 数据库设置
     DATABASE_URL: str = "sqlite:///./data/webmonitor.db"
 
-    # 邮件设置（部署级回退配置；用户自己的邮件配置优先）
-    SMTP_SERVER: Optional[str] = None
-    SMTP_PORT: int = 465
-    SMTP_USER: Optional[str] = None
-    SMTP_PASSWORD: Optional[SecretStr] = None
-    RECEIVER_EMAIL: Optional[str] = None
-
     # 日志设置
     LOG_LEVEL: str = "INFO"
 

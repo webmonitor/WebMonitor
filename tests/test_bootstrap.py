@@ -69,7 +69,6 @@ class SettingsTestCase(unittest.TestCase):
         self.assertEqual(settings.ADMIN_USERNAME, "admin")
         self.assertEqual(settings.ADMIN_EMAIL, "admin@example.com")
         self.assertEqual(settings.FRONTEND_DIST, "web")
-        self.assertEqual(settings.SMTP_PORT, 465)
 
     def test_removed_settings_are_gone(self):
         settings = make_settings()
@@ -80,13 +79,14 @@ class SettingsTestCase(unittest.TestCase):
             "MIN_CHECK_INTERVAL",
             "SELENIUM_HEADLESS",
             "SELENIUM_TIMEOUT",
+            # 部署级邮件回退已取消：邮件只能发到用户自己配置的地址
+            "SMTP_SERVER",
+            "SMTP_PORT",
+            "SMTP_USER",
+            "SMTP_PASSWORD",
+            "RECEIVER_EMAIL",
         ):
             self.assertFalse(hasattr(settings, removed), removed)
-
-    def test_smtp_password_is_secret(self):
-        settings = make_settings(SMTP_PASSWORD="super-secret")
-        self.assertNotIn("super-secret", repr(settings))
-        self.assertEqual(settings.SMTP_PASSWORD.get_secret_value(), "super-secret")
 
     def test_extra_environment_variables_are_ignored(self):
         # 进程环境里通常有一堆无关变量，不能因此启动失败

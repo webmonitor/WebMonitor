@@ -106,9 +106,12 @@ class MonitorTaskBase(BaseModel):
 
 
 class MonitorTaskCreate(MonitorTaskBase):
-    """创建监控任务"""
+    """创建监控任务。
 
-    email_config_id: int = Field(..., description="邮件配置ID")
+    邮件配置可选：不选就不发通知，任务照常采集与记录。
+    """
+
+    email_config_id: Optional[int] = Field(None, description="通知邮件配置ID（可选）")
 
 
 class MonitorTaskUpdate(BaseModel):

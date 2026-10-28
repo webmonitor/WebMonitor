@@ -45,13 +45,19 @@ def _require_url_allowed(db: Session, url: str, user: User) -> None:
         raise ServiceError(403, BLACKLIST_DETAIL)
 
 
-def _require_owned_email_config(db: Session, email_config_id: int, user: User) -> None:
+def _require_owned_email_config(db: Session, email_config_id: int | None, user: User) -> None:
+    """None 表示不配置通知，允许；非 None 必须是本人的配置。"""
+    if email_config_id is None:
+        return
     if not validate_email_config_ownership(db, email_config_id, user.id):
         raise ServiceError(400, EMAIL_CONFIG_DETAIL)
 
 
 def create_task(db: Session, data: MonitorTaskCreate, user: User) -> MonitorTask:
-    """创建任务；成功后同步调度作业。"""
+    """创建任务；成功后同步调度作业。
+
+    `email_config_id` 可省略：没有邮件配置时任务照常采集、记录日志，只是不发通知。
+    """
     _require_url_allowed(db, data.url, user)
     _require_owned_email_config(db, data.email_config_id, user)
 

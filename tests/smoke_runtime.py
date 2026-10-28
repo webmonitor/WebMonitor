@@ -486,6 +486,22 @@ def run_smoke(base_url, password):
         check(status == 200, f"{name} 创建任务: {status} {body}")
         tasks[name] = body["id"]
 
+    print("== 无邮件配置的任务 ==", flush=True)
+    status, body = alice.post(
+        "/api/monitor-tasks",
+        json_body={
+            "name": "alice-no-mail",
+            "url": f"{FIXTURE_URL}/b",
+            "xpath": "//div[@id='value']",
+            "interval": 10,
+            "is_active": True,
+            "is_public": False,
+        },
+    )
+    check(status == 200, f"不配邮件也能创建任务: {status} {body}")
+    check(body.get("email_config_id") is None, "任务未绑定邮件配置")
+    no_mail_task_id = body.get("id")
+
     print("== 采集测试端点（同时预热 Selenium）==", flush=True)
     # 首次 webdriver.Chrome() 可能要解析/下载 driver，先用测试端点把它预热掉；
     # 顺带验证：测试只抓取，不写 baseline / last_check / 日志。
@@ -540,6 +556,20 @@ def run_smoke(base_url, password):
         _, bob_logs = bob.get(f"/api/monitor-tasks/{tasks['bob']}/logs", params={"page": 1, "limit": 100})
         check(alice_logs["total"] >= 1, "alice 任务产生了日志")
         check(bob_logs["total"] >= 1, "bob 任务产生了日志")
+
+    print("== 无邮件任务：采集但不发通知 ==", flush=True)
+    SINK.reset()
+
+    def no_mail_task_collected():
+        _, page = alice.get(f"/api/monitor-tasks/{no_mail_task_id}/logs", params={"page": 1, "limit": 50})
+        return page["total"] > 0
+
+    check(wait_until(no_mail_task_collected, timeout=90, interval=1.0), "无邮件任务照常采集并记录日志")
+    check(SINK.count() == 0, f"无邮件任务不发送任何通知（sink 收到 {SINK.count()} 封）")
+
+    _, no_mail_tasks = alice.get("/api/monitor-tasks")
+    no_mail_task = next(t for t in no_mail_tasks if t["id"] == no_mail_task_id)
+    check(no_mail_task.get("last_content") == "B0", f"无邮件任务更新了 baseline（{no_mail_task.get('last_content')!r}）")
 
     print("== 内容变更 + 通知 ==", flush=True)
     SINK.reset()
@@ -747,10 +777,6 @@ def main():
             "DATABASE_URL": f"sqlite:///{db_path}",
             "FRONTEND_DIST": _frontend_dist(),
             "LOG_LEVEL": "INFO",
-            "SMTP_SERVER": "",
-            "SMTP_USER": "",
-            "SMTP_PASSWORD": "",
-            "RECEIVER_EMAIL": "",
         }
     )
 
