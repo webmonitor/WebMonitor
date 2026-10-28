@@ -74,7 +74,7 @@ curl -f http://localhost:8000/health     # compose healthcheck target
 
 # Backend local (dependency manifest lives at the repo root)
 pip install -r requirements.txt
-cp .env.example backend/.env             # then edit
+cp .env.example .env                     # repo root; SECRET_KEY + ADMIN_PASSWORD are required
 cd backend && python main.py             # uvicorn main:app --host 0.0.0.0 --port 8000
 
 # Frontend local
@@ -126,7 +126,7 @@ pnpm run build                            # production build → build/, copied 
 - Frontend stack after the dependency upgrade: React 19.3, MUI 9.5 (`@mui/material` + `@mui/icons-material`), TanStack Query 5, react-router-dom 6.30 (v7 needs Node ≥20, so it stays on 6), i18next 26 + react-i18next 17, framer-motion 14, axios 1.20. `devDependencies` are limited to what CRA's bundled eslint/fork-ts-checker actually need (`eslint-plugin-jest` 25.7, `typescript` 4.9.5); raising either breaks `react-scripts` peer resolution. `@mui/x-data-grid`, `@mui/x-date-pickers` and `web-vitals` were unused and removed.
 - Chromium comes from apt (`chromium` + `chromium-driver`) inside the backend image; Selenium Manager resolves the driver from `PATH` (no `CHROME_BIN`/`CHROME_DRIVER` env).
 - Docker: backend container runs as non-root `appuser`; SQLite DB lives at `/app/data/webmonitor.db` with **no volume** — data does not survive container rebuilds.
-- Env vars are read only via pydantic-settings `.env` (backend) and `REACT_APP_*` (frontend). `.env` is gitignored; copy from `.env.example`.
+- Env vars are read only via pydantic-settings `.env` (backend) and `REACT_APP_*` (frontend). The real `.env` lives at the repo root and is gitignored; `backend/.env` is a symlink to it so `cd backend && python main.py` finds the same values. Both are excluded from the Docker build context by `.dockerignore` (`**/.env*`, with `.env.example` re-included).
 - **Single image, single origin.** `deploy/Dockerfile` is multi-stage: it builds the CRA bundle and copies it next to the backend, and `backend/main.py` serves it (`FRONTEND_DIST`, default `web/`) on the same port as `/api`. Consequences:
   - Only one container and one port (`8000`); `docker compose up -d` starts `webmonitor` alone.
   - No CORS middleware and no `BACKEND_CORS_ORIGINS`; none is needed because browser and API share an origin.

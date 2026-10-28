@@ -14,11 +14,12 @@ docs/
 # Root-level dependency manifest is required by deploy/Dockerfile.
 !requirements.txt
 !pyproject.toml
-.env.example
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# 任何位置的 .env 都不属于构建上下文（.env 里有真实凭据）
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
 
 # IDE
 .vscode/

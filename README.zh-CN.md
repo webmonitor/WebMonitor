@@ -62,6 +62,8 @@ WebMonitor 是一个基于 React 前端和 FastAPI 后端构建的网页内容�
 ```bash
 git clone https://github.com/webmonitor/WebMonitor.git
 cd WebMonitor
+cp .env.example .env
+# 编辑 .env：SECRET_KEY 与 ADMIN_PASSWORD 都是必填项
 docker-compose up -d
 ```
 
@@ -71,9 +73,14 @@ docker-compose up -d
 
 前端由同一个 FastAPI 进程提供，浏览器只访问一个来源，因此没有跨域配置。
 
-默认管理员账号：
-- 用户名: `admin`
-- 密码: `admin123`
+首次启动会用 `.env` 里的 `ADMIN_USERNAME` / `ADMIN_EMAIL` /
+`ADMIN_PASSWORD` 创建管理员：
+
+- 用户名: `admin`（或你在 `ADMIN_USERNAME` 里填的值）
+- 密码: 你在 `ADMIN_PASSWORD` 里填的值
+
+没有内置默认密码：数据库里没有管理员且 `ADMIN_PASSWORD` 为空时容器拒绝启动。
+已存在管理员时这些变量会被忽略，因此已有密码不会被重置。
 
 ### 本地开发
 

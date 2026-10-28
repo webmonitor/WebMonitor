@@ -62,6 +62,8 @@ WebMonitor is a web content monitoring and email notification platform built wit
 ```bash
 git clone https://github.com/webmonitor/WebMonitor.git
 cd WebMonitor
+cp .env.example .env
+# 编辑 .env：SECRET_KEY 与 ADMIN_PASSWORD 都是必填项
 docker-compose up -d
 ```
 
@@ -72,9 +74,15 @@ Then open:
 The frontend is served by the same FastAPI process as the API, so the browser
 only talks to one origin and no CORS configuration exists.
 
-Default admin account:
-- Username: `admin`
-- Password: `admin123`
+The first start creates the admin account from `ADMIN_USERNAME` /
+`ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env`:
+
+- Username: `admin` (or whatever `ADMIN_USERNAME` says)
+- Password: whatever you put in `ADMIN_PASSWORD`
+
+There is no built-in default password: if no admin exists and `ADMIN_PASSWORD`
+is empty, the container refuses to start. Once an admin exists these variables
+are ignored, so an existing password is never reset.
 
 ### Local development
 
