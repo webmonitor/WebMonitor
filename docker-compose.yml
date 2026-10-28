@@ -34,7 +34,8 @@ services:
       # 页面与 API 共用这一个端口：http://localhost:8000/
       - "8000:8000"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      # 镜像里不再安装 curl，探活用 Python 标准库
+      test: [ "CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)" ]
       interval: 30s
       timeout: 10s
       retries: 3
