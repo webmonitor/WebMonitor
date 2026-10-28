@@ -1,180 +1,72 @@
-# WebMonitor
-
-<h3 align="center">网页内容变化监控平台</h3>
+<h1 align="center">WebMonitor</h1>
 
 <p align="center">
-  <img src="./image/样例图片.png" alt="WebMonitor Dashboard" width="800">
+  <strong>网页内容变化，邮件及时提醒。</strong>
 </p>
 
----
+<p align="center">
+  <a href="https://webmonitor.qfpqhyl.top/">在线体验</a> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="./backend/README.md">后端文档</a> ·
+  <a href="./README.md">English</a>
+</p>
 
-[English](./README.md) | 简体中文
+<p align="center">
+  <img src="./image/样例图片.png" alt="WebMonitor 监控面板" width="1000">
+</p>
 
-## 在线体验
+WebMonitor 是一个可自行部署的网页内容监控工具。通过 XPath 选定页面区域，设置检查间隔，在文字内容发生变化时接收邮件通知。适合跟踪商品价格、网站公告、版本发布，以及其他值得关注的更新。
 
-**访问地址**: https://webmonitor.qfpqhyl.top/
+## 核心功能
 
-> 当前后端服务部署在维护者的 MacBook M4 Air 上，可用性会受到本地 Docker 运行状态影响。如需稳定使用，建议自行部署。
+- **定向监控** — 使用 Chromium 渲染网页，通过 XPath 提取指定区域的文字。
+- **变化记录** — 查看变化前后的内容、检查历史与采集错误。
+- **邮件通知** — 配置自己的 SMTP 账户与收件地址。
+- **公开任务** — 分享监控任务，使用独立的通知配置订阅他人的任务。
+- **统一面板** — 管理任务、用户与域名黑名单，支持中英文切换。
 
----
-
-## 项目简介
-
-WebMonitor 是一个基于 React 前端和 FastAPI 后端构建的网页内容监控与邮件通知平台。它可以通过 XPath 定位网页中的指定区域，检测内容变化，并在发生变化时自动发送邮件提醒。
-
-## 主要功能
-
-- 基于 XPath 精确监控网页内容变化
-- 检测到变化后自动发送邮件通知
-- 支持公开任务与用户订阅机制
-- 提供任务、日志、用户和系统设置的可视化管理界面
-- 支持 Docker 部署
-- 前端支持中文和英文双语切换
-
----
-
-## 技术栈
-
-**前端**
-- React
-- Material UI
-- React Query
-- Axios
-- react-i18next
-
-**后端**
-- FastAPI
-- SQLAlchemy
-- APScheduler
-- Selenium WebDriver
-
-**部署**
-- Docker
-- Docker Compose
-- 默认使用 SQLite，生产环境支持 PostgreSQL
-
----
+基于 **React · FastAPI · Selenium · APScheduler · SQLAlchemy** 构建，前端与 API 运行在同一个 Docker 容器中。
 
 ## 快速开始
 
-### Docker 部署
+需要安装 Docker Engine 和 Docker Compose。
 
-```bash
+```sh
 git clone https://github.com/webmonitor/WebMonitor.git
 cd WebMonitor
 cp .env.example .env
-# 编辑 .env：SECRET_KEY 与 ADMIN_PASSWORD 都是必填项
-docker-compose up -d
 ```
 
-启动后访问：
-- 页面: http://localhost:8000/
-- API 文档: http://localhost:8000/docs
+编辑 `.env`，设置以下配置：
 
-前端由同一个 FastAPI 进程提供，浏览器只访问一个来源，因此没有跨域配置。
+- `SECRET_KEY` — 至少 32 个字符的随机签名密钥。
+- `ADMIN_PASSWORD` — 初始管理员密码，至少 6 个字符、最多 72 个 UTF-8 字节，请使用强密码。
+- `ADMIN_EMAIL` — 管理员邮箱地址。
 
-首次启动会用 `.env` 里的 `ADMIN_USERNAME` / `ADMIN_EMAIL` /
-`ADMIN_PASSWORD` 创建管理员：
+初始用户名默认为 `admin`。修改这些配置不会重置已有管理员账户。
 
-- 用户名: `admin`（或你在 `ADMIN_USERNAME` 里填的值）
-- 密码: 你在 `ADMIN_PASSWORD` 里填的值
-
-没有内置默认密码：数据库里没有管理员且 `ADMIN_PASSWORD` 为空时容器拒绝启动。
-已存在管理员时这些变量会被忽略，因此已有密码不会被重置。
-
-### 本地开发
-
-后端：
-
-```bash
-# 依赖清单在仓库根目录
-pip install -r requirements.txt
-cd backend && python main.py
-```
-
-前端：
-
-```bash
-cd frontend
-pnpm install
-pnpm start
-```
-
----
-
-## 环境变量配置
-
-复制 `.env.example` 为 `.env`，再按需修改配置。
-
-### 核心配置项
-
-| 变量 | 说明 | 默认值 |
-| --- | --- | --- |
-| `SECRET_KEY` | JWT 签名密钥。**必填**，至少 32 个字符，示例值会被拒绝 | - |
-| `ADMIN_USERNAME` | 引导管理员用户名（仅在没有管理员时使用） | `admin` |
-| `ADMIN_PASSWORD` | 引导管理员密码。**首次启动必填**；没有管理员且留空时启动失败。已有管理员时绝不重置密码 | - |
-| `ADMIN_EMAIL` | 引导管理员邮箱 | `admin@example.com` |
-| `DATABASE_URL` | 数据库连接字符串 | `sqlite:///./data/webmonitor.db` |
-| `LOG_LEVEL` | 输出到 stdout 的日志级别 | `INFO` |
-| `FRONTEND_DIST` | 前端构建产物目录 | `web` |
-
-生成签名密钥：
+> **数据持久化：** 默认部署将 SQLite 数据保存在容器内。首次使用前，请将数据卷挂载到 `/app/data`，以便在更换容器后保留数据。
 
 ```sh
-python -c "import secrets; print(secrets.token_hex(32))"
+docker compose up --build -d --wait
 ```
 
-完整配置模板请查看 `.env.example`。
+打开 **[localhost:8000](http://localhost:8000/)** 并登录。**[API 文档](http://localhost:8000/docs)** 使用同一端口。
 
-没有部署级 SMTP 配置：邮件服务器与收件人只按用户在应用内（“邮件配置”页面）
-保存，因此通知只会发到用户自己填写的地址。监控任务可以不绑定邮件配置——
-那样照常采集、记录日志、查看历史，只是不发邮件。
+## 创建第一个监控任务
 
----
+1. 填写目标网址、XPath 和检查间隔，创建任务。
+2. 使用测试功能，预览提取到的文字内容。
+3. 如需邮件提醒，添加并测试 SMTP 配置，再将其关联到任务。
 
-## 使用场景
+启用的任务会按计划执行。首次成功采集可能触发通知；测试功能仅预览内容，不发送邮件。
 
-- 跟踪商品价格变化
-- 监控网站公告或政策更新
-- 关注竞品页面动态
-- 监控任何对业务或个人工作流重要的网页区域
+## 项目状态
 
----
-
-## 项目结构
-
-```text
-backend/   FastAPI API、数据库模型、业务服务、调度器
-frontend/  React 应用、页面组件、国际化资源
-image/     文档使用的截图与素材
-```
-
----
-
-## 架构概览
-
-1. React 前端通过 Axios 调用 FastAPI 后端。
-2. 系统使用 JWT 进行身份认证。
-3. 监控任务通过 SQLAlchemy 持久化到数据库。
-4. APScheduler 在后台调度监控任务。
-5. Selenium 负责加载并检查目标网页内容。
-6. 检测到变化后，系统发送邮件通知。
-
----
-
-## 文档
-
-- English documentation: [README.md](./README.md)
-- 后端 API 文档: `http://localhost:8000/docs`
-
----
+本仓库为基于 XPath 的 WebMonitor 初代版本，目前仅进行旧版维护与问题修复。后续产品开发在 [WebMonitor-Agent](https://github.com/webmonitor/WebMonitor-Agent) 中进行。在线演示依赖维护者的运行实例，可能暂时不可用。
 
 ## 许可证
 
-[CC BY-NC 4.0](LICENSE) - 仅供个人和非商业用途使用。
+[CC BY-NC 4.0](./LICENSE) — 可在署名的前提下分享和修改，仅限非商业用途。
 
----
-
-<p align="center">
-  Made by 秋风飘起黄叶落
-</p>
+作者：秋风飘起黄叶落。

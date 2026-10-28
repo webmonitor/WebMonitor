@@ -1,186 +1,72 @@
-# WebMonitor
-
-<h3 align="center">Web content change monitoring platform</h3>
+<h1 align="center">WebMonitor</h1>
 
 <p align="center">
-  <img src="./image/样例图片.png" alt="WebMonitor Dashboard" width="800">
+  <strong>Page changes, delivered to your inbox.</strong>
 </p>
 
----
+<p align="center">
+  <a href="https://webmonitor.qfpqhyl.top/">Live demo</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="./backend/README.md">Backend docs</a> ·
+  <a href="./README.zh-CN.md">简体中文</a>
+</p>
 
-English | [简体中文](./README.zh-CN.md)
+<p align="center">
+  <img src="./image/样例图片.png" alt="WebMonitor dashboard" width="1000">
+</p>
 
-## Online demo
+WebMonitor is a self-hosted application for tracking web content changes. Select a page region with XPath, set a check interval, and receive email alerts when its text changes. Use it to follow prices, announcements, release notes, and other updates that matter to you.
 
-**URL**: https://webmonitor.qfpqhyl.top/
+## Features
 
-> The backend service is currently hosted on the maintainer's MacBook M4 Air. Availability may vary depending on the local Docker runtime. For stable use, self-hosting is recommended.
+- **Focused monitoring** — Collect rendered page text with Chromium and XPath.
+- **Change history** — Review previous content, new content, and collection errors.
+- **Email notifications** — Connect your own SMTP account and recipient address.
+- **Public tasks** — Share monitors and subscribe with your own notification settings.
+- **Unified dashboard** — Manage tasks, accounts, and blocked domains in English or Chinese.
 
----
-
-## Overview
-
-WebMonitor is a web content monitoring and email notification platform built with a React frontend and FastAPI backend. It can monitor specific areas of a page with XPath, detect content changes, and send email alerts automatically.
-
-## Key features
-
-- Monitor web page content changes with XPath-based targeting
-- Send email notifications when changes are detected
-- Support public tasks and user subscriptions
-- Provide a visual management dashboard for tasks, logs, users, and settings
-- Support Docker-based deployment
-- Support Chinese and English in the frontend UI
-
----
-
-## Tech stack
-
-**Frontend**
-- React
-- Material UI
-- React Query
-- Axios
-- react-i18next
-
-**Backend**
-- FastAPI
-- SQLAlchemy
-- APScheduler
-- Selenium WebDriver
-
-**Deployment**
-- Docker
-- Docker Compose
-- SQLite by default, PostgreSQL supported in production
-
----
+Built with **React · FastAPI · Selenium · APScheduler · SQLAlchemy**. The frontend and API run in one Docker container.
 
 ## Quick start
 
-### Docker deployment
+Requires Docker Engine and Docker Compose.
 
-```bash
+```sh
 git clone https://github.com/webmonitor/WebMonitor.git
 cd WebMonitor
 cp .env.example .env
-# 编辑 .env：SECRET_KEY 与 ADMIN_PASSWORD 都是必填项
-docker-compose up -d
 ```
 
-Then open:
-- Web UI: http://localhost:8000/
-- API docs: http://localhost:8000/docs
+Edit `.env` and set:
 
-The frontend is served by the same FastAPI process as the API, so the browser
-only talks to one origin and no CORS configuration exists.
+- `SECRET_KEY` — A random signing key of at least 32 characters.
+- `ADMIN_PASSWORD` — A strong initial administrator password, at least 6 characters and at most 72 UTF-8 bytes.
+- `ADMIN_EMAIL` — Your administrator email address.
 
-The first start creates the admin account from `ADMIN_USERNAME` /
-`ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env`:
+The initial username defaults to `admin`. Existing administrator accounts are never reset by these settings.
 
-- Username: `admin` (or whatever `ADMIN_USERNAME` says)
-- Password: whatever you put in `ADMIN_PASSWORD`
-
-There is no built-in default password: if no admin exists and `ADMIN_PASSWORD`
-is empty, the container refuses to start. Once an admin exists these variables
-are ignored, so an existing password is never reset.
-
-### Local development
-
-Backend:
-
-```bash
-# 依赖清单在仓库根目录（pyproject.toml 为源，requirements.txt 由 uv pip compile 生成）
-# 工作区共用 conda 环境（Python 3.12），见 ../.github/env/environment.yml
-conda activate webmonitor
-pip install -r requirements.txt
-cd backend && python main.py
-```
-
-Frontend:
-
-```bash
-cd frontend
-pnpm install
-pnpm start
-```
-
----
-
-## Environment configuration
-
-Copy `.env.example` to `.env` and update the values as needed.
-
-### Core settings
-
-| Variable | Description | Default |
-| --- | --- | --- |
-| `SECRET_KEY` | JWT signing key. **Required**, at least 32 characters; example values are rejected. | - |
-| `ADMIN_USERNAME` | Bootstrap admin username (used only when no admin exists) | `admin` |
-| `ADMIN_PASSWORD` | Bootstrap admin password. **Required on first start**; startup fails if no admin exists and this is empty. Never resets an existing admin. | - |
-| `ADMIN_EMAIL` | Bootstrap admin email | `admin@example.com` |
-| `DATABASE_URL` | Database connection string | `sqlite:///./data/webmonitor.db` |
-| `LOG_LEVEL` | Log level written to stdout | `INFO` |
-| `FRONTEND_DIST` | Directory containing the built SPA | `web` |
-
-Generate a signing key with:
+> **Data persistence:** The default deployment stores SQLite inside the container. Mount a volume at `/app/data` before first use to retain data across container replacements.
 
 ```sh
-python -c "import secrets; print(secrets.token_hex(32))"
+docker compose up --build -d --wait
 ```
 
-See `.env.example` for the current full configuration template.
+Open **[localhost:8000](http://localhost:8000/)** and sign in. The **[API reference](http://localhost:8000/docs)** is available on the same port.
 
-There is **no** deployment-level SMTP configuration. Mail servers and recipients
-are stored per user in the app (the "Email configuration" page), so notifications
-only ever go to an address that user entered themselves. A monitor task may be
-created without an email config: it still collects, logs and shows history, it
-just never sends mail.
+## Your first monitor
 
----
+1. Create a task with a URL, XPath, and check interval.
+2. Use the test action to preview the extracted text.
+3. For email alerts, add and test an SMTP configuration, then attach it to the task.
 
-## Common use cases
+Enabled tasks run on schedule. The first successful check can trigger an alert; the test action only previews content and does not send email.
 
-- Track product price changes
-- Watch website announcements or policy updates
-- Monitor competitor pages
-- Follow any page region that matters to your workflow
+## Project status
 
----
-
-## Project structure
-
-```text
-backend/   FastAPI API, database models, services, scheduler
-frontend/  React application, pages, components, i18n resources
-image/     Screenshots and assets used in documentation
-```
-
----
-
-## Architecture summary
-
-1. FastAPI serves the built React frontend and the API from one origin; the React app calls `/api/...` through Axios with relative URLs.
-2. Authentication is handled with JWT.
-3. Monitoring tasks are stored in the database through SQLAlchemy.
-4. APScheduler triggers monitoring jobs in the background.
-5. Selenium loads and checks target pages.
-6. Email notifications are sent when content changes are detected.
-
----
-
-## Documentation
-
-- Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
-- Backend API docs: `http://localhost:8000/docs`
-
----
+This is the original XPath-based WebMonitor, maintained for legacy fixes. Active development continues in [WebMonitor-Agent](https://github.com/webmonitor/WebMonitor-Agent). The hosted demo depends on the maintainer's instance and may be offline.
 
 ## License
 
-[CC BY-NC 4.0](LICENSE) - Personal and non-commercial use only.
+[CC BY-NC 4.0](./LICENSE) — Share and adapt for non-commercial use, with attribution.
 
----
-
-<p align="center">
-  Made by 秋风飘起黄叶落
-</p>
+Created by 秋风飘起黄叶落.
