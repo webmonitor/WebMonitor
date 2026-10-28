@@ -18,8 +18,6 @@ import {
   Avatar,
   Tooltip,
   Divider,
-  Chip,
-  Badge,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -29,7 +27,6 @@ import {
   People as PeopleIcon,
   Logout as LogoutIcon,
   AccountCircle as AccountIcon,
-  NotificationsActive as NotificationsIcon,
   Mail as MailIcon,
   Security as SecurityIcon,
   Public as PublicIcon,
@@ -195,51 +192,6 @@ const Layout = () => {
         </List>
       </Box>
 
-      <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.06)', mb: 2 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: 2,
-            backgroundColor: 'rgba(16, 185, 129, 0.05)',
-          }}
-        >
-          <Avatar
-            sx={{
-              width: 36,
-              height: 36,
-              mr: 2,
-              background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
-              fontSize: '0.9rem',
-            }}
-          >
-            {user?.username?.charAt(0).toUpperCase() || 'U'}
-          </Avatar>
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
-              {user?.username || t('common.user')}
-            </Typography>
-            <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block' }}>
-              {user?.email || ''}
-            </Typography>
-          </Box>
-          {isAdmin() && (
-            <Chip
-              size="small"
-              label={t('common.admin')}
-              sx={{
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                color: '#10b981',
-                fontWeight: 'bold',
-                fontSize: '0.7rem',
-                height: 20,
-                alignSelf: 'flex-start',
-              }}
-            />
-          )}
-        </Box>
-      </Box>
     </Box>
   );
 
@@ -297,19 +249,6 @@ const Layout = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <LanguageSwitcher sx={{ mr: 0.5 }} />
 
-            <Tooltip title={t('common.notifications')}>
-              <IconButton
-                sx={{
-                  color: 'rgba(0, 0, 0, 0.6)',
-                  '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' },
-                }}
-              >
-                <Badge badgeContent={0} color="error">
-                  <NotificationsIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-
             <Tooltip title={t('common.userMenu')}>
               <IconButton
                 size="small"
@@ -358,8 +297,11 @@ const Layout = () => {
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {user?.username || t('common.user')}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                     {user?.email || ''}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    {isAdmin() ? t('common.admin') : t('common.user')}
                   </Typography>
                 </Box>
               </MenuItem>

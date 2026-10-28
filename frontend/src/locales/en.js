@@ -5,7 +5,6 @@ const en = {
     backHome: 'Back to home',
     user: 'User',
     admin: 'Admin',
-    notifications: 'Notifications',
     userMenu: 'User menu',
     logout: 'Log out',
     cancel: 'Cancel',

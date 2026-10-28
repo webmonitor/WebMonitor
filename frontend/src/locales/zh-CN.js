@@ -5,7 +5,6 @@ const zhCN = {
     backHome: '返回首页',
     user: '用户',
     admin: '管理员',
-    notifications: '通知',
     userMenu: '用户菜单',
     logout: '退出登录',
     cancel: '取消',
