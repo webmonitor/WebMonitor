@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, Button, Tooltip } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
+import { UI_COLORS } from '../theme/tokens';
+
 const LANGUAGE_OPTIONS = [
   { value: 'en', labelKey: 'language.en' },
   { value: 'zh-CN', labelKey: 'language.zhCN' },
@@ -42,10 +44,14 @@ const LanguageSwitcher = ({ sx = {} }) => {
                 fontWeight: 700,
                 lineHeight: 1,
                 color: isActive ? '#ffffff' : '#64748b',
-                background: isActive ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'transparent',
+                background: isActive
+                  ? `linear-gradient(135deg, ${UI_COLORS.primary} 0%, ${UI_COLORS.primaryDark} 100%)`
+                  : 'transparent',
                 boxShadow: isActive ? '0 6px 18px rgba(16, 185, 129, 0.28)' : 'none',
                 '&:hover': {
-                  background: isActive ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'rgba(15, 23, 42, 0.04)',
+                  background: isActive
+                    ? `linear-gradient(135deg, ${UI_COLORS.primary} 0%, ${UI_COLORS.primaryDark} 100%)`
+                    : 'rgba(15, 23, 42, 0.04)',
                 },
               }}
             >

@@ -39,6 +39,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '../contexts/AuthContext';
 import LanguageSwitcher from './LanguageSwitcher';
+import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
 import PageLoading from './PageLoading';
 
 const drawerWidth = 280;
@@ -133,10 +134,6 @@ const Layout = () => {
             </Typography>
           </Box>
         </Box>
-      </Box>
-
-      <Box sx={{ px: 2, pt: 2, display: 'flex', justifyContent: 'center' }}>
-        <LanguageSwitcher sx={{ width: 'fit-content' }} />
       </Box>
 
       <Box sx={{ flexGrow: 1, py: 2 }}>
@@ -277,10 +274,17 @@ const Layout = () => {
                 component="img"
                 src={faviconSrc}
                 alt="WebMonitor"
-                sx={{ width: 32, height: 32, mr: 1.5, display: 'block', objectFit: 'contain' }}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  mr: 1.5,
+                  // 窄屏顶栏已经有语言切换，省掉与侧栏重复的图标
+                  display: { xs: 'none', sm: 'block' },
+                  objectFit: 'contain',
+                }}
               />
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a1a1a', lineHeight: 1.2 }}>
+                <Typography variant="h6" noWrap sx={{ fontWeight: 700, color: '#1a1a1a', lineHeight: 1.2 }}>
                   {currentMenuItem?.text || 'WebMonitor'}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -291,9 +295,7 @@ const Layout = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-              <LanguageSwitcher sx={{ mr: 0.5 }} />
-            </Box>
+            <LanguageSwitcher sx={{ mr: 0.5 }} />
 
             <Tooltip title={t('common.notifications')}>
               <IconButton
@@ -427,14 +429,42 @@ const Layout = () => {
           minHeight: '100vh',
           backgroundColor: '#f8fafc',
           width: { sm: `calc(100% - ${drawerWidth}px)` },
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <Toolbar />
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: 3, flexGrow: 1 }}>
           {/* 页面级 Suspense：切换私有页时只替换内容，侧栏不卸载 */}
           <Suspense fallback={<PageLoading />}>
             <Outlet />
           </Suspense>
+        </Box>
+
+        {/* 全站唯一的页脚：一行说明，贴着页面最底部，不再每页一个框 */}
+        <Box component="footer" sx={{ px: 3, pb: 2, textAlign: 'center' }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            <Box
+              component="a"
+              href={PROJECT_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+            >
+              {t('common.footerCta')}
+            </Box>
+            {' · '}
+            {t('common.author')}{' '}
+            <Box
+              component="a"
+              href={PROJECT_AUTHOR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+            >
+              ox0pine
+            </Box>
+          </Typography>
         </Box>
       </Box>
     </Box>

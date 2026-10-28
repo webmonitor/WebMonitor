@@ -3,7 +3,6 @@ import {
   Grid,
   Typography,
   Box,
-  Paper,
   List,
   ListItem,
   Chip,
@@ -31,8 +30,11 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import StatCard from '../components/StatCard';
-import FooterLinks from '../components/FooterLinks';
+import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import SectionCard from '../components/SectionCard';
+import StatGrid from '../components/StatGrid';
+import { UI_COLORS } from '../theme/tokens';
 import { useAuth } from '../contexts/AuthContext';
 import api, { getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
@@ -65,7 +67,6 @@ const Dashboard = () => {
   const logs = logsQuery.data ?? [];
   const tasksError = tasksQuery.error;
   const logsError = logsQuery.error;
-  const emptyValue = t('common.emptyValue');
 
   const totalTasks = tasks.length;
   const activeTasks = tasks.filter((task) => task.is_active).length;
@@ -83,120 +84,17 @@ const Dashboard = () => {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Container maxWidth="xl">
-        <Box
-          sx={{
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-            borderRadius: 4,
-            mb: 4,
-            p: { xs: 3, md: 4 },
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: `radial-gradient(circle at 25% 25%, ${alpha('#10b981', 0.1)} 0%, transparent 50%),
-                        radial-gradient(circle at 75% 75%, ${alpha('#2563eb', 0.1)} 0%, transparent 50%)`,
-            },
-          }}
-        >
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Box>
-                <Typography
-                  variant="overline"
-                  component="div"
-                  sx={{
-                    color: '#10b981',
-                    fontWeight: 'bold',
-                    mb: 1,
-                    letterSpacing: 2,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {t('dashboard.overview')}
-                </Typography>
-                <Typography
-                  variant="h3"
-                  component="h1"
-                  sx={{
-                    color: 'white',
-                    fontWeight: 800,
-                    fontSize: { xs: '2rem', md: '2.5rem' },
-                  }}
-                >
-                  {t('dashboard.title')}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.8)', mt: 1 }}>
-                  {t('dashboard.subtitle')}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Tooltip title={t('dashboard.refresh')}>
-                  <IconButton
-                    onClick={handleRefresh}
-                    aria-label={t('dashboard.refresh')}
-                    sx={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      color: 'white',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      },
-                    }}
-                  >
-                    <RefreshIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
-
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 6, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h4" sx={{ color: '#10b981', fontWeight: 'bold' }}>
-                    {tasksError ? emptyValue : totalTasks}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {t('dashboard.totalTasks')}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 6, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h4" sx={{ color: '#22d3ee', fontWeight: 'bold' }}>
-                    {tasksError ? emptyValue : activeTasks}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {t('dashboard.activeTasks')}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 6, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h4" sx={{ color: '#a78bfa', fontWeight: 'bold' }}>
-                    {logsError ? emptyValue : recentChanges}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {t('dashboard.recentChanges')}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 6, md: 3 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h4" sx={{ color: '#34d399', fontWeight: 'bold' }}>
-                    {logsError ? emptyValue : successRate ?? emptyValue}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {t('dashboard.successRate')}
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-        </Box>
+        <PageHeader
+          title={t('dashboard.title')}
+          subtitle={t('dashboard.subtitle')}
+          action={
+            <Tooltip title={t('dashboard.refresh')}>
+              <IconButton onClick={handleRefresh} aria-label={t('dashboard.refresh')}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          }
+        />
 
         {tasksError && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -204,104 +102,85 @@ const Dashboard = () => {
           </Alert>
         )}
 
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              title={t('dashboard.totalTasks')}
-              value={tasksError ? null : totalTasks}
-              icon={<TaskIcon />}
-              color="#10b981"
-              subtitle={t('dashboard.allTasks')}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              title={t('dashboard.activeTasks')}
-              value={tasksError ? null : activeTasks}
-              icon={<SuccessIcon />}
-              color="#22d3ee"
-              subtitle={t('dashboard.runningTasks')}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              title={t('dashboard.recentChanges')}
-              value={logsError ? null : recentChanges}
-              icon={<TrendingUpIcon />}
-              color="#a78bfa"
-              subtitle={t('dashboard.detectedChanges', { sample: logs.length })}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              title={t('dashboard.successRate')}
-              value={logsError ? null : successRate}
-              icon={<SpeedIcon />}
-              color="#34d399"
-              subtitle={t('dashboard.executionSuccessRate', { sample: logs.length })}
-            />
-          </Grid>
-        </Grid>
+        <StatGrid
+          items={[
+            {
+              key: 'totalTasks',
+              title: t('dashboard.totalTasks'),
+              value: tasksError ? null : totalTasks,
+              icon: <TaskIcon />,
+              color: UI_COLORS.primary,
+              subtitle: t('dashboard.allTasks'),
+            },
+            {
+              key: 'activeTasks',
+              title: t('dashboard.activeTasks'),
+              value: tasksError ? null : activeTasks,
+              icon: <SuccessIcon />,
+              color: UI_COLORS.info,
+              subtitle: t('dashboard.runningTasks'),
+            },
+            {
+              key: 'recentChanges',
+              title: t('dashboard.recentChanges'),
+              value: logsError ? null : recentChanges,
+              icon: <TrendingUpIcon />,
+              color: UI_COLORS.warning,
+              subtitle:
+              logs.length === 0
+                ? t('dashboard.noSamples')
+                : t('dashboard.detectedChanges', { sample: logs.length }),
+            },
+            {
+              key: 'successRate',
+              title: t('dashboard.successRate'),
+              value: logsError ? null : successRate,
+              icon: <SpeedIcon />,
+              color: UI_COLORS.accent,
+              subtitle:
+              logs.length === 0
+                ? t('dashboard.noSamples')
+                : t('dashboard.executionSuccessRate', { sample: logs.length }),
+            },
+          ]}
+        />
 
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, lg: 8 }}>
-            <Paper
-              sx={{
-                p: 3,
-                height: '100%',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                border: '1px solid rgba(0, 0, 0, 0.06)',
-                borderRadius: 4,
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
-                  {t('dashboard.recentActivity')}
-                </Typography>
+            <SectionCard
+              title={t('dashboard.recentActivity')}
+              bareBody
+              sx={{ height: '100%' }}
+              action={
                 <Button
                   size="small"
                   startIcon={<VisibilityIcon />}
-                  sx={{
-                    color: '#10b981',
-                    textTransform: 'none',
-                    '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-                  }}
+                  sx={{ color: UI_COLORS.primary, textTransform: 'none' }}
                 >
                   {t('dashboard.viewAll')}
                 </Button>
-              </Box>
-
+              }
+            >
               {logsError ? (
-                <Alert severity="error" sx={{ mb: 1 }}>
-                  {t('logs.loadError')}: {getApiErrorMessage(logsError, t('common.unknownError'))}
-                </Alert>
+                <Box sx={{ p: 3 }}>
+                  <Alert severity="error">
+                    {t('logs.loadError')}: {getApiErrorMessage(logsError, t('common.unknownError'))}
+                  </Alert>
+                </Box>
               ) : logsQuery.isLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
-                  <CircularProgress sx={{ color: '#10b981' }} />
+                  <CircularProgress />
                 </Box>
               ) : logs.length === 0 ? (
-                <Box sx={{ textAlign: 'center', p: 6 }}>
-                  <Avatar
-                    sx={{
-                      bgcolor: 'rgba(16, 185, 129, 0.1)',
-                      color: '#10b981',
-                      width: 64,
-                      height: 64,
-                      mx: 'auto',
-                      mb: 2,
-                    }}
-                  >
-                    <ScheduleIcon sx={{ fontSize: 32 }} />
-                  </Avatar>
-                  <Typography variant="h6" sx={{ color: '#1a1a1a', mb: 1 }}>
-                    {t('dashboard.noActivity')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('dashboard.noActivitySubtitle')}
-                  </Typography>
+                <Box sx={{ p: 3 }}>
+                  <EmptyState
+                    icon={<ScheduleIcon />}
+                    title={t('dashboard.noActivity')}
+                    subtitle={t('dashboard.noActivitySubtitle')}
+                  />
                 </Box>
               ) : (
-                <List sx={{ p: 0 }}>
+                <List sx={{ px: 3, py: 0 }}>
                   {logs.map((log, index) => (
                     <React.Fragment key={log.id}>
                       <ListItem
@@ -312,7 +191,7 @@ const Dashboard = () => {
                           px: 0,
                           transition: 'all 0.2s ease',
                           '&:hover': {
-                            backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                            backgroundColor: 'action.hover',
                             borderRadius: 2,
                           },
                         }}
@@ -323,9 +202,8 @@ const Dashboard = () => {
                               width: 40,
                               height: 40,
                               mr: 2,
-                              background: log.is_changed
-                                ? 'linear-gradient(45deg, #f59e0b 30%, #d97706 90%)'
-                                : 'linear-gradient(45deg, #10b981 30%, #059669 90%)',
+                              color: 'white',
+                              bgcolor: log.is_changed ? UI_COLORS.warning : UI_COLORS.primary,
                             }}
                           >
                             {log.is_changed ? <TrendingUpIcon /> : <SuccessIcon />}
@@ -334,10 +212,11 @@ const Dashboard = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
                               <Chip
                                 size="small"
+                                variant="outlined"
                                 label={`${t('dashboard.taskLabel')} #${log.task_id}`}
                                 sx={{
-                                  backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                                  color: '#2563eb',
+                                  color: UI_COLORS.info,
+                                  borderColor: UI_COLORS.info,
                                   fontWeight: 'bold',
                                   mr: 1,
                                 }}
@@ -361,7 +240,7 @@ const Dashboard = () => {
                           <Box
                             sx={{
                               p: 2,
-                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              backgroundColor: alpha(UI_COLORS.danger, 0.1),
                               borderRadius: 2,
                               width: '100%',
                             }}
@@ -374,7 +253,7 @@ const Dashboard = () => {
                           <Box
                             sx={{
                               p: 2,
-                              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                              backgroundColor: alpha(UI_COLORS.primary, 0.1),
                               borderRadius: 2,
                               width: '100%',
                             }}
@@ -394,110 +273,51 @@ const Dashboard = () => {
                         )}
                       </ListItem>
                       {index < logs.length - 1 && (
-                        <Divider sx={{ my: 1, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+                        <Divider sx={{ my: 1 }} />
                       )}
                     </React.Fragment>
                   ))}
                 </List>
               )}
-            </Paper>
+            </SectionCard>
           </Grid>
 
           <Grid size={{ xs: 12, lg: 4 }}>
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12 }}>
-                <Paper
-                  sx={{
-                    p: 3,
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                    border: '1px solid rgba(0, 0, 0, 0.06)',
-                    borderRadius: 4,
-                  }}
+            <SectionCard title={t('dashboard.quickActions')} sx={{ height: '100%' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  disableElevation
+                  fullWidth
+                  startIcon={<TaskIcon />}
+                  href="/tasks"
+                  sx={{ py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
                 >
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a1a1a', mb: 3 }}>
-                    {t('dashboard.quickActions')}
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      startIcon={<TaskIcon />}
-                      href="/tasks"
-                      sx={{
-                        background: 'linear-gradient(45deg, #10b981 30%, #059669 90%)',
-                        py: 1.5,
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        '&:hover': {
-                          background: 'linear-gradient(45deg, #059669 30%, #047857 90%)',
-                        },
-                      }}
-                    >
-                      {t('dashboard.manageTasks')}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      startIcon={<NotificationsIcon />}
-                      href="/email-config"
-                      sx={{
-                        borderColor: '#2563eb',
-                        color: '#2563eb',
-                        py: 1.5,
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        '&:hover': {
-                          borderColor: '#1d4ed8',
-                          backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        },
-                      }}
-                    >
-                      {t('dashboard.configureEmail')}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      startIcon={<VisibilityIcon />}
-                      href="/logs"
-                      sx={{
-                        borderColor: '#8b5cf6',
-                        color: '#8b5cf6',
-                        py: 1.5,
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        '&:hover': {
-                          borderColor: '#7c3aed',
-                          backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        },
-                      }}
-                    >
-                      {t('dashboard.viewLogs')}
-                    </Button>
-                  </Box>
-                </Paper>
-              </Grid>
-            </Grid>
+                  {t('dashboard.manageTasks')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<NotificationsIcon />}
+                  href="/email-config"
+                  sx={{ py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                >
+                  {t('dashboard.configureEmail')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<VisibilityIcon />}
+                  href="/logs"
+                  sx={{ py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                >
+                  {t('dashboard.viewLogs')}
+                </Button>
+              </Box>
+            </SectionCard>
           </Grid>
         </Grid>
       </Container>
-
-      <Box
-        sx={{
-          py: 3,
-          px: 3,
-          textAlign: 'center',
-          borderTop: '1px solid rgba(0, 0, 0, 0.06)',
-          backgroundColor: '#ffffff',
-        }}
-      >
-        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-          {t('common.footerCta')}
-        </Typography>
-        <FooterLinks accent="#10b981" />
-      </Box>
     </Box>
   );
 };

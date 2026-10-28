@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  Paper,
   TextField,
   Button,
   Grid,
@@ -21,8 +20,6 @@ import {
   Switch,
   Avatar,
   Tooltip,
-  Card,
-  CardContent,
   InputAdornment,
   CircularProgress,
 } from '@mui/material';
@@ -31,10 +28,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Send as TestIcon,
-  Info as InfoIcon,
   Mail as MailIcon,
   Security as SecurityIcon,
-  CheckCircle as SuccessIcon,
   Settings as SettingsIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
@@ -47,8 +42,12 @@ import api, { getApiErrorMessage } from '../api/client';
 import { keys, EMAIL_CONFIG_FULL } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import FeedbackSnackbar from '../components/FeedbackSnackbar';
-import FooterLinks from '../components/FooterLinks';
+import PageHeader from '../components/PageHeader';
+import SectionCard from '../components/SectionCard';
+import StatGrid from '../components/StatGrid';
+import { UI_COLORS } from '../theme/tokens';
 
 const EmailConfig = () => {
   const [openDialog, setOpenDialog] = useState(false);
@@ -219,215 +218,59 @@ const EmailConfig = () => {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              color: '#1a1a1a',
-              mb: 1,
-            }}
+      <PageHeader
+        title={t('emailConfig.title')}
+        subtitle={t('emailConfig.subtitle')}
+        action={
+          <Button
+            variant="contained"
+            disableElevation
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+            sx={{ textTransform: 'none', borderRadius: 2 }}
           >
-            {t('emailConfig.title')}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {t('emailConfig.subtitle')}
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{
-            background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
-            py: 1.5,
-            px: 3,
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #1d4ed8 30%, #1e40af 90%)',
-              boxShadow: '0 6px 20px rgba(37, 99, 235, 0.4)',
-              transform: 'translateY(-2px)',
-            },
-          }}
-        >
-          {t('emailConfig.addConfig')}
-        </Button>
-      </Box>
+            {t('emailConfig.addConfig')}
+          </Button>
+        }
+      />
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(37, 99, 235, 0.1)',
-                    color: '#2563eb',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <MailIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {emailConfigs.length}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('emailConfig.emailConfigs')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(16, 185, 129, 0.1)',
-                    color: '#10b981',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SuccessIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {emailConfigs.filter((config) => config.is_active).length}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('emailConfig.activeConfigs')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(34, 211, 238, 0.1)',
-                    color: '#22d3ee',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SecurityIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    SSL/TLS
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('emailConfig.secureConnection')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(167, 139, 250, 0.1)',
-                    color: '#a78bfa',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SettingsIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {t('emailConfig.configured')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('emailConfig.systemConfigured')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatGrid
+        items={[
+          {
+            key: 'total',
+            title: t('emailConfig.emailConfigs'),
+            value: emailConfigsLoading || emailConfigsError ? null : emailConfigs.length,
+            icon: <MailIcon />,
+            color: UI_COLORS.primary,
+          },
+          {
+            key: 'ssl',
+            title: t('emailConfig.sslConfigs'),
+            value:
+              emailConfigsLoading || emailConfigsError
+                ? null
+                : emailConfigs.filter((config) => config.is_ssl).length,
+            icon: <SecurityIcon />,
+            color: UI_COLORS.info,
+          },
+          {
+            key: 'receivers',
+            title: t('emailConfig.receiverAddresses'),
+            value:
+              emailConfigsLoading || emailConfigsError
+                ? null
+                : new Set(emailConfigs.map((config) => config.receiver_email)).size,
+            icon: <SettingsIcon />,
+            color: UI_COLORS.accent,
+          },
+        ]}
+      />
 
-      <Paper
-        sx={{
-          borderRadius: 4,
-          border: '1px solid rgba(0, 0, 0, 0.06)',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {t('emailConfig.sectionTitle')}
-          </Typography>
-        </Box>
+      <Alert severity="info" sx={{ mb: 3 }}>
+        {t('emailConfig.sectionDescription')}
+      </Alert>
 
-        <Box sx={{ p: 3, backgroundColor: 'rgba(37, 99, 235, 0.05)' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <InfoIcon sx={{ mr: 2, color: '#2563eb' }} />
-            <Typography variant="body2">
-              {t('emailConfig.sectionDescription')}
-            </Typography>
-          </Box>
-        </Box>
+      <SectionCard title={t('emailConfig.sectionTitle')} bareBody>
 
         {emailConfigsLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
@@ -436,38 +279,22 @@ const EmailConfig = () => {
         )}
 
         {showEmptyState && (
-          <Box sx={{ textAlign: 'center', p: 8 }}>
-            <Avatar
-              sx={{
-                bgcolor: 'rgba(37, 99, 235, 0.1)',
-                color: '#2563eb',
-                width: 80,
-                height: 80,
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <MailIcon sx={{ fontSize: 40 }} />
-            </Avatar>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              {t('emailConfig.noConfigs')}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {t('emailConfig.noConfigsSubtitle')}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-              sx={{
-                background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
-                textTransform: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              {t('emailConfig.createFirstConfig')}
-            </Button>
-          </Box>
+          <EmptyState
+            icon={<MailIcon />}
+            title={t('emailConfig.noConfigs')}
+            subtitle={t('emailConfig.noConfigsSubtitle')}
+            action={
+              <Button
+                variant="contained"
+                disableElevation
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog()}
+                sx={{ textTransform: 'none', borderRadius: 2 }}
+              >
+                {t('emailConfig.createFirstConfig')}
+              </Button>
+            }
+          />
         )}
 
         {showTable && (
@@ -497,7 +324,7 @@ const EmailConfig = () => {
                             width: 40,
                             height: 40,
                             mr: 2,
-                            background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
+                            bgcolor: UI_COLORS.info,
                             fontSize: '1rem',
                           }}
                         >
@@ -593,52 +420,18 @@ const EmailConfig = () => {
             {getApiErrorMessage(emailConfigsError, t('emailConfig.loadFailed'))}
           </Alert>
         )}
-      </Paper>
+      </SectionCard>
 
-      <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: 4,
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-            },
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
-            color: 'white',
-            py: 3,
-            '& .MuiTypography-root': {
-              fontWeight: 700,
-            },
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Avatar
-              sx={{
-                width: 40,
-                height: 40,
-                mr: 2,
-                background: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-              }}
-            >
-              {editingConfig ? <EditIcon /> : <AddIcon />}
-            </Avatar>
-            <Box>
-              <Typography variant="h6" component="span">
-                {editingConfig ? t('emailConfig.editDialogTitle') : t('emailConfig.createDialogTitle')}
-              </Typography>
-              <Typography variant="body2" component="div" sx={{ opacity: 0.9 }}>
-                {t('emailConfig.dialogSubtitle')}
-              </Typography>
-            </Box>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {editingConfig ? <EditIcon color="primary" /> : <AddIcon color="primary" />}
+          <Box>
+            <Typography variant="h6" component="div">
+              {editingConfig ? t('emailConfig.editDialogTitle') : t('emailConfig.createDialogTitle')}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {t('emailConfig.dialogSubtitle')}
+            </Typography>
           </Box>
         </DialogTitle>
         <form onSubmit={handleSubmit}>
@@ -862,19 +655,9 @@ const EmailConfig = () => {
             <Button
               type="submit"
               variant="contained"
+              disableElevation
               disabled={createConfigMutation.isPending || updateConfigMutation.isPending}
-              sx={{
-                background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
-                px: 4,
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 'bold',
-                boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #1d4ed8 30%, #1e40af 90%)',
-                  boxShadow: '0 6px 20px rgba(37, 99, 235, 0.4)',
-                },
-              }}
+              sx={{ textTransform: 'none', borderRadius: 2 }}
             >
               {editingConfig ? t('emailConfig.updateConfig') : t('emailConfig.createConfig')}
             </Button>
@@ -900,19 +683,6 @@ const EmailConfig = () => {
         onClose={closeFeedback}
       />
 
-      <Box
-        sx={{
-          mt: 4,
-          p: 3,
-          textAlign: 'center',
-          borderTop: '1px solid rgba(0, 0, 0, 0.06)',
-        }}
-      >
-        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-          {t('common.footerCta')}
-        </Typography>
-        <FooterLinks accent="#2563eb" />
-      </Box>
     </Box>
   );
 };

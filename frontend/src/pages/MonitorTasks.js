@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -26,9 +25,6 @@ import {
   MenuItem,
   Avatar,
   Tooltip,
-  Card,
-  CardContent,
-  alpha,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,9 +44,13 @@ import api, { getApiErrorMessage } from '../api/client';
 import { keys, EMAIL_CONFIG_SIMPLE } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import WebMonitorLogo from '../components/WebMonitorLogo';
-import FooterLinks from '../components/FooterLinks';
 import FeedbackSnackbar from '../components/FeedbackSnackbar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PageHeader from '../components/PageHeader';
+import StatGrid from '../components/StatGrid';
+import SectionCard from '../components/SectionCard';
+import EmptyState from '../components/EmptyState';
+import { UI_COLORS, UI_SURFACE } from '../theme/tokens';
 
 const emptyForm = {
   name: '',
@@ -262,311 +262,84 @@ const MonitorTasks = () => {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              color: '#1a1a1a',
-              mb: 1,
-            }}
+      <PageHeader
+        title={t('tasks.title')}
+        subtitle={t('tasks.subtitle')}
+        action={
+          <Button
+            variant="contained"
+            disableElevation
+            startIcon={<AddIcon />}
+            onClick={() => handleOpen()}
+            sx={{ textTransform: 'none', borderRadius: 2 }}
           >
-            {t('tasks.title')}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {t('tasks.subtitle')}
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpen()}
-          sx={{
-            background: 'linear-gradient(45deg, #10b981 30%, #059669 90%)',
-            py: 1.5,
-            px: 3,
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #059669 30%, #047857 90%)',
-              boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
-              transform: 'translateY(-2px)',
-            },
-          }}
-        >
-          {t('tasks.createTask')}
-        </Button>
-      </Box>
+            {t('tasks.createTask')}
+          </Button>
+        }
+      />
 
       {!user?.is_admin && (
-        <Card sx={{ mb: 4, backgroundColor: alpha('#ef4444', 0.04), border: `1px solid ${alpha('#ef4444', 0.12)}` }}>
-          <CardContent sx={{ py: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-              <WebMonitorLogo size={20} />
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#ef4444' }}>
-                {t('tasks.blacklistTitle')}
-              </Typography>
-            </Box>
-            <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-              • {t('tasks.blacklistItem1')}
-            </Typography>
-            <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-              • {t('tasks.blacklistItem2')}
-            </Typography>
-            <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-              • {t('tasks.blacklistItem3')}
-            </Typography>
-          </CardContent>
-        </Card>
+        <Alert severity="warning" sx={{ mb: 4 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+            {t('tasks.blacklistTitle')}
+          </Typography>
+          <Typography variant="body2">• {t('tasks.blacklistItem1')}</Typography>
+          <Typography variant="body2">• {t('tasks.blacklistItem2')}</Typography>
+          <Typography variant="body2">• {t('tasks.blacklistItem3')}</Typography>
+        </Alert>
       )}
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #10b981 0%, rgba(16, 185, 129, 0.6) 100%)',
-              },
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(16, 185, 129, 0.1)',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <WebMonitorLogo size={28} />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasks.length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('tasks.totalTasks')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #22d3ee 0%, rgba(34, 211, 238, 0.6) 100%)',
-              },
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(34, 211, 238, 0.1)',
-                    color: '#22d3ee',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SuccessIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasks.filter((task) => task.is_active).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('tasks.activeTasks')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #ef4444 0%, rgba(239, 68, 68, 0.6) 100%)',
-              },
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <PauseIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasks.filter((task) => !task.is_active).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('tasks.pausedTasks')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #a78bfa 0%, rgba(167, 139, 250, 0.6) 100%)',
-              },
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(167, 139, 250, 0.1)',
-                    color: '#a78bfa',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <NotificationsIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasks.filter((task) => task.email_config_id).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('tasks.emailNotifications')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatGrid
+        items={[
+          {
+            key: 'total',
+            title: t('tasks.totalTasks'),
+            value: tasks.length,
+            icon: <ScheduleIcon />,
+            color: UI_COLORS.primary,
+          },
+          {
+            key: 'active',
+            title: t('tasks.activeTasks'),
+            value: tasks.filter((task) => task.is_active).length,
+            icon: <SuccessIcon />,
+            color: UI_COLORS.info,
+          },
+          {
+            key: 'paused',
+            title: t('tasks.pausedTasks'),
+            value: tasks.filter((task) => !task.is_active).length,
+            icon: <PauseIcon />,
+            color: UI_COLORS.warning,
+          },
+          {
+            key: 'email',
+            title: t('tasks.emailNotifications'),
+            value: tasks.filter((task) => task.email_config_id).length,
+            icon: <NotificationsIcon />,
+            color: UI_COLORS.accent,
+          },
+        ]}
+      />
 
-      <Paper
-        sx={{
-          borderRadius: 4,
-          border: '1px solid rgba(0, 0, 0, 0.06)',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {t('tasks.taskList')}
-          </Typography>
-        </Box>
+      <SectionCard title={t('tasks.taskList')} bareBody>
         {tasks.length === 0 ? (
-          <Box sx={{ textAlign: 'center', p: 8 }}>
-            <Avatar
-              sx={{
-                bgcolor: 'rgba(16, 185, 129, 0.1)',
-                width: 80,
-                height: 80,
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <WebMonitorLogo size={48} />
-            </Avatar>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              {t('tasks.noTasks')}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {t('tasks.noTasksSubtitle')}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpen()}
-              sx={{
-                background: 'linear-gradient(45deg, #10b981 30%, #059669 90%)',
-                textTransform: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              {t('tasks.createFirstTask')}
-            </Button>
-          </Box>
+          <EmptyState
+            icon={<WebMonitorLogo size={40} />}
+            title={t('tasks.noTasks')}
+            subtitle={t('tasks.noTasksSubtitle')}
+            action={
+              <Button
+                variant="contained"
+                disableElevation
+                startIcon={<AddIcon />}
+                onClick={() => handleOpen()}
+                sx={{ textTransform: 'none', borderRadius: 2 }}
+              >
+                {t('tasks.createFirstTask')}
+              </Button>
+            }
+          />
         ) : (
           <TableContainer>
             <Table>
@@ -596,9 +369,7 @@ const MonitorTasks = () => {
                             width: 40,
                             height: 40,
                             mr: 2,
-                            background: task.is_active
-                              ? 'linear-gradient(45deg, #10b981 30%, #059669 90%)'
-                              : 'linear-gradient(45deg, #ef4444 30%, #dc2626 90%)',
+                            bgcolor: task.is_active ? UI_COLORS.primary : UI_COLORS.danger,
                             fontSize: '1rem',
                           }}
                         >
@@ -701,7 +472,7 @@ const MonitorTasks = () => {
             </Table>
           </TableContainer>
         )}
-      </Paper>
+      </SectionCard>
 
       <Dialog
         open={open}
@@ -711,22 +482,13 @@ const MonitorTasks = () => {
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 4,
-              border: '1px solid rgba(0, 0, 0, 0.06)',
+              borderRadius: UI_SURFACE.radius,
+              border: UI_SURFACE.border,
             },
           },
         }}
       >
-        <DialogTitle
-          sx={{
-            background: 'linear-gradient(45deg, #10b981 30%, #059669 90%)',
-            color: 'white',
-            py: 3,
-            '& .MuiTypography-root': {
-              fontWeight: 700,
-            },
-          }}
-        >
+        <DialogTitle sx={{ py: 3 }}>
           {editingTask ? t('tasks.editDialogTitle') : t('tasks.createDialogTitle')}
         </DialogTitle>
         <form onSubmit={handleSubmit}>
@@ -960,19 +722,9 @@ const MonitorTasks = () => {
             <Button
               type="submit"
               variant="contained"
+              disableElevation
               disabled={createMutation.isPending || updateMutation.isPending}
-              sx={{
-                background: 'linear-gradient(45deg, #10b981 30%, #059669 90%)',
-                px: 4,
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 'bold',
-                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #059669 30%, #047857 90%)',
-                  boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
-                },
-              }}
+              sx={{ px: 4, textTransform: 'none', borderRadius: 2 }}
             >
               {editingTask ? t('tasks.updateTask') : t('tasks.submitCreateTask')}
             </Button>
@@ -1002,19 +754,6 @@ const MonitorTasks = () => {
         onClose={closeFeedback}
       />
 
-      <Box
-        sx={{
-          mt: 4,
-          p: 3,
-          textAlign: 'center',
-          borderTop: '1px solid rgba(0, 0, 0, 0.06)',
-        }}
-      >
-        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-          {t('common.footerCta')}
-        </Typography>
-        <FooterLinks accent="#10b981" />
-      </Box>
     </Box>
   );
 };

@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   Button,
   Chip,
   Alert,
   Tooltip,
-  alpha,
   IconButton,
   FormControl,
   InputLabel,
@@ -16,7 +13,6 @@ import {
   MenuItem,
   FormControlLabel,
   Switch,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -24,7 +20,6 @@ import {
   TableHead,
   TableRow,
   Avatar,
-  Grid,
   CircularProgress,
 } from '@mui/material';
 import {
@@ -44,9 +39,14 @@ import api, { getApiErrorMessage } from '../api/client';
 import { keys, EMAIL_CONFIG_FULL } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import FeedbackSnackbar from '../components/FeedbackSnackbar';
 import FormDialog from '../components/FormDialog';
+import PageHeader from '../components/PageHeader';
+import SectionCard from '../components/SectionCard';
+import StatGrid from '../components/StatGrid';
 import WebMonitorLogo from '../components/WebMonitorLogo';
+import { UI_COLORS } from '../theme/tokens';
 import { formatDateTime } from '../utils/date';
 
 const MySubscriptions = () => {
@@ -185,33 +185,7 @@ const MySubscriptions = () => {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              color: '#1a1a1a',
-              mb: 1,
-            }}
-          >
-            {t('subscriptions.title')}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {t('subscriptions.subtitle')}
-          </Typography>
-        </Box>
-      </Box>
+      <PageHeader title={t('subscriptions.title')} subtitle={t('subscriptions.subtitle')} />
 
       {subscriptionsQuery.error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -220,278 +194,77 @@ const MySubscriptions = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #1976d2 0%, rgba(25, 118, 210, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(25, 118, 210, 0.1)',
-                    color: '#1976d2',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SubscriptionsIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {subscriptionsQuery.isLoading ? emptyValue : subscriptions.length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('subscriptions.totalSubscriptions')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #10b981 0%, rgba(16, 185, 129, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(16, 185, 129, 0.1)',
-                    color: '#10b981',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <NotificationsActiveIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {subscriptionsQuery.isLoading
-                    ? emptyValue
-                    : subscriptions.filter((subscription) => subscription.is_active).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('subscriptions.notificationsEnabled')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #ef4444 0%, rgba(239, 68, 68, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <NotificationsOffIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {subscriptionsQuery.isLoading
-                    ? emptyValue
-                    : subscriptions.filter((subscription) => !subscription.is_active).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('subscriptions.notificationsDisabled')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #a78bfa 0%, rgba(167, 139, 250, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(167, 139, 250, 0.1)',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <WebMonitorLogo size={28} />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {emailConfigsQuery.isLoading ? emptyValue : emailConfigs.length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('subscriptions.emailConfigs')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatGrid
+        items={[
+          {
+            key: 'totalSubscriptions',
+            title: t('subscriptions.totalSubscriptions'),
+            value: subscriptionsQuery.isLoading || subscriptionsQuery.isError ? null : subscriptions.length,
+            icon: <SubscriptionsIcon />,
+            color: UI_COLORS.primary,
+          },
+          {
+            key: 'notificationsEnabled',
+            title: t('subscriptions.notificationsEnabled'),
+            value:
+              subscriptionsQuery.isLoading || subscriptionsQuery.isError
+                ? null
+                : subscriptions.filter((subscription) => subscription.is_active).length,
+            icon: <NotificationsActiveIcon />,
+            color: UI_COLORS.info,
+          },
+          {
+            key: 'notificationsDisabled',
+            title: t('subscriptions.notificationsDisabled'),
+            value:
+              subscriptionsQuery.isLoading || subscriptionsQuery.isError
+                ? null
+                : subscriptions.filter((subscription) => !subscription.is_active).length,
+            icon: <NotificationsOffIcon />,
+            color: UI_COLORS.danger,
+          },
+          {
+            key: 'emailConfigs',
+            title: t('subscriptions.emailConfigs'),
+            value: emailConfigsQuery.isLoading || emailConfigsQuery.isError ? null : emailConfigs.length,
+            icon: <WebMonitorLogo size={28} />,
+            color: UI_COLORS.accent,
+          },
+        ]}
+      />
 
-      <Card sx={{ mb: 4, backgroundColor: alpha('#1976d2', 0.04), border: `1px solid ${alpha('#1976d2', 0.12)}` }}>
-        <CardContent sx={{ py: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-            <SettingsIcon sx={{ fontSize: 20, color: '#1976d2' }} />
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2' }}>
-              {t('subscriptions.guideTitle')}
-            </Typography>
-          </Box>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('subscriptions.guideLine1')}
-          </Typography>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('subscriptions.guideLine2')}
-          </Typography>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('subscriptions.guideLine3')}
-          </Typography>
-        </CardContent>
-      </Card>
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <Typography variant="body2">• {t('subscriptions.guideLine1')}</Typography>
+        <Typography variant="body2">• {t('subscriptions.guideLine2')}</Typography>
+        <Typography variant="body2">• {t('subscriptions.guideLine3')}</Typography>
+      </Alert>
 
-      <Paper
-        sx={{
-          borderRadius: 4,
-          border: '1px solid rgba(0, 0, 0, 0.06)',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {t('subscriptions.listTitle')}
-          </Typography>
-        </Box>
+      <SectionCard title={t('subscriptions.listTitle')} bareBody>
         {subscriptionsQuery.isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
             <CircularProgress />
           </Box>
         ) : subscriptions.length === 0 ? (
-          <Box sx={{ textAlign: 'center', p: 8 }}>
-            <Avatar
-              sx={{
-                bgcolor: 'rgba(25, 118, 210, 0.1)',
-                color: '#1976d2',
-                width: 80,
-                height: 80,
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <SubscriptionsIcon sx={{ fontSize: 40 }} />
-            </Avatar>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              {t('subscriptions.noSubscriptions')}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {t('subscriptions.noSubscriptionsSubtitle')}
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              href="/public-tasks"
-              sx={{
-                background: 'linear-gradient(45deg, #1976d2 30%, #1565c0 90%)',
-                textTransform: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              {t('subscriptions.browsePublicTasks')}
-            </Button>
-          </Box>
+          <EmptyState
+            icon={<SubscriptionsIcon />}
+            title={t('subscriptions.noSubscriptions')}
+            subtitle={t('subscriptions.noSubscriptionsSubtitle')}
+            action={
+              <Button
+                variant="contained"
+                disableElevation
+                href="/public-tasks"
+                sx={{ textTransform: 'none', borderRadius: 2 }}
+              >
+                {t('subscriptions.browsePublicTasks')}
+              </Button>
+            }
+          />
         ) : (
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.05)' }}>
+                <TableRow sx={{ backgroundColor: 'action.hover' }}>
                   <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.taskInfo')}</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.taskUrl')}</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.notificationStatus')}</TableCell>
@@ -505,7 +278,7 @@ const MySubscriptions = () => {
                   <TableRow
                     key={subscription.id}
                     sx={{
-                      '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.03)' },
+                      '&:hover': { backgroundColor: 'action.hover' },
                       transition: 'all 0.2s ease',
                     }}
                   >
@@ -516,9 +289,8 @@ const MySubscriptions = () => {
                             width: 40,
                             height: 40,
                             mr: 2,
-                            background: subscription.is_active
-                              ? 'linear-gradient(45deg, #10b981 30%, #059669 90%)'
-                              : 'linear-gradient(45deg, #ef4444 30%, #dc2626 90%)',
+                            bgcolor: subscription.is_active ? UI_COLORS.primary : UI_COLORS.danger,
+                            color: 'white',
                             fontSize: '1rem',
                           }}
                         >
@@ -583,8 +355,8 @@ const MySubscriptions = () => {
                             size="small"
                             onClick={() => handleOpenEditDialog(subscription)}
                             sx={{
-                              color: '#1976d2',
-                              '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' },
+                              color: UI_COLORS.info,
+                              '&:hover': { backgroundColor: 'action.hover' },
                             }}
                           >
                             <EditIcon />
@@ -595,8 +367,8 @@ const MySubscriptions = () => {
                             size="small"
                             onClick={() => handleRequestDelete(subscription)}
                             sx={{
-                              color: '#ef4444',
-                              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
+                              color: UI_COLORS.danger,
+                              '&:hover': { backgroundColor: 'action.hover' },
                             }}
                           >
                             <DeleteIcon />
@@ -610,7 +382,7 @@ const MySubscriptions = () => {
             </Table>
           </TableContainer>
         )}
-      </Paper>
+      </SectionCard>
 
       <FormDialog
         open={editDialogOpen}

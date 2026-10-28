@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -17,10 +16,6 @@ import {
   Alert,
   Pagination,
   CircularProgress,
-  Grid,
-  Card,
-  CardContent,
-  Avatar,
 } from '@mui/material';
 import {
   ListAlt as ListAltIcon,
@@ -33,10 +28,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { formatDateTime } from '../utils/date';
-import FooterLinks from '../components/FooterLinks';
 import { useAuth } from '../contexts/AuthContext';
 import api, { getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
+import PageHeader from '../components/PageHeader';
+import StatGrid from '../components/StatGrid';
+import SectionCard from '../components/SectionCard';
+import EmptyState from '../components/EmptyState';
+import { UI_COLORS, UI_SURFACE } from '../theme/tokens';
 
 const MonitorLogs = () => {
   const [selectedTaskId, setSelectedTaskId] = useState('');
@@ -116,58 +115,26 @@ const MonitorLogs = () => {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              color: '#1a1a1a',
-              mb: 1,
-            }}
-          >
-            {t('logs.title')}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {t('logs.subtitle')}
-          </Typography>
-        </Box>
-        <FormControl sx={{ minWidth: 220 }} disabled={!hasTasks}>
-          <InputLabel>{t('logs.selectTask')}</InputLabel>
-          <Select
-            value={selectedTaskId}
-            label={t('logs.selectTask')}
-            onChange={handleTaskChange}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: 'rgba(25, 118, 210, 0.5)',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#1976d2',
-                  borderWidth: 2,
-                },
-              },
-            }}
-          >
-            {tasks.map((task) => (
-              <MenuItem key={task.id} value={task.id}>
-                {task.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
+      <PageHeader
+        title={t('logs.title')}
+        subtitle={t('logs.subtitle')}
+        action={
+          <FormControl sx={{ minWidth: 220 }} disabled={!hasTasks}>
+            <InputLabel>{t('logs.selectTask')}</InputLabel>
+            <Select
+              value={selectedTaskId}
+              label={t('logs.selectTask')}
+              onChange={handleTaskChange}
+            >
+              {tasks.map((task) => (
+                <MenuItem key={task.id} value={task.id}>
+                  {task.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        }
+      />
 
       {!hasTasks && !tasksQuery.isLoading && (
         <Alert severity="info" sx={{ mb: 3 }}>
@@ -183,217 +150,48 @@ const MonitorLogs = () => {
 
       {selectedTaskId ? (
         <>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                  border: '1px solid rgba(0, 0, 0, 0.06)',
-                  borderRadius: 3,
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  '&:hover': {
-                    transform: 'translateY(-4px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: 'linear-gradient(90deg, #1976d2 0%, rgba(25, 118, 210, 0.6) 100%)',
-                  },
-                  position: 'relative',
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(25, 118, 210, 0.1)',
-                        color: '#1976d2',
-                        width: 48,
-                        height: 48,
-                      }}
-                    >
-                      <ListAltIcon />
-                    </Avatar>
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {logsError ? t('common.emptyValue') : totalCount}
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {t('logs.totalLogs')}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                  border: '1px solid rgba(0, 0, 0, 0.06)',
-                  borderRadius: 3,
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  '&:hover': {
-                    transform: 'translateY(-4px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: 'linear-gradient(90deg, #10b981 0%, rgba(16, 185, 129, 0.6) 100%)',
-                  },
-                  position: 'relative',
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(16, 185, 129, 0.1)',
-                        color: '#10b981',
-                        width: 48,
-                        height: 48,
-                      }}
-                    >
-                      <CheckCircleIcon />
-                    </Avatar>
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {logsError ? t('common.emptyValue') : logs.filter((log) => !log.error_message && !log.is_changed).length}
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {t('logs.unchanged')}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                  border: '1px solid rgba(0, 0, 0, 0.06)',
-                  borderRadius: 3,
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  '&:hover': {
-                    transform: 'translateY(-4px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: 'linear-gradient(90deg, #f59e0b 0%, rgba(245, 158, 11, 0.6) 100%)',
-                  },
-                  position: 'relative',
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(245, 158, 11, 0.1)',
-                        color: '#f59e0b',
-                        width: 48,
-                        height: 48,
-                      }}
-                    >
-                      <WarningIcon />
-                    </Avatar>
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {logsError ? t('common.emptyValue') : logs.filter((log) => log.is_changed && !log.error_message).length}
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {t('logs.changed')}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card
-                sx={{
-                  height: '100%',
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                  border: '1px solid rgba(0, 0, 0, 0.06)',
-                  borderRadius: 3,
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  '&:hover': {
-                    transform: 'translateY(-4px) scale(1.02)',
-                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: 'linear-gradient(90deg, #ef4444 0%, rgba(239, 68, 68, 0.6) 100%)',
-                  },
-                  position: 'relative',
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: 'rgba(239, 68, 68, 0.1)',
-                        color: '#ef4444',
-                        width: 48,
-                        height: 48,
-                      }}
-                    >
-                      <ErrorIcon />
-                    </Avatar>
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                      {logsError ? t('common.emptyValue') : logs.filter((log) => log.error_message).length}
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {t('logs.error')}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+          <StatGrid
+            items={[
+              {
+                key: 'total',
+                title: t('logs.totalLogs'),
+                value: logsError ? null : totalCount,
+                icon: <ListAltIcon />,
+                color: UI_COLORS.primary,
+              },
+              {
+                key: 'unchanged',
+                title: t('logs.unchanged'),
+                value: logsError
+                  ? null
+                  : logs.filter((log) => !log.error_message && !log.is_changed).length,
+                icon: <CheckCircleIcon />,
+                color: UI_COLORS.info,
+              },
+              {
+                key: 'changed',
+                title: t('logs.changed'),
+                value: logsError
+                  ? null
+                  : logs.filter((log) => log.is_changed && !log.error_message).length,
+                icon: <WarningIcon />,
+                color: UI_COLORS.warning,
+              },
+              {
+                key: 'error',
+                title: t('logs.error'),
+                value: logsError ? null : logs.filter((log) => log.error_message).length,
+                icon: <ErrorIcon />,
+                color: UI_COLORS.danger,
+              },
+            ]}
+          />
 
-          <Paper
-            sx={{
-              borderRadius: 4,
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              overflow: 'hidden',
-            }}
-          >
-            <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                {t('logs.tableTitle')}
-              </Typography>
-            </Box>
+          <SectionCard title={t('logs.tableTitle')} bareBody>
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.05)' }}>
+                  <TableRow>
                     <TableCell sx={{ fontWeight: 600 }}>{t('logs.checkTime')}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{t('logs.status')}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{t('logs.newContent')}</TableCell>
@@ -404,7 +202,7 @@ const MonitorLogs = () => {
                   {logsLoading ? (
                     <TableRow>
                       <TableCell colSpan={4} sx={{ textAlign: 'center', py: 8 }}>
-                        <CircularProgress size={32} sx={{ color: '#1976d2' }} />
+                        <CircularProgress size={32} sx={{ color: UI_COLORS.primary }} />
                         <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
                           {t('common.loading')}
                         </Typography>
@@ -412,13 +210,7 @@ const MonitorLogs = () => {
                     </TableRow>
                   ) : (
                     logs.map((log) => (
-                      <TableRow
-                        key={log.id}
-                        sx={{
-                          '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.03)' },
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
+                      <TableRow key={log.id}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <ScheduleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
@@ -482,25 +274,12 @@ const MonitorLogs = () => {
                   )}
                   {!logsLoading && !logsError && logs.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} sx={{ textAlign: 'center', py: 8 }}>
-                        <Avatar
-                          sx={{
-                            bgcolor: 'rgba(25, 118, 210, 0.1)',
-                            color: '#1976d2',
-                            width: 80,
-                            height: 80,
-                            mx: 'auto',
-                            mb: 2,
-                          }}
-                        >
-                          <ListAltIcon sx={{ fontSize: 40 }} />
-                        </Avatar>
-                        <Typography variant="h6" sx={{ mb: 1 }}>
-                          {t('logs.noLogs')}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {t('logs.noLogsSubtitle')}
-                        </Typography>
+                      <TableCell colSpan={4}>
+                        <EmptyState
+                          icon={<ListAltIcon />}
+                          title={t('logs.noLogs')}
+                          subtitle={t('logs.noLogsSubtitle')}
+                        />
                       </TableCell>
                     </TableRow>
                   )}
@@ -508,7 +287,7 @@ const MonitorLogs = () => {
               </Table>
             </TableContainer>
 
-            <Box sx={{ p: 3, borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
+            <Box sx={{ p: 3, borderTop: UI_SURFACE.divider }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   {paginationSummary}
@@ -543,51 +322,18 @@ const MonitorLogs = () => {
                 </Box>
               </Box>
             </Box>
-          </Paper>
+          </SectionCard>
         </>
       ) : (
-        <Paper
-          sx={{
-            borderRadius: 4,
-            border: '1px solid rgba(0, 0, 0, 0.06)',
-            p: 8,
-            textAlign: 'center',
-          }}
-        >
-          <Avatar
-            sx={{
-              bgcolor: 'rgba(25, 118, 210, 0.1)',
-              color: '#1976d2',
-              width: 80,
-              height: 80,
-              mx: 'auto',
-              mb: 2,
-            }}
-          >
-            <ListAltIcon sx={{ fontSize: 40 }} />
-          </Avatar>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            {t('logs.selectTaskEmpty')}
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {t('logs.selectTaskSubtitle')}
-          </Typography>
-        </Paper>
+        <SectionCard bareBody>
+          <EmptyState
+            icon={<ListAltIcon />}
+            title={t('logs.selectTaskEmpty')}
+            subtitle={t('logs.selectTaskSubtitle')}
+          />
+        </SectionCard>
       )}
 
-      <Box
-        sx={{
-          mt: 4,
-          p: 3,
-          textAlign: 'center',
-          borderTop: '1px solid rgba(0, 0, 0, 0.06)',
-        }}
-      >
-        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-          {t('common.footerCta')}
-        </Typography>
-        <FooterLinks accent="#1976d2" />
-      </Box>
     </Box>
   );
 };

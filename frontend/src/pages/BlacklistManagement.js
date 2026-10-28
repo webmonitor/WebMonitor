@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   Button,
   TextField,
@@ -12,8 +10,6 @@ import {
   FormControlLabel,
   Switch,
   Tooltip,
-  alpha,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -21,7 +17,6 @@ import {
   TableHead,
   TableRow,
   Avatar,
-  Grid,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,8 +35,13 @@ import api, { getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import FeedbackSnackbar from '../components/FeedbackSnackbar';
 import FormDialog from '../components/FormDialog';
+import PageHeader from '../components/PageHeader';
+import SectionCard from '../components/SectionCard';
+import StatGrid from '../components/StatGrid';
+import { UI_COLORS } from '../theme/tokens';
 
 const BlacklistManagement = () => {
   const { t, i18n } = useTranslation();
@@ -172,272 +172,64 @@ const BlacklistManagement = () => {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              color: '#1a1a1a',
-              mb: 1,
-            }}
+      <PageHeader
+        title={t('blacklist.title')}
+        subtitle={t('blacklist.subtitle')}
+        action={
+          <Button
+            variant="contained"
+            disableElevation
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+            sx={{ textTransform: 'none', borderRadius: 2 }}
           >
-            {t('blacklist.title')}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {t('blacklist.subtitle')}
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{
-            background: 'linear-gradient(45deg, #1976d2 30%, #1565c0 90%)',
-            py: 1.5,
-            px: 3,
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 15px rgba(25, 118, 210, 0.3)',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #1565c0 30%, #0d47a1 90%)',
-              boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
-              transform: 'translateY(-2px)',
-            },
-          }}
-        >
-          {t('blacklist.addDomain')}
-        </Button>
-      </Box>
+            {t('blacklist.addDomain')}
+          </Button>
+        }
+      />
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #1976d2 0%, rgba(25, 118, 210, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(25, 118, 210, 0.1)',
-                    color: '#1976d2',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SecurityIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {domains.length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('blacklist.totalDomains')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #ef4444 0%, rgba(239, 68, 68, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <BlockIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {domains.filter((domain) => domain.is_active).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('blacklist.active')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #6b7280 0%, rgba(107, 114, 128, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(107, 114, 128, 0.1)',
-                    color: '#6b7280',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <BlockOffIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {domains.filter((domain) => !domain.is_active).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('blacklist.disabled')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #a78bfa 0%, rgba(167, 139, 250, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(167, 139, 250, 0.1)',
-                    color: '#a78bfa',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <LanguageIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {domains.filter((domain) => domain.domain.startsWith('*')).length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('blacklist.wildcardDomains')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatGrid
+        items={[
+          {
+            key: 'total',
+            title: t('blacklist.totalDomains'),
+            value: domains.length,
+            icon: <SecurityIcon />,
+            color: UI_COLORS.primary,
+          },
+          {
+            key: 'exact',
+            title: t('blacklist.exactDomains'),
+            value: domains.filter((domain) => !domain.domain.startsWith('*') && domain.domain.includes('.')).length,
+            icon: <BlockIcon />,
+            color: UI_COLORS.info,
+          },
+          {
+            key: 'partial',
+            title: t('blacklist.partialDomains'),
+            value: domains.filter((domain) => !domain.domain.startsWith('*') && !domain.domain.includes('.')).length,
+            icon: <BlockOffIcon />,
+            color: UI_COLORS.warning,
+          },
+          {
+            key: 'wildcard',
+            title: t('blacklist.wildcardDomains'),
+            value: domains.filter((domain) => domain.domain.startsWith('*')).length,
+            icon: <LanguageIcon />,
+            color: UI_COLORS.accent,
+          },
+        ]}
+      />
 
-      <Card sx={{ mb: 4, backgroundColor: alpha('#1976d2', 0.04), border: `1px solid ${alpha('#1976d2', 0.12)}` }}>
-        <CardContent sx={{ py: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-            <SecurityIcon sx={{ fontSize: 20, color: '#1976d2' }} />
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2' }}>
-              {t('blacklist.guideTitle')}
-            </Typography>
-          </Box>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('blacklist.guideLine1')}
-          </Typography>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('blacklist.guideLine2')}
-          </Typography>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('blacklist.guideLine3')}
-          </Typography>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('blacklist.guideLine4')}
-          </Typography>
-        </CardContent>
-      </Card>
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+          {t('blacklist.guideTitle')}
+        </Typography>
+        <Typography variant="body2">• {t('blacklist.guideLine1')}</Typography>
+        <Typography variant="body2">• {t('blacklist.guideLine2')}</Typography>
+        <Typography variant="body2">• {t('blacklist.guideLine3')}</Typography>
+        <Typography variant="body2">• {t('blacklist.guideLine4')}</Typography>
+      </Alert>
 
       {loadError && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -445,51 +237,24 @@ const BlacklistManagement = () => {
         </Alert>
       )}
 
-      <Paper
-        sx={{
-          borderRadius: 4,
-          border: '1px solid rgba(0, 0, 0, 0.06)',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {t('blacklist.listTitle')}
-          </Typography>
-        </Box>
+      <SectionCard title={t('blacklist.listTitle')} bareBody>
         {domains.length === 0 ? (
-          <Box sx={{ textAlign: 'center', p: 8 }}>
-            <Avatar
-              sx={{
-                bgcolor: 'rgba(25, 118, 210, 0.1)',
-                color: '#1976d2',
-                width: 80,
-                height: 80,
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <SecurityIcon sx={{ fontSize: 40 }} />
-            </Avatar>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              {t('blacklist.noDomains')}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {t('blacklist.noDomainsSubtitle')}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-              sx={{
-                background: 'linear-gradient(45deg, #1976d2 30%, #1565c0 90%)',
-                textTransform: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              {t('blacklist.addFirstDomain')}
-            </Button>
-          </Box>
+          <EmptyState
+            icon={<SecurityIcon />}
+            title={t('blacklist.noDomains')}
+            subtitle={t('blacklist.noDomainsSubtitle')}
+            action={
+              <Button
+                variant="contained"
+                disableElevation
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog()}
+                sx={{ textTransform: 'none', borderRadius: 2 }}
+              >
+                {t('blacklist.addFirstDomain')}
+              </Button>
+            }
+          />
         ) : (
           <TableContainer>
             <Table>
@@ -518,9 +283,7 @@ const BlacklistManagement = () => {
                             width: 40,
                             height: 40,
                             mr: 2,
-                            background: domain.is_active
-                              ? 'linear-gradient(45deg, #ef4444 30%, #dc2626 90%)'
-                              : 'linear-gradient(45deg, #6b7280 30%, #4b5563 90%)',
+                            bgcolor: domain.is_active ? UI_COLORS.danger : 'grey.500',
                             fontSize: '1rem',
                           }}
                         >
@@ -591,7 +354,7 @@ const BlacklistManagement = () => {
             </Table>
           </TableContainer>
         )}
-      </Paper>
+      </SectionCard>
 
       <FormDialog
         open={dialogOpen}

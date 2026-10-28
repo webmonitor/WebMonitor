@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -22,8 +21,6 @@ import {
   Switch,
   Avatar,
   Tooltip,
-  Card,
-  CardContent,
   InputAdornment,
 } from '@mui/material';
 import {
@@ -47,8 +44,12 @@ import api, { getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import FeedbackSnackbar from '../components/FeedbackSnackbar';
-import FooterLinks from '../components/FooterLinks';
+import PageHeader from '../components/PageHeader';
+import SectionCard from '../components/SectionCard';
+import StatGrid from '../components/StatGrid';
+import { UI_COLORS } from '../theme/tokens';
 
 const UserManagement = () => {
   const [open, setOpen] = useState(false);
@@ -217,249 +218,77 @@ const UserManagement = () => {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              color: '#1a1a1a',
-              mb: 1,
-            }}
+      <PageHeader
+        title={t('users.title')}
+        subtitle={t('users.subtitle')}
+        action={
+          <Button
+            variant="contained"
+            disableElevation
+            startIcon={<AddIcon />}
+            onClick={() => handleOpen()}
+            sx={{ textTransform: 'none', borderRadius: 2 }}
           >
-            {t('users.title')}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {t('users.subtitle')}
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpen()}
-          sx={{
-            background: 'linear-gradient(45deg, #a78bfa 30%, #8b5cf6 90%)',
-            py: 1.5,
-            px: 3,
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 15px rgba(167, 139, 250, 0.3)',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #8b5cf6 30%, #7c3aed 90%)',
-              boxShadow: '0 6px 20px rgba(167, 139, 250, 0.4)',
-              transform: 'translateY(-2px)',
-            },
-          }}
-        >
-          {t('users.createUser')}
-        </Button>
-      </Box>
+            {t('users.createUser')}
+          </Button>
+        }
+      />
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(167, 139, 250, 0.1)',
-                    color: '#a78bfa',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <PeopleIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {users.length}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('users.totalUsers')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(34, 211, 238, 0.1)',
-                    color: '#22d3ee',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SuccessIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {users.filter((user) => user.is_active).length}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('users.activeUsers')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(245, 158, 11, 0.1)',
-                    color: '#f59e0b',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <AdminIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {users.filter((user) => user.is_admin).length}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('users.admins')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(16, 185, 129, 0.1)',
-                    color: '#10b981',
-                    mr: 2,
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <SecurityIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {t('users.securityLevel')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('users.high')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatGrid
+        items={[
+          {
+            key: 'total',
+            title: t('users.totalUsers'),
+            value: users.length,
+            icon: <PeopleIcon />,
+            color: UI_COLORS.primary,
+          },
+          {
+            key: 'active',
+            title: t('users.activeUsers'),
+            value: users.filter((user) => user.is_active).length,
+            icon: <SuccessIcon />,
+            color: UI_COLORS.info,
+          },
+          {
+            key: 'admins',
+            title: t('users.admins'),
+            value: users.filter((user) => user.is_admin).length,
+            icon: <AdminIcon />,
+            color: UI_COLORS.warning,
+          },
+          {
+            key: 'inactive',
+            title: t('users.disabledUsers'),
+            value: users.filter((user) => !user.is_active).length,
+            icon: <SecurityIcon />,
+            color: UI_COLORS.accent,
+          },
+        ]}
+      />
 
-      <Paper
-        sx={{
-          borderRadius: 4,
-          border: '1px solid rgba(0, 0, 0, 0.06)',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {t('users.listTitle')}
-          </Typography>
-        </Box>
+      <Alert severity="info" sx={{ mb: 3 }}>
+        {t('users.guideText')}
+      </Alert>
 
-        <Box sx={{ p: 3, backgroundColor: 'rgba(167, 139, 250, 0.05)' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <SecurityIcon sx={{ mr: 2, color: '#a78bfa' }} />
-            <Typography variant="body2">
-              {t('users.guideText')}
-            </Typography>
-          </Box>
-        </Box>
-
+      <SectionCard title={t('users.listTitle')} bareBody>
         {users.length === 0 ? (
-          <Box sx={{ textAlign: 'center', p: 8 }}>
-            <Avatar
-              sx={{
-                bgcolor: 'rgba(167, 139, 250, 0.1)',
-                color: '#a78bfa',
-                width: 80,
-                height: 80,
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <PeopleIcon sx={{ fontSize: 40 }} />
-            </Avatar>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              {t('users.noUsers')}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-              {t('users.noUsersSubtitle')}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpen()}
-              sx={{
-                background: 'linear-gradient(45deg, #a78bfa 30%, #8b5cf6 90%)',
-                textTransform: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              {t('users.createFirstUser')}
-            </Button>
-          </Box>
+          <EmptyState
+            icon={<PeopleIcon />}
+            title={t('users.noUsers')}
+            subtitle={t('users.noUsersSubtitle')}
+            action={
+              <Button
+                variant="contained"
+                disableElevation
+                startIcon={<AddIcon />}
+                onClick={() => handleOpen()}
+                sx={{ textTransform: 'none', borderRadius: 2 }}
+              >
+                {t('users.createFirstUser')}
+              </Button>
+            }
+          />
         ) : (
           <TableContainer>
             <Table>
@@ -489,9 +318,7 @@ const UserManagement = () => {
                             width: 40,
                             height: 40,
                             mr: 2,
-                            background: user.is_admin
-                              ? 'linear-gradient(45deg, #f59e0b 30%, #d97706 90%)'
-                              : 'linear-gradient(45deg, #a78bfa 30%, #8b5cf6 90%)',
+                            bgcolor: user.is_admin ? UI_COLORS.warning : UI_COLORS.accent,
                             fontSize: '1rem',
                           }}
                         >
@@ -583,7 +410,7 @@ const UserManagement = () => {
             </Table>
           </TableContainer>
         )}
-      </Paper>
+      </SectionCard>
 
       <Dialog
         open={open}
@@ -591,45 +418,16 @@ const UserManagement = () => {
         maxWidth="md"
         fullWidth
         disableEnforceFocus
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: 4,
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-            },
-          },
-        }}
       >
-        <DialogTitle
-          sx={{
-            background: 'linear-gradient(45deg, #a78bfa 30%, #8b5cf6 90%)',
-            color: 'white',
-            py: 3,
-            '& .MuiTypography-root': {
-              fontWeight: 700,
-            },
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Avatar
-              sx={{
-                width: 40,
-                height: 40,
-                mr: 2,
-                background: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-              }}
-            >
-              {editingUser ? <EditIcon /> : <AddIcon />}
-            </Avatar>
-            <Box>
-              <Typography variant="h6" component="span">
-                {editingUser ? t('users.editDialogTitle') : t('users.createDialogTitle')}
-              </Typography>
-              <Typography variant="body2" component="div" sx={{ opacity: 0.9 }}>
-                {editingUser ? t('users.editDialogSubtitle') : t('users.createDialogSubtitle')}
-              </Typography>
-            </Box>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {editingUser ? <EditIcon color="primary" /> : <AddIcon color="primary" />}
+          <Box>
+            <Typography variant="h6" component="div">
+              {editingUser ? t('users.editDialogTitle') : t('users.createDialogTitle')}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {editingUser ? t('users.editDialogSubtitle') : t('users.createDialogSubtitle')}
+            </Typography>
           </Box>
         </DialogTitle>
         <form onSubmit={handleSubmit}>
@@ -852,19 +650,9 @@ const UserManagement = () => {
             <Button
               type="submit"
               variant="contained"
+              disableElevation
               disabled={createMutation.isPending || updateMutation.isPending}
-              sx={{
-                background: 'linear-gradient(45deg, #a78bfa 30%, #8b5cf6 90%)',
-                px: 4,
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 'bold',
-                boxShadow: '0 4px 15px rgba(167, 139, 250, 0.3)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #8b5cf6 30%, #7c3aed 90%)',
-                  boxShadow: '0 6px 20px rgba(167, 139, 250, 0.4)',
-                },
-              }}
+              sx={{ textTransform: 'none', borderRadius: 2 }}
             >
               {editingUser ? t('users.updateUser') : t('users.createUserAction')}
             </Button>
@@ -890,19 +678,6 @@ const UserManagement = () => {
         onClose={closeFeedback}
       />
 
-      <Box
-        sx={{
-          mt: 4,
-          p: 3,
-          textAlign: 'center',
-          borderTop: '1px solid rgba(0, 0, 0, 0.06)',
-        }}
-      >
-        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-          {t('common.footerCta')}
-        </Typography>
-        <FooterLinks accent="#a78bfa" />
-      </Box>
     </Box>
   );
 };

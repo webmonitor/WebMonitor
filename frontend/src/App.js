@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import PageLoading from './components/PageLoading';
 import PageErrorBoundary from './components/PageErrorBoundary';
+import { UI_COLORS } from './theme/tokens';
 
 // 十二个页面全部按路由懒加载：只有进入页面时才下载对应 chunk。
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -55,11 +56,54 @@ const queryClient = new QueryClient({
 });
 
 // 创建MUI主题
+//
+// 调色板与组件默认值只在这里定义一次：
+// - primary 是品牌绿（与侧栏选中态、语言切换器一致），不再和 MUI 默认蓝混用；
+// - 按钮一律 disableElevation + 不转大写 + 圆角 8，页面里不用再逐处写；
+// - 卡片/弹窗统一 12px 圆角，与 UI_SURFACE.radius 对齐。
 const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#1976d2' },
-    secondary: { main: '#dc004e' },
+    primary: { main: UI_COLORS.primary },
+    secondary: { main: UI_COLORS.info },
+    success: { main: UI_COLORS.primary },
+    info: { main: UI_COLORS.info },
+    warning: { main: UI_COLORS.warning },
+    error: { main: UI_COLORS.danger },
+  },
+  shape: { borderRadius: 8 },
+  components: {
+    MuiButton: {
+      defaultProps: { disableElevation: true },
+      styleOverrides: {
+        root: { textTransform: 'none', borderRadius: 8, fontWeight: 600 },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        rounded: { borderRadius: 12 },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: { borderRadius: 12 },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: { borderRadius: 12 },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: { borderRadius: 8, fontWeight: 600 },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        head: { fontWeight: 600 },
+      },
+    },
   },
   typography: {
     fontFamily: FONT_STACK,

@@ -1,15 +1,11 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   Button,
   Chip,
   Alert,
   Tooltip,
-  alpha,
-  Grid,
   IconButton,
   Dialog,
   DialogTitle,
@@ -19,7 +15,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -47,7 +42,12 @@ import api, { getApiErrorMessage } from '../api/client';
 import { keys, EMAIL_CONFIG_SIMPLE } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackSnackbar from '../components/FeedbackSnackbar';
+import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import SectionCard from '../components/SectionCard';
+import StatGrid from '../components/StatGrid';
 import WebMonitorLogo from '../components/WebMonitorLogo';
+import { UI_COLORS } from '../theme/tokens';
 import { formatDateTime } from '../utils/date';
 
 const PublicTasks = () => {
@@ -65,8 +65,6 @@ const PublicTasks = () => {
   const [subscribeTaskId, setSubscribeTaskId] = useState(null);
   const [emailConfigDialogOpen, setEmailConfigDialogOpen] = useState(false);
   const [selectedEmailConfig, setSelectedEmailConfig] = useState('');
-
-  const emptyValue = t('common.emptyValue');
 
   const tasksQuery = useQuery({
     queryKey: keys.publicTasks(user?.id),
@@ -180,33 +178,7 @@ const PublicTasks = () => {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              color: '#1a1a1a',
-              mb: 1,
-            }}
-          >
-            {t('publicTasks.title')}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            {t('publicTasks.subtitle')}
-          </Typography>
-        </Box>
-      </Box>
+      <PageHeader title={t('publicTasks.title')} subtitle={t('publicTasks.subtitle')} />
 
       {tasksQuery.error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -221,268 +193,66 @@ const PublicTasks = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #1976d2 0%, rgba(25, 118, 210, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(25, 118, 210, 0.1)',
-                    color: '#1976d2',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <PublicIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasksQuery.isLoading ? emptyValue : tasks.length}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('publicTasks.publicTasks')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #10b981 0%, rgba(16, 185, 129, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(16, 185, 129, 0.1)',
-                    color: '#10b981',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <PeopleIcon />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {subscriptionInfo?.current_subscriptions ?? emptyValue}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('publicTasks.mySubscriptions')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #22d3ee 0%, rgba(34, 211, 238, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: slotsExhausted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 211, 238, 0.1)',
-                    color: slotsExhausted ? '#ef4444' : '#22d3ee',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  {slotsExhausted ? <PeopleIcon /> : <SuccessIcon />}
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {remainingSlots ?? emptyValue}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('publicTasks.remainingSlots')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              height: '100%',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #a78bfa 0%, rgba(167, 139, 250, 0.6) 100%)',
-              },
-              position: 'relative',
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: 'rgba(167, 139, 250, 0.1)',
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  <WebMonitorLogo size={28} />
-                </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>
-                  {tasksQuery.isLoading
-                    ? emptyValue
-                    : tasks.reduce((sum, task) => sum + (task.subscription_count || 0), 0)}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {t('publicTasks.totalSubscriptions')}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatGrid
+        items={[
+          {
+            key: 'publicTasks',
+            title: t('publicTasks.publicTasks'),
+            value: tasksQuery.isLoading || tasksQuery.isError ? null : tasks.length,
+            icon: <PublicIcon />,
+            color: UI_COLORS.primary,
+          },
+          {
+            key: 'mySubscriptions',
+            title: t('publicTasks.mySubscriptions'),
+            value:
+              subscriptionInfoQuery.isLoading || subscriptionInfoQuery.isError
+                ? null
+                : subscriptionInfo?.current_subscriptions,
+            icon: <PeopleIcon />,
+            color: UI_COLORS.info,
+          },
+          {
+            key: 'remainingSlots',
+            title: t('publicTasks.remainingSlots'),
+            value:
+              subscriptionInfoQuery.isLoading || subscriptionInfoQuery.isError ? null : remainingSlots,
+            icon: slotsExhausted ? <PeopleIcon /> : <SuccessIcon />,
+            color: slotsExhausted ? UI_COLORS.danger : UI_COLORS.info,
+          },
+          {
+            key: 'totalSubscriptions',
+            title: t('publicTasks.totalSubscriptions'),
+            value:
+              tasksQuery.isLoading || tasksQuery.isError
+                ? null
+                : tasks.reduce((sum, task) => sum + (task.subscription_count || 0), 0),
+            icon: <WebMonitorLogo size={28} />,
+            color: UI_COLORS.accent,
+          },
+        ]}
+      />
 
-      <Card sx={{ mb: 4, backgroundColor: alpha('#1976d2', 0.04), border: `1px solid ${alpha('#1976d2', 0.12)}` }}>
-        <CardContent sx={{ py: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-            <PeopleIcon sx={{ fontSize: 20, color: '#1976d2' }} />
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2' }}>
-              {t('publicTasks.usageTitle')}
-            </Typography>
-          </Box>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            •{' '}
-            {t('publicTasks.usageLine1', {
-              current: subscriptionInfo?.current_subscriptions ?? emptyValue,
-              max: subscriptionInfo?.max_subscriptions ?? emptyValue,
-            })}
-          </Typography>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('publicTasks.usageLine2', { remaining: remainingSlots ?? emptyValue })}
-          </Typography>
-          <Typography variant="body2" sx={{ ml: 5, color: 'text.secondary' }}>
-            • {t('publicTasks.usageLine3')}
-          </Typography>
-        </CardContent>
-      </Card>
+      <Alert severity="info" sx={{ mb: 3 }}>
+        {t('publicTasks.usageLine3')}
+      </Alert>
 
-      <Paper
-        sx={{
-          borderRadius: 4,
-          border: '1px solid rgba(0, 0, 0, 0.06)',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.06)' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            {t('publicTasks.taskList')}
-          </Typography>
-        </Box>
+      <SectionCard title={t('publicTasks.taskList')} bareBody>
         {tasksQuery.isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
             <CircularProgress />
           </Box>
         ) : tasks.length === 0 ? (
-          <Box sx={{ textAlign: 'center', p: 8 }}>
-            <Avatar
-              sx={{
-                bgcolor: 'rgba(25, 118, 210, 0.1)',
-                color: '#1976d2',
-                width: 80,
-                height: 80,
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <PublicIcon sx={{ fontSize: 40 }} />
-            </Avatar>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              {t('publicTasks.noTasks')}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {t('publicTasks.noTasksSubtitle')}
-            </Typography>
-          </Box>
+          <EmptyState
+            icon={<PublicIcon />}
+            title={t('publicTasks.noTasks')}
+            subtitle={t('publicTasks.noTasksSubtitle')}
+          />
         ) : (
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.05)' }}>
+                <TableRow sx={{ backgroundColor: 'action.hover' }}>
                   <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.taskInfo')}</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.creator')}</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.subscriptions')}</TableCell>
@@ -496,7 +266,7 @@ const PublicTasks = () => {
                   <TableRow
                     key={task.id}
                     sx={{
-                      '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.03)' },
+                      '&:hover': { backgroundColor: 'action.hover' },
                       transition: 'all 0.2s ease',
                     }}
                   >
@@ -507,7 +277,8 @@ const PublicTasks = () => {
                             width: 40,
                             height: 40,
                             mr: 2,
-                            background: 'linear-gradient(45deg, #1976d2 30%, #1565c0 90%)',
+                            bgcolor: UI_COLORS.info,
+                            color: 'white',
                             fontSize: '1rem',
                           }}
                         >
@@ -569,7 +340,9 @@ const PublicTasks = () => {
                             size="small"
                             variant={task.user_subscribed ? 'outlined' : 'contained'}
                             color={task.user_subscribed ? 'secondary' : 'primary'}
+                            disableElevation
                             startIcon={task.user_subscribed ? <UnsubscribeIcon /> : <SubscribeIcon />}
+                            sx={{ textTransform: 'none', borderRadius: 2 }}
                             onClick={() => {
                               if (task.user_subscribed) {
                                 handleToggleSubscription(task.id);
@@ -590,8 +363,8 @@ const PublicTasks = () => {
                             size="small"
                             onClick={() => handleViewDetails(task)}
                             sx={{
-                              color: 'info.main',
-                              '&:hover': { backgroundColor: 'rgba(0, 188, 212, 0.1)' },
+                              color: UI_COLORS.info,
+                              '&:hover': { backgroundColor: 'action.hover' },
                             }}
                           >
                             <InfoIcon />
@@ -605,7 +378,7 @@ const PublicTasks = () => {
             </Table>
           </TableContainer>
         )}
-      </Paper>
+      </SectionCard>
 
       <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ pb: 2 }}>
@@ -653,6 +426,8 @@ const PublicTasks = () => {
               }}
               variant={selectedTask.user_subscribed ? 'outlined' : 'contained'}
               color={selectedTask.user_subscribed ? 'secondary' : 'primary'}
+              disableElevation
+              sx={{ textTransform: 'none', borderRadius: 2 }}
               disabled={
                 toggleMutation.isPending ||
                 (!selectedTask.user_subscribed && slotsExhausted)
@@ -721,6 +496,8 @@ const PublicTasks = () => {
             <Button
               onClick={handleConfirmSubscribe}
               variant="contained"
+              disableElevation
+              sx={{ textTransform: 'none', borderRadius: 2 }}
               disabled={!selectedEmailConfig || subscribeWithEmailMutation.isPending}
             >
               {t('publicTasks.confirmSubscribe')}

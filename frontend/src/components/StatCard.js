@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, CardContent, Typography, Box, alpha } from '@mui/material';
 
+import { UI_SURFACE } from '../theme/tokens';
+
 /**
  * 统计卡：只展示调用方给的数值。
  *
@@ -14,15 +16,15 @@ const StatCard = ({ title, value, icon, color, subtitle }) => {
     <Card
       sx={{
         height: '100%',
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-        border: '1px solid rgba(0, 0, 0, 0.06)',
-        borderRadius: 3,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        background: UI_SURFACE.card,
+        border: UI_SURFACE.border,
+        borderRadius: UI_SURFACE.radius,
+        transition: 'all 0.2s ease',
         position: 'relative',
         overflow: 'hidden',
         '&:hover': {
-          transform: 'translateY(-4px) scale(1.02)',
-          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+          transform: 'translateY(-2px)',
+          boxShadow: UI_SURFACE.shadowSoft,
         },
         '&::before': {
           content: '""',
