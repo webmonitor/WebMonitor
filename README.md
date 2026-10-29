@@ -1,35 +1,57 @@
 <h1 align="center">WebMonitor</h1>
 
 <p align="center">
-  <strong>Page changes, delivered to your inbox.</strong>
+  <strong>Follow the page. Get the update.</strong>
 </p>
 
 <p align="center">
-  <a href="https://webmonitor.qfpqhyl.top/">Live demo</a> ·
-  <a href="#quick-start">Quick start</a> ·
-  <a href="./backend/README.md">Backend docs</a> ·
+  Watch a price, an announcement, or a release note.<br>
+  WebMonitor checks the page and emails you when the text changes.
+</p>
+
+<p align="center">
+  <a href="https://webmonitor.qfpqhyl.top/">Try the demo</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#get-started">Get started</a> ·
   <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
 <p align="center">
-  <img src="./image/样例图片.png" alt="WebMonitor dashboard" width="1000">
+  <img src="./image/样例图片.png" alt="WebMonitor dashboard showing monitoring tasks and recent activity" width="1000">
 </p>
 
-WebMonitor is a self-hosted application for tracking web content changes. Select a page region with XPath, set a check interval, and receive email alerts when its text changes. Use it to follow prices, announcements, release notes, and other updates that matter to you.
+WebMonitor is a self-hosted web monitoring app for pages you would otherwise keep checking by hand. Choose the part of a page you care about, set a schedule, and review its updates from one dashboard. No AI service or model key is required.
 
-## Features
+## What you can follow
 
-- **Focused monitoring** — Collect rendered page text with Chromium and XPath.
-- **Change history** — Review previous content, new content, and collection errors.
-- **Email notifications** — Connect your own SMTP account and recipient address.
-- **Public tasks** — Share monitors and subscribe with your own notification settings.
-- **Unified dashboard** — Manage tasks, accounts, and blocked domains in English or Chinese.
+| Keep an eye on | Select this part of the page |
+| --- | --- |
+| Product prices and availability | The displayed price or stock status |
+| Announcements | A notice board or news list |
+| Software releases | A release heading or changelog |
+| Registration deadlines | The date or instructions that may change |
 
-Built with **React · FastAPI · Selenium · APScheduler · SQLAlchemy**. The frontend and API run in one Docker container.
+Monitoring compares the text in your selected region. You choose that region with an XPath expression, which identifies an element on the page.
 
-## Quick start
+## How it works
 
-Requires Docker Engine and Docker Compose.
+1. **Choose what to watch.** Create a task with the page URL, XPath, and check interval. Use the test action to check that it captures the right text.
+2. **Choose where updates go.** Add and test your SMTP email settings, then attach them to the task. You can also monitor without email and review changes in the app.
+3. **Enable the task.** WebMonitor checks on schedule and records the results. When the text changes, the notification includes the previous and current content.
+
+The first successful scheduled check can send an initial notification. Testing a task only previews its content and does not send email.
+
+## Your monitors, in one place
+
+- **Focus on a page region.** Track the content that matters without including unrelated text elsewhere on the page.
+- **See what changed.** Review previous and current content, check history, and collection errors.
+- **Use your own email.** Choose your SMTP account and recipient address for notifications.
+- **Share a monitor.** Make a task public within your instance so others can subscribe with their own email settings.
+- **Stay in control.** Manage and enable or disable tasks from a dashboard available in English and Chinese.
+
+## Get started
+
+**Explore the [live demo](https://webmonitor.qfpqhyl.top/)** or run your own instance with Docker Engine and Docker Compose. The demo is maintained separately and may be offline.
 
 ```sh
 git clone https://github.com/webmonitor/WebMonitor.git
@@ -37,33 +59,31 @@ cd WebMonitor
 cp .env.example .env
 ```
 
-Edit `.env` and set:
+Keep your existing `.env` if you already have one. Set these values before starting:
 
-- `SECRET_KEY` — A random signing key of at least 32 characters.
-- `ADMIN_PASSWORD` — A strong initial administrator password, at least 6 characters and at most 72 UTF-8 bytes.
-- `ADMIN_EMAIL` — Your administrator email address.
+| Setting | What to enter |
+| --- | --- |
+| `SECRET_KEY` | A random signing key of at least 32 characters |
+| `ADMIN_EMAIL` | Your administrator email address |
+| `ADMIN_PASSWORD` | A strong initial password: at least 6 characters, at most 72 UTF-8 bytes |
 
-The initial username defaults to `admin`. Existing administrator accounts are never reset by these settings.
+The initial username is `admin` unless you change `ADMIN_USERNAME`. Existing administrator accounts are not reset by these settings. Email delivery is configured in the app after login.
 
-> **Data persistence:** The default deployment stores SQLite inside the container. Mount a volume at `/app/data` before first use to retain data across container replacements.
+> **Keep your data:** The default deployment stores data inside the container. Add a persistent volume at `/app/data` before relying on the instance; replacing the container otherwise loses accounts, monitors, and history.
 
 ```sh
 docker compose up --build -d --wait
 ```
 
-Open **[localhost:8000](http://localhost:8000/)** and sign in. The **[API reference](http://localhost:8000/docs)** is available on the same port.
+Open **[localhost:8000](http://localhost:8000/)**, sign in, and create your first task.
 
-## Your first monitor
+For configuration and integration details, see the [configuration example](./.env.example), [backend documentation](./backend/README.md), and the running instance's [API reference](http://localhost:8000/docs).
 
-1. Create a task with a URL, XPath, and check interval.
-2. Use the test action to preview the extracted text.
-3. For email alerts, add and test an SMTP configuration, then attach it to the task.
+## Prefer to describe what you want to watch?
 
-Enabled tasks run on schedule. The first successful check can trigger an alert; the test action only previews content and does not send email.
+[WebMonitor-Agent](https://github.com/webmonitor/WebMonitor-Agent) creates monitors through conversation, with a real collection preview before you confirm. It supports conditions such as a target price or a newly added list item.
 
-## Project status
-
-This is the original XPath-based WebMonitor, maintained for legacy fixes. Active development continues in [WebMonitor-Agent](https://github.com/webmonitor/WebMonitor-Agent). The hosted demo depends on the maintainer's instance and may be offline.
+This repository is the original XPath-based WebMonitor and receives maintenance fixes. Active product development continues in WebMonitor-Agent.
 
 ## License
 
