@@ -79,6 +79,27 @@ docker compose up --build -d --wait
 
 更多配置与集成说明见[配置示例](./.env.example)、[后端文档](./backend/README.md)和运行实例的 [API 文档](http://localhost:8000/docs)。
 
+**预构建镜像。** 每次发布都会由 `docker-image` 工作流构建多架构镜像（`linux/amd64` 与 `linux/arm64`）并推送到 GitHub Container Registry。直接拉取（把版本号换成你要用的）即可跳过构建：
+
+```sh
+docker pull ghcr.io/webmonitor/webmonitor:1.0.0
+```
+
+通过覆盖服务镜像使用它：
+
+```sh
+docker compose -f docker-compose.yml -f image.yml up -d --wait
+```
+
+`image.yml` 内容：
+
+```yaml
+services:
+  webmonitor: {image: "ghcr.io/webmonitor/webmonitor:1.0.0"}
+```
+
+该包默认是私有的；在包设置里一次性改为公开（GitHub 没有容器可见性的 API），或先执行 `docker login ghcr.io`。直接 `docker compose up` 仍从源码构建。
+
 ## 想通过对话描述监控需求？
 
 [WebMonitor-Agent](https://github.com/webmonitor/WebMonitor-Agent) 支持通过对话创建监控，在真实采集预览后由你确认启用，还可设置目标价格、列表新增等通知条件。

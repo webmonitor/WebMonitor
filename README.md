@@ -79,6 +79,27 @@ Open **[localhost:8000](http://localhost:8000/)**, sign in, and create your firs
 
 For configuration and integration details, see the [configuration example](./.env.example), [backend documentation](./backend/README.md), and the running instance's [API reference](http://localhost:8000/docs).
 
+**Prebuilt image.** Every release publishes a multi-architecture image (`linux/amd64` and `linux/arm64`) to GitHub Container Registry, built by the `docker-image` workflow. Pull it (substitute the version you want) and skip the build:
+
+```sh
+docker pull ghcr.io/webmonitor/webmonitor:1.0.0
+```
+
+Override the service image to use it:
+
+```sh
+docker compose -f docker-compose.yml -f image.yml up -d --wait
+```
+
+with `image.yml`:
+
+```yaml
+services:
+  webmonitor: {image: "ghcr.io/webmonitor/webmonitor:1.0.0"}
+```
+
+The package is private by default; either set it public once in the package settings (GitHub has no API for container visibility) or `docker login ghcr.io` first. Plain `docker compose up` keeps building from source.
+
 ## Prefer to describe what you want to watch?
 
 [WebMonitor-Agent](https://github.com/webmonitor/WebMonitor-Agent) creates monitors through conversation, with a real collection preview before you confirm. It supports conditions such as a target price or a newly added list item.
