@@ -130,7 +130,9 @@ jobs:
   merge:
     name: publish
     needs: build
-    if: github.event_name != 'pull_request'
+    # `always()` is required: the skipped `verify` job upstream otherwise skips
+    # this job too, and nothing would ever be published.
+    if: always() && github.event_name != 'pull_request' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Compute image name
