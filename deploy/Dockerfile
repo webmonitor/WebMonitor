@@ -37,6 +37,7 @@ RUN pnpm run build
 # 阶段 2：运行时（Python + Chromium + 前端产物）
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim
+LABEL org.opencontainers.image.licenses="CC-BY-NC-4.0"
 
 WORKDIR /app
 
@@ -67,6 +68,7 @@ ENV FRONTEND_DIST=/app/web
 # 同一个 RUN 里删掉运行期用不到的 pip 本身（12 MB）与 Selenium Manager 的多平台
 # 二进制（只留本架构那个；驱动由 apt 的 chromium-driver 提供）。
 COPY requirements.txt pyproject.toml ./
+COPY LICENSE /app/LICENSE
 RUN set -eux; \
     pip install --no-cache-dir --require-hashes -r requirements.txt; \
     rm -rf /usr/local/lib/python3.12/site-packages/pip \

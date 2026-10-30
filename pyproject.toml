@@ -3,6 +3,8 @@ name = "webmonitor-backend"
 version = "1.0.0"
 description = "Legacy WebMonitor backend: FastAPI + Selenium XPath monitoring."
 requires-python = ">=3.12,<3.13"
+license = "CC-BY-NC-4.0"
+license-files = ["LICENSE"]
 # Exact pins for what this project actually imports. The workspace conda
 # environment (../.github/env/requirements-workspace.txt) is the union of all three
 # projects; each project pins only its own needs. No lock file:
