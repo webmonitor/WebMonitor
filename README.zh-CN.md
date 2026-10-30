@@ -61,7 +61,7 @@ curl -fsSLo compose.yaml https://raw.githubusercontent.com/webmonitor/WebMonitor
 
 ```dotenv
 # 公开镜像，无需登录镜像仓库。
-# 想固定版本可改为：ghcr.io/webmonitor/webmonitor:1.0.0
+# 想固定版本可改为：ghcr.io/webmonitor/webmonitor:1.0.1
 WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:latest
 
 # 必填。至少 32 个字符的随机签名密钥。
@@ -81,7 +81,7 @@ LOG_LEVEL=INFO
 
 | 配置项 | 填写内容 |
 | --- | --- |
-| `WEBMONITOR_IMAGE` | 可选。Compose 文件已默认使用 `ghcr.io/webmonitor/webmonitor:latest`；需要可复现的更新时，改为 `ghcr.io/webmonitor/webmonitor:1.0.0` 这类固定标签 |
+| `WEBMONITOR_IMAGE` | 可选。Compose 文件已默认使用 `ghcr.io/webmonitor/webmonitor:latest`；需要可复现的更新时，改为 `ghcr.io/webmonitor/webmonitor:1.0.1` 这类固定标签 |
 | `SECRET_KEY` | 必填。至少 32 个字符的随机字符串。可用 `python -c "import secrets; print(secrets.token_hex(32))"` 或 `openssl rand -hex 32` 生成 |
 | `ADMIN_USERNAME` | 初始管理员用户名 |
 | `ADMIN_EMAIL` | 管理员邮箱地址 |

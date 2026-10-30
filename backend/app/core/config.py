@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # 应用基础设置
     APP_NAME: str = "WebMonitor"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "1.0.1"
     DEBUG: bool = False
 
     # 数据库设置

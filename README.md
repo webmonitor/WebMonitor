@@ -61,7 +61,7 @@ Create a file named `.env` next to `compose.yaml` and paste this complete templa
 
 ```dotenv
 # Public image; no registry login is needed.
-# Pin a fixed release instead of latest if you prefer: ghcr.io/webmonitor/webmonitor:1.0.0
+# Pin a fixed release instead of latest if you prefer: ghcr.io/webmonitor/webmonitor:1.0.1
 WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:latest
 
 # Required. A random signing key of at least 32 characters.
@@ -81,7 +81,7 @@ Replace both `CHANGE_ME` values before starting.
 
 | Setting | What to enter |
 | --- | --- |
-| `WEBMONITOR_IMAGE` | Optional. The Compose file already defaults to `ghcr.io/webmonitor/webmonitor:latest`; set a fixed tag such as `ghcr.io/webmonitor/webmonitor:1.0.0` when you want reproducible updates |
+| `WEBMONITOR_IMAGE` | Optional. The Compose file already defaults to `ghcr.io/webmonitor/webmonitor:latest`; set a fixed tag such as `ghcr.io/webmonitor/webmonitor:1.0.1` when you want reproducible updates |
 | `SECRET_KEY` | Required. Any random string of at least 32 characters. Generate one with `python -c "import secrets; print(secrets.token_hex(32))"` or `openssl rand -hex 32` |
 | `ADMIN_USERNAME` | The initial administrator username |
 | `ADMIN_EMAIL` | The administrator's email address |
