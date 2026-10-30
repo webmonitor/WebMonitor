@@ -6,13 +6,9 @@
 # from per-arch images built on native runners. The image is large (~1.1 GB)
 # because it ships Chromium, so a cold build takes several minutes per arch.
 #
-# Triggers:
-#   push to main        -> :main :sha-<short>
-#   push tag vX.Y.Z     -> :X.Y.Z :X.Y :latest :sha-<short> + a GitHub Release
-#                          (the tag must match every declared version: verify job;
-#                          `latest` only moves for stable releases, never a -rc)
-#   pull request        -> build only, never push (paths filter below)
-#   workflow_dispatch   -> build and push :main (no :latest)
+# Push vX.Y.Z to publish X.Y.Z, X.Y and latest and create a GitHub Release.
+# Prereleases publish their version tag without moving latest.
+# Pull requests build the image without publishing it.
 #
 # This package is public and supports anonymous pulls. Visibility is managed in
 # the package settings UI, separately from this publishing workflow.
@@ -20,7 +16,6 @@ name: docker-image
 
 on:
   push:
-    branches: [main]
     tags: ["v*"]
   pull_request:
     paths:
@@ -31,7 +26,6 @@ on:
       - "compose*.yaml"
       - "pyproject.toml"
       - "requirements.txt"
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -104,7 +98,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -117,7 +111,7 @@ jobs:
           context: .
           file: deploy/Dockerfile
           platforms: ${{ matrix.platform }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
           tags: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ github.sha }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -129,9 +123,7 @@ jobs:
   publish:
     name: publish
     needs: build
-    # `always()` is required: the skipped `verify` job upstream otherwise skips
-    # this job too, and nothing would ever be published.
-    if: always() && github.event_name != 'pull_request' && needs.build.result == 'success'
+    if: always() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Compute image name
@@ -157,10 +149,8 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
 
       - name: Assemble multi-arch manifest

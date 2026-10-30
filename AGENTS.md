@@ -94,7 +94,7 @@ python -m unittest discover -s tests -p 'test_*.py'
 ```
 
 - Ruff is configured in the repo-root `pyproject.toml` (`target-version = "py312"`, `line-length = 120`) but the tree is not clean; do not run repo-wide `--fix` as a side effect. There is no formatter command; frontend linting is CRA's bundled eslint defaults.
-- The release image is public at `ghcr.io/webmonitor/webmonitor` (anonymous pulls work) for `linux/amd64` + `linux/arm64`; `compose.yaml` defaults to `:latest` and uses `pull_policy: always`. Pin `:1.0.0` in `WEBMONITOR_IMAGE` when a deployment needs a fixed release. `latest` moves only for stable release tags; `main` follows the development branch. A normal install downloads only `compose.yaml` and creates `.env`; only source development clones the repository and uses `compose.build.yaml`.
+- The release image is public at `ghcr.io/webmonitor/webmonitor` for `linux/amd64` and `linux/arm64`. `compose.yaml` defaults to `:latest` with `pull_policy: always`; pin a full release tag when needed. Images publish only on `v*` tag pushes, with `latest` following stable releases. Normal installation downloads `compose.yaml` and creates `.env`; source development uses `compose.build.yaml`.
 
 ## Code Conventions & Common Patterns
 
@@ -147,7 +147,7 @@ python -m unittest discover -s tests -p 'test_*.py'
 
 ## Testing & QA
 
-- **CI publishes the image only.** `.github/workflows/docker-image.yml` builds `linux/amd64` and `linux/arm64` on native runners, merges the manifest, and pushes to GHCR. A `v*` tag is verified against `pyproject.toml` and `backend/app/core/config.py`, then published as `X.Y.Z`, `X.Y`, `latest`, and `sha-<short>` with a GitHub Release; `main` publishes `:main`; pull requests build without pushing. `latest` never moves for a development build or prerelease. No test job runs in CI; frontend `pnpm test` finds no tests.
+- **CI publishes release images.** `.github/workflows/docker-image.yml` builds both architectures on native runners. Version-tag pushes verify declared application versions, publish full and minor-series tags and create a GitHub Release. Stable releases also update `latest`. Ordinary branch pushes do not trigger this workflow; pull requests build without publishing. No automated test job runs in this workflow.
 - **`tests/` (stdlib `unittest`, no extra dependencies)** — `support.py` builds an isolated temp SQLite + real uvicorn thread (empty `ProxyHandler`); run everything with `python -m unittest discover -s tests -p 'test_*.py'`. There are 86 test methods: scheduler job binding/reschedule/removal (10 in `test_scheduler.py`), auth + ownership + log pagination + public tasks + email config protocol (30 in `test_api.py`), subscription state machine (15 in `test_subscriptions.py`), settings/password/bootstrap (20 in `test_bootstrap.py`), and email resolution/failures (11 in `test_email.py`).
 - **`tests/smoke_runtime.py`** is the behavioral acceptance run: local HTTP fixture + loopback SMTP sink + real Selenium + real scheduler. `--serve` keeps the stack up for browser checks. It prints pass/fail lines and exits non-zero on failure.
 - Ad-hoc runtime checks: `GET /health`, and the authorized test endpoints — `POST /api/monitor-tasks/{id}/test`, `POST /api/email-configs/{id}/test`, `POST /api/blacklist-domains/test` (`/api/test-email` was removed).
