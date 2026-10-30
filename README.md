@@ -30,7 +30,7 @@ WebMonitor is a self-hosted service that watches one region of a web page. You g
 - The page address and the XPath of the part you want to watch.
 - For notifications: the SMTP server, port, sender account, password or app password, and the recipient address from your mail provider.
 
-You do not need to clone this repository. A normal installation downloads one Compose file, uses one `.env` you write, and starts with one command.
+A normal installation downloads one Compose file, uses one `.env` you write, and starts with one command.
 
 ## What you can follow
 
@@ -77,7 +77,7 @@ DEBUG=false
 LOG_LEVEL=INFO
 ```
 
-Replace both `CHANGE_ME` values before starting. Do not run an instance with the placeholder values.
+Replace both `CHANGE_ME` values before starting.
 
 | Setting | What to enter |
 | --- | --- |
@@ -89,7 +89,7 @@ Replace both `CHANGE_ME` values before starting. Do not run an instance with the
 | `DEBUG` | Optional. Leave `false` |
 | `LOG_LEVEL` | Optional. Leave `INFO` unless you are diagnosing a problem |
 
-The administrator values are read only when the database has no administrator. An existing account is never reset, so changing them later does not change your login.
+The administrator values are read only when the database has no administrator. Changing them later does not change an existing login.
 
 Email is not configured in `.env`. After signing in, every user adds their own SMTP account in the app; see [Email notifications](#email-notifications).
 
@@ -182,7 +182,7 @@ Save the configuration, then click **Test connection** on its row. WebMonitor co
 
 Open **Edit task**, choose the configuration in **Email config**, and click **Update task**. The default **No notifications** keeps checking and logging without sending mail.
 
-Configurations belong to the account that created them. A public task's subscribers choose their own configuration when they subscribe, so notifications never go through the task owner's mailbox. There is no server-wide SMTP fallback.
+Configurations belong to the account that created them. A public task's subscribers choose their own configuration when they subscribe, so notifications never go through the task owner's mailbox.
 
 ## Public tasks and subscriptions
 
@@ -205,8 +205,8 @@ Each account may hold 10 enabled subscriptions by default; **Public tasks** show
 
 - To pause, open **Edit task**, turn off **Enable monitoring**, and click **Update task**. The status becomes **Paused**; scheduled checks stop, while the stored result and logs stay. Turn it back on to resume.
 - To change the URL, XPath, interval, email configuration, description, or public setting, use **Edit task** and then **Update task**.
+- To verify the selector after an edit, click **Test monitor**; the message previews the captured content.
 - **Delete task** asks for confirmation, then removes the task with its monitor logs.
-- **Test monitor** is always read-only: it previews the selected content and changes nothing.
 
 ## When something fails
 
@@ -258,7 +258,7 @@ Back up first, then set `WEBMONITOR_IMAGE` in `.env` to the new tag and run the 
 docker compose up -d --wait
 ```
 
-To roll back, set `WEBMONITOR_IMAGE` to the previous tag and run the same command. Different versions do not upgrade the database automatically, so use the database file that belongs to the version you run; do not expect a newer database file to open in an older image.
+To roll back, set `WEBMONITOR_IMAGE` to the previous tag and run the same command. Different versions do not upgrade the database automatically, so use the database file created by the version you run.
 
 ### Keep data across container recreation
 

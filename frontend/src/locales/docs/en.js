@@ -15,7 +15,7 @@ const docsEn = {
         {
           type: 'text',
           paragraphs: [
-            'WebMonitor watches one element of a page. On every check it loads the page, reads the text at the XPath you set, and stores the result. When that text changes, it can email you. The four steps below follow the same order as the menu.',
+            'WebMonitor watches one element of a page. On every check it loads the page, reads the text at the XPath you set, and stores the result. When that text changes, it can email you.',
           ],
         },
         {
@@ -134,7 +134,7 @@ const docsEn = {
           type: 'subsection',
           title: 'Test, pause, and edit a task',
           paragraphs: [
-            'Test monitor on a task row loads the page once and shows a preview of the captured Content in a message. It sends no email, writes no log entry, and keeps the stored result. A test can succeed while a scheduled check later fails, for example when the page becomes slow or starts requiring a login.',
+            'Test monitor on a task row loads the page once and shows a preview of the captured Content in a message. It sends no email, writes no log entry, and keeps the stored result.',
             'To pause a task, click Edit task, turn off Enable monitoring, and click Update task. Its status changes to Paused and scheduled checks stop; the stored result and logs remain. Turn Enable monitoring on again to resume. Delete task asks for confirmation and removes the task together with its monitor logs.',
           ],
         },
@@ -187,7 +187,7 @@ const docsEn = {
           type: 'subsection',
           title: 'Who can use a configuration',
           paragraphs: [
-            'Configurations belong to your account and are visible only to you. Attach one in a task\'s Email config field; subscribers pick their own configuration when they subscribe, so a public task never sends subscriber mail through its owner\'s account. There is no server-wide fallback address.',
+            'Configurations belong to your account and are visible only to you. Attach one in a task\'s Email config field; subscribers pick their own configuration when they subscribe, so a public task never sends subscriber mail through its owner\'s account.',
           ],
         },
       ],
