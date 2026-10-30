@@ -1,0 +1,13 @@
+# 用发布的镜像替代本地构建。
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --wait
+#
+# 在 .env 里设置 WEBMONITOR_IMAGE 固定到某个版本，例如
+#   WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:1.0.0
+# 不设置则使用 :main。
+#
+# pull_policy: always 让 Compose 直接拉取，而不是从当前目录重新构建。
+services:
+  webmonitor:
+    image: ${WEBMONITOR_IMAGE:-ghcr.io/webmonitor/webmonitor:main}
+    pull_policy: always

@@ -51,7 +51,7 @@ WebMonitor 是一个可自行部署的网页监控应用，适合跟踪那些需
 
 ## 开始使用
 
-可以先 **[在线体验](https://webmonitor.qfpqhyl.top/)**，也可以使用 Docker Engine 和 Docker Compose 部署自己的实例。演示站点由维护者单独运行，可能暂时不可用。
+可以先 **[在线体验](https://webmonitor.qfpqhyl.top/)**，也可以使用 Docker Engine 和 Docker Compose 部署自己的实例。演示站点由维护者单独运行，可能暂时不可用。镜像提供 `linux/amd64` 与 `linux/arm64` 两种架构。
 
 ```sh
 git clone https://github.com/webmonitor/WebMonitor.git
@@ -59,10 +59,11 @@ cd WebMonitor
 cp .env.example .env
 ```
 
-已有 `.env` 时保留原文件。启动前设置：
+仓库提供 `docker-compose.yml`，应用本体来自 GitHub Container Registry。启动前在 `.env` 中设置：
 
 | 配置项 | 填写内容 |
 | --- | --- |
+| `WEBMONITOR_IMAGE` | 要使用的版本，例如 `ghcr.io/webmonitor/webmonitor:1.0.0`；留空则改为从源码构建 |
 | `SECRET_KEY` | 至少 32 字符的随机签名密钥 |
 | `ADMIN_EMAIL` | 管理员邮箱地址 |
 | `ADMIN_PASSWORD` | 初始强密码，至少 6 字符、最多 72 个 UTF-8 字节 |
@@ -72,33 +73,25 @@ cp .env.example .env
 > **保留数据：** 默认部署将数据存放在容器内。正式使用前请为 `/app/data` 添加持久数据卷，否则更换容器会丢失账户、监控和历史记录。
 
 ```sh
-docker compose up --build -d --wait
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --wait
 ```
+
+`docker compose pull` 会更新镜像；只执行 `docker compose up` 时仍从源码构建。
 
 打开 **[localhost:8000](http://localhost:8000/)**，登录后创建第一个任务。
 
 更多配置与集成说明见[配置示例](./.env.example)、[后端文档](./backend/README.md)和运行实例的 [API 文档](http://localhost:8000/docs)。
 
-**预构建镜像。** 每次发布都会由 `docker-image` 工作流构建多架构镜像（`linux/amd64` 与 `linux/arm64`）并推送到 GitHub Container Registry。直接拉取（把版本号换成你要用的）即可跳过构建：
+<details>
+<summary>改为从源码构建</summary>
 
 ```sh
-docker pull ghcr.io/webmonitor/webmonitor:1.0.0
+docker compose up --build -d --wait
 ```
 
-通过覆盖服务镜像使用它：
+该命令在本地构建 `deploy/Dockerfile`，通过 Debian 安装 Chromium，耗时数分钟。基于代码仓库的开发仍走这条路径；`docker-compose.ghcr.yml` 只是发布镜像的覆盖文件。
 
-```sh
-docker compose -f docker-compose.yml -f image.yml up -d --wait
-```
-
-`image.yml` 内容：
-
-```yaml
-services:
-  webmonitor: {image: "ghcr.io/webmonitor/webmonitor:1.0.0"}
-```
-
-该包默认是私有的；在包设置里一次性改为公开（GitHub 没有容器可见性的 API），或先执行 `docker login ghcr.io`。直接 `docker compose up` 仍从源码构建。
+</details>
 
 ## 想通过对话描述监控需求？
 

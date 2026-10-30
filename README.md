@@ -51,7 +51,7 @@ The first successful scheduled check can send an initial notification. Testing a
 
 ## Get started
 
-**Explore the [live demo](https://webmonitor.qfpqhyl.top/)** or run your own instance with Docker Engine and Docker Compose. The demo is maintained separately and may be offline.
+**Explore the [live demo](https://webmonitor.qfpqhyl.top/)** or run your own instance with Docker Engine and Docker Compose. The demo is maintained separately and may be offline. Images are published for `linux/amd64` and `linux/arm64`.
 
 ```sh
 git clone https://github.com/webmonitor/WebMonitor.git
@@ -59,10 +59,11 @@ cd WebMonitor
 cp .env.example .env
 ```
 
-Keep your existing `.env` if you already have one. Set these values before starting:
+The checkout supplies `docker-compose.yml`; the application itself comes from GitHub Container Registry. Set these values in `.env` before starting:
 
 | Setting | What to enter |
 | --- | --- |
+| `WEBMONITOR_IMAGE` | The release you want, e.g. `ghcr.io/webmonitor/webmonitor:1.0.0`; leave it empty to build from source instead |
 | `SECRET_KEY` | A random signing key of at least 32 characters |
 | `ADMIN_EMAIL` | Your administrator email address |
 | `ADMIN_PASSWORD` | A strong initial password: at least 6 characters, at most 72 UTF-8 bytes |
@@ -72,33 +73,25 @@ The initial username is `admin` unless you change `ADMIN_USERNAME`. Existing adm
 > **Keep your data:** The default deployment stores data inside the container. Add a persistent volume at `/app/data` before relying on the instance; replacing the container otherwise loses accounts, monitors, and history.
 
 ```sh
-docker compose up --build -d --wait
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --wait
 ```
+
+`docker compose pull` picks up a newer image; `docker compose up` alone keeps building from source.
 
 Open **[localhost:8000](http://localhost:8000/)**, sign in, and create your first task.
 
 For configuration and integration details, see the [configuration example](./.env.example), [backend documentation](./backend/README.md), and the running instance's [API reference](http://localhost:8000/docs).
 
-**Prebuilt image.** Every release publishes a multi-architecture image (`linux/amd64` and `linux/arm64`) to GitHub Container Registry, built by the `docker-image` workflow. Pull it (substitute the version you want) and skip the build:
+<details>
+<summary>Build from source instead</summary>
 
 ```sh
-docker pull ghcr.io/webmonitor/webmonitor:1.0.0
+docker compose up --build -d --wait
 ```
 
-Override the service image to use it:
+This builds `deploy/Dockerfile` locally, which installs Chromium from Debian and takes several minutes. Development against a checkout still uses this path; `docker-compose.ghcr.yml` is only the released-image overlay.
 
-```sh
-docker compose -f docker-compose.yml -f image.yml up -d --wait
-```
-
-with `image.yml`:
-
-```yaml
-services:
-  webmonitor: {image: "ghcr.io/webmonitor/webmonitor:1.0.0"}
-```
-
-The package is private by default; either set it public once in the package settings (GitHub has no API for container visibility) or `docker login ghcr.io` first. Plain `docker compose up` keeps building from source.
+</details>
 
 ## Prefer to describe what you want to watch?
 
