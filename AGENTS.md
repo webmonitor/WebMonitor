@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Legacy v1 of a web content change-monitoring platform with email alerts. Two independent subprojects in one repo: `backend/` (FastAPI + SQLAlchemy + APScheduler + Selenium) and `frontend/` (React CRA SPA). Python 3.12, Node 18, plain JavaScript on the frontend, no migrations, no CI. Backend/API tests are stdlib `unittest` in `tests/`.
+Legacy v1 of a web content change-monitoring platform with email alerts. Two independent subprojects in one repo: `backend/` (FastAPI + SQLAlchemy + APScheduler + Selenium) and `frontend/` (React CRA SPA). Python 3.12, Node 18, plain JavaScript on the frontend, no migrations. Backend/API tests are stdlib `unittest` in `tests/`. GitHub Actions builds and publishes the single container image; it does not run the tests.
 
 > Note: active development happens in the sibling `WebMonitor-Agent/` project; this repo receives maintenance/legacy fixes only.
 
@@ -34,7 +34,7 @@ APScheduler (BackgroundScheduler, per-task interval jobs)
 - **Selenium**: one new headless Chrome per scrape (`monitor_service.get_content_with_selenium`): flags `--headless --disable-gpu --no-sandbox --disable-dev-shm-usage`, 30s page load, `WebDriverWait(…, 20)` for `By.XPATH`, extracts `element.text` + `driver.title`, `quit()` in `finally`. Driver resolved by Selenium Manager (apt `chromium-driver` in image).
 - **Auth**: JWT bearer (`OAuth2PasswordBearer`, `tokenUrl="/api/auth/login"`), payload `{sub: str(user.id), username}` — **the token's `is_admin` is never trusted**; authorization always re-reads the DB row. `sub` must be a positive-integer string, otherwise 401 with `WWW-Authenticate: Bearer`. Inactive accounts get 403 on an existing token and the same 401 as a bad password at login. bcrypt hashing refuses >72-byte passwords instead of truncating (`core/passwords.py`). No server-side session or token blacklist; logout is client-side only (`POST /api/auth/logout` was removed). Admin gate via `get_current_admin_user`. Public registration accepts `UserRegister` (no role/quota fields); admin creation is `POST /api/auth/users` with `UserCreate`.
 - **Email**: per-user `EmailConfig` rows in DB, and nothing else. Resolution is strictly owner-scoped: an explicit `email_config_id` must exist **and belong to that user** (otherwise the send fails with a warning — never a silent fallback to someone else's config) → that user's lowest-id config → **no send at all**. There is no "first config in the table" path and no deployment-level SMTP fallback: `SMTP_*`/`RECEIVER_EMAIL` were removed from `Settings`, compose and the env templates, so a notification can only reach an address the user configured. A task's `email_config_id` is optional (`MonitorTaskCreate`), and a task without one still collects/logs — `MonitorService` skips the owner notification entirely. SMTP_SSL or starttls; failures are logged without credentials and skipped, never raised. `EmailConfigResponse` never contains the password; `PUT` without `smtp_password` keeps the stored one, and an explicit `""`/`null` is a 422. Deleting a config referenced by any task or subscription (including inactive subscriptions) is a 409.
-- **DB**: sync SQLAlchemy 2.0, `SessionLocal` + `get_db()` dependency (`db/database.py`); SQLite default, PostgreSQL by changing `DATABASE_URL` only. Schema via `create_all` inside the `main.py` lifespan — **no Alembic**; model changes have no migration path.
+- **DB**: sync SQLAlchemy 2.0, `SessionLocal` + `get_db()` dependency (`db/database.py`); SQLite is the supported database. `database.py` always passes `check_same_thread=False`, and no PostgreSQL driver is pinned, so another database would need both a driver and engine changes. `compose.yaml` hardcodes `DATABASE_URL` (no `${...}` interpolation): editing `.env` only affects local runs, and a container deployment needs an explicit Compose override. Schema via `create_all` inside the `main.py` lifespan — **no Alembic**; model changes have no migration path. The SQLite file is the unit to back up.
 - **Startup**: `lifespan` → `configure_logging()` (stdout + `LOG_LEVEL`, the only `basicConfig` in the tree) → `bootstrap()` (create tables, then seed an admin only if none exists) → `monitor_scheduler.start()`; shutdown stops the scheduler in a `finally`. If no admin exists and `ADMIN_PASSWORD` is missing/short, or the configured username/email collides with an existing user, startup **fails** with a value-free log line. An existing admin is never reset.
 - **Scoping rules**: every private endpoint resolves the task through `task_service.require_owned_task` (404/403, admins included — these endpoints are owner-only); `/monitor-logs/latest` joins on `owner_id`; task logs return `{logs, total}` with `page`/`limit` query params; public task list/detail only return `is_public=True, is_active=True` (anything else is 404) and count only active subscriptions in the `outerjoin` ON clause.
 - **Subscriptions**: `subscription_service` owns every create/reactivate/toggle/update path. The DB unique constraint on `(user_id, task_id)` means re-subscribing must reuse the existing row. Activation (new or reactivated) checks publicity and the quota; deactivation and cancellation do not require the task to still be public. A module-level `RLock` serializes the read→check→commit window (single Uvicorn process).
@@ -62,28 +62,39 @@ frontend/
   src/utils/             # i18n.js helpers, date.js
 deploy/
   Dockerfile             # multi-stage: CRA build → FastAPI+Chromium runtime that serves both (context: repo root)
+.github/workflows/
+  docker-image.yml       # multi-arch build, tag verification, GHCR publish, GitHub Release
+compose.yaml             # normal deployment: public image (default latest), pull_policy always, healthcheck
+compose.build.yaml       # development-only override: webmonitor:local, pull_policy build, adds build
 image/                   # README screenshot asset
 ```
 
 ## Development Commands
 
 ```sh
-# Docker (full stack)
-docker-compose up -d                     # single container: UI + API on :8000, docs at /docs
+# Docker (normal install: no checkout required; compose.yaml + user-created .env)
+docker compose up -d --wait              # public image, default tag latest
 curl -f http://localhost:8000/health     # compose healthcheck target
+
+# Docker (build from source; development only, from a clone)
+docker compose -f compose.yaml -f compose.build.yaml up --build -d --wait
+                                         # single container: UI + API on :8000, docs at /docs
 
 # Backend local (dependency manifest lives at the repo root)
 pip install -r requirements.txt
-cp .env.example .env                     # repo root; SECRET_KEY + ADMIN_PASSWORD are required
-cd backend && python main.py             # uvicorn main:app --host 0.0.0.0 --port 8000
+# create .env from the template in README.md; SECRET_KEY + ADMIN_PASSWORD are required
+cd backend && mkdir -p data && python main.py   # SQLite does not create the parent directory
 
 # Frontend local
 cd frontend && pnpm install && pnpm start  # CRA dev server :3000, proxies /api to :8000 (package.json "proxy")
 pnpm run build                            # production build → build/, copied into the single Docker image
+
+# Backend tests (stdlib unittest; no extra dependencies)
+python -m unittest discover -s tests -p 'test_*.py'
 ```
 
-- No lint/format commands exist (backend has no linter config; frontend eslint is CRA defaults via `package.json` eslintConfig).
-- No test commands that do anything: see Testing & QA.
+- Ruff is configured in the repo-root `pyproject.toml` (`target-version = "py312"`, `line-length = 120`) but the tree is not clean; do not run repo-wide `--fix` as a side effect. There is no formatter command; frontend linting is CRA's bundled eslint defaults.
+- The release image is public at `ghcr.io/webmonitor/webmonitor` (anonymous pulls work) for `linux/amd64` + `linux/arm64`; `compose.yaml` defaults to `:latest` and uses `pull_policy: always`. Pin `:1.0.0` in `WEBMONITOR_IMAGE` when a deployment needs a fixed release. `latest` moves only for stable release tags; `main` follows the development branch. A normal install downloads only `compose.yaml` and creates `.env`; only source development clones the repository and uses `compose.build.yaml`.
 
 ## Code Conventions & Common Patterns
 
@@ -113,11 +124,12 @@ pnpm run build                            # production build → build/, copied 
 | `backend/app/services/auth_service.py` | JWT/bcrypt, `get_current_user`, `get_current_admin_user` |
 | `frontend/src/App.js` | Routes + MUI theme |
 | `frontend/src/contexts/AuthContext.js` | Auth state, token storage, axios base config |
-| `docker-compose.yml` | One `webmonitor` service on :8000, env defaults, healthcheck |
+| `compose.yaml` | Normal deployment: one `webmonitor` service on :8000, image default `latest`, `pull_policy: always`, healthcheck |
+| `compose.build.yaml` | Development-only source-build override: builds `webmonitor:local` with `pull_policy: build` |
 | `deploy/Dockerfile` | Single multi-stage build definition (context: repo root); backend serves the SPA, no reverse proxy, no CORS |
 | `backend/app/services/bootstrap.py` | Table creation + first-admin seeding rules |
 | `backend/app/services/subscription_service.py` | Only implementation of subscribe/reactivate/toggle/update |
-| `.env.example` | Env template; `SECRET_KEY` and `ADMIN_PASSWORD` are intentionally blank (no usable weak default) |
+| `.env.example` | Environment template for a source checkout; a normal install creates `.env` from the README template |
 
 ## Runtime/Tooling Preferences
 
@@ -125,8 +137,8 @@ pnpm run build                            # production build → build/, copied 
 - Node 18 (`node:18-alpine`); pnpm 10 with committed `pnpm-lock.yaml` (`packageManager` pinned; images run `pnpm install --frozen-lockfile`); react-scripts 5.0.1 (CRA, pinned).
 - Frontend stack after the dependency upgrade: React 19.3, MUI 9.5 (`@mui/material` + `@mui/icons-material`), TanStack Query 5, react-router-dom 6.30 (v7 needs Node ≥20, so it stays on 6), i18next 26 + react-i18next 17, framer-motion 14, axios 1.20. `devDependencies` are limited to what CRA's bundled eslint/fork-ts-checker actually need (`eslint-plugin-jest` 25.7, `typescript` 4.9.5); raising either breaks `react-scripts` peer resolution. `@mui/x-data-grid`, `@mui/x-date-pickers` and `web-vitals` were unused and removed.
 - Chromium comes from apt (`chromium` + `chromium-driver`) inside the backend image; Selenium Manager resolves the driver from `PATH` (no `CHROME_BIN`/`CHROME_DRIVER` env).
-- Docker: backend container runs as non-root `appuser`; SQLite DB lives at `/app/data/webmonitor.db` with **no volume** — data does not survive container rebuilds.
-- Env vars are read only via pydantic-settings `.env` (backend) and `REACT_APP_*` (frontend). The real `.env` lives at the repo root and is gitignored; `backend/.env` is a symlink to it so `cd backend && python main.py` finds the same values. Both are excluded from the Docker build context by `.dockerignore` (`**/.env*`, with `.env.example` re-included).
+- Docker: backend container runs as non-root `appuser`; SQLite DB lives at `/app/data/webmonitor.db` with **no volume** — data is lost when the container is recreated (image tag change, `docker compose down`, `--force-recreate`, or a `latest` update under `pull_policy: always`), and must be backed up before upgrades or rollbacks. The published multi-arch image is public; `compose.yaml` defaults to `latest`, while a fixed deployment pins `WEBMONITOR_IMAGE` to `:1.0.0`.
+- Env vars are read only via pydantic-settings `.env` (backend) and `REACT_APP_*` (frontend). In a source checkout the real `.env` lives at the repo root and is gitignored; `backend/.env` is a symlink to it so `cd backend && python main.py` finds the same values. A normal install creates `.env` next to the downloaded `compose.yaml`. Both are excluded from the Docker build context by `.dockerignore` (`**/.env*`, with `.env.example` re-included).
 - **Single image, single origin.** `deploy/Dockerfile` is multi-stage: it builds the CRA bundle and copies it next to the backend, and `backend/main.py` serves it (`FRONTEND_DIST`, default `web/`) on the same port as `/api`. Consequences:
   - Only one container and one port (`8000`); `docker compose up -d` starts `webmonitor` alone.
   - No CORS middleware and no `BACKEND_CORS_ORIGINS`; none is needed because browser and API share an origin.
@@ -135,8 +147,8 @@ pnpm run build                            # production build → build/, copied 
 
 ## Testing & QA
 
-- **No automated tests and no CI** (no pytest, no `*.test.js`, no `.github/workflows`). `pnpm test` finds no tests; backend has no test runner installed.
-- **`tests/` (stdlib `unittest`, no extra dependencies)** — `support.py` builds an isolated temp SQLite + real uvicorn thread (empty `ProxyHandler`); run everything with `python -m unittest discover -s tests -p 'test_*.py'`. Coverage: scheduler job binding/reschedule/removal (`test_scheduler.py`), auth + ownership + log pagination + public tasks + email config protocol (`test_api.py`), subscription state machine (`test_subscriptions.py`), settings/password/bootstrap (`test_bootstrap.py`).
+- **CI publishes the image only.** `.github/workflows/docker-image.yml` builds `linux/amd64` and `linux/arm64` on native runners, merges the manifest, and pushes to GHCR. A `v*` tag is verified against `pyproject.toml` and `backend/app/core/config.py`, then published as `X.Y.Z`, `X.Y`, `latest`, and `sha-<short>` with a GitHub Release; `main` publishes `:main`; pull requests build without pushing. `latest` never moves for a development build or prerelease. No test job runs in CI; frontend `pnpm test` finds no tests.
+- **`tests/` (stdlib `unittest`, no extra dependencies)** — `support.py` builds an isolated temp SQLite + real uvicorn thread (empty `ProxyHandler`); run everything with `python -m unittest discover -s tests -p 'test_*.py'`. There are 86 test methods: scheduler job binding/reschedule/removal (10 in `test_scheduler.py`), auth + ownership + log pagination + public tasks + email config protocol (30 in `test_api.py`), subscription state machine (15 in `test_subscriptions.py`), settings/password/bootstrap (20 in `test_bootstrap.py`), and email resolution/failures (11 in `test_email.py`).
 - **`tests/smoke_runtime.py`** is the behavioral acceptance run: local HTTP fixture + loopback SMTP sink + real Selenium + real scheduler. `--serve` keeps the stack up for browser checks. It prints pass/fail lines and exits non-zero on failure.
 - Ad-hoc runtime checks: `GET /health`, and the authorized test endpoints — `POST /api/monitor-tasks/{id}/test`, `POST /api/email-configs/{id}/test`, `POST /api/blacklist-domains/test` (`/api/test-email` was removed).
-- When changing behavior, exercise the real path: run the stack, hit the affected endpoint (or `pnpm start` + browser for UI), and report observed results. If adding tests, keep them self-contained (no test infra exists to extend).
+- When changing behavior, exercise the real path: run the stack, hit the affected endpoint (or `pnpm start` + browser for UI), and report observed results. If adding tests, extend the existing `tests/support.py` helpers and keep each test self-contained.

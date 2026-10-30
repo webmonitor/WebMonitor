@@ -1,0 +1,10 @@
+# 仅用于源码开发。普通部署统一执行 docker compose up -d --wait。
+#
+#   docker compose -f compose.yaml -f compose.build.yaml up --build -d --wait
+#
+# 使用固定本地标签，避免把本地构建标记为已发布镜像。
+services:
+  webmonitor:
+    image: webmonitor:local
+    pull_policy: build
+    build: {context: ., dockerfile: deploy/Dockerfile}

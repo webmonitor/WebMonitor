@@ -1,10 +1,10 @@
 const docsEn = {
   title: 'Documentation',
-  subtitle: 'Learn how to monitor web content changes and receive timely notifications with WebMonitor.',
+  subtitle: 'Learn how to monitor a region of a web page and receive email notifications when its text changes.',
   footerCta: {
     title: 'Ready to start monitoring?',
     subtitle: 'Create an account and start tracking the pages that matter to you.',
-    primary: 'Sign up free',
+    primary: 'Create account',
     secondary: 'Log in',
   },
   sections: [
@@ -15,7 +15,7 @@ const docsEn = {
         {
           type: 'text',
           paragraphs: [
-            'Welcome to WebMonitor. You can create your first monitoring workflow in just a few steps.',
+            'WebMonitor checks a page on a schedule, compares the text inside the element you select, and records every result. You can add email notifications when you want them.',
           ],
         },
         {
@@ -26,15 +26,15 @@ const docsEn = {
           ],
           tip: {
             type: 'info',
-            text: 'Use a valid email address so you can receive monitoring notifications.',
+            text: 'The account email identifies you in WebMonitor. Notifications are sent to the recipient address in your email configuration, not to the account email.',
           },
         },
         {
           type: 'subsection',
           title: '2. Add an email configuration',
           paragraphs: [
-            'Before creating a monitoring task, configure an SMTP account in the Email Config page.',
-            'You will need the SMTP host, port, sender email, password or app password, and receiver email.',
+            'Open the Email Config page and add an SMTP account. This step is optional for collecting content, but it is required before WebMonitor can send notifications or before you can subscribe to a public task.',
+            'You will need the SMTP host, port, sender email, password or app password, and the recipient email address.',
           ],
         },
         {
@@ -49,9 +49,13 @@ const docsEn = {
               'Task name for easy identification',
               'Target URL to monitor',
               'XPath selector used to locate the content',
-              'Check interval in seconds',
-              'Email configuration used for notifications',
+              'Check interval in seconds, at least 10',
+              'Email configuration for notifications, optional',
             ],
+          },
+          tip: {
+            type: 'info',
+            text: 'A task without an email configuration still runs and records history; it simply sends no email.',
           },
         },
         {
@@ -59,7 +63,7 @@ const docsEn = {
           title: '4. Review monitoring results',
           paragraphs: [
             'After a task is created, WebMonitor checks the page automatically according to the configured interval.',
-            'Use the Dashboard for a high-level overview and the Monitor Logs page for detailed execution history.',
+            'Use the Dashboard for an overview and the Monitor Logs page for the detailed history of each check.',
           ],
         },
       ],
@@ -72,15 +76,15 @@ const docsEn = {
           type: 'subsection',
           title: 'What a monitor task does',
           paragraphs: [
-            'A monitor task watches a specific part of a web page and sends notifications when the content changes.',
-            'WebMonitor uses Selenium WebDriver, so it can handle many JavaScript-rendered pages that simple scrapers cannot.',
+            'A monitor task watches one element of a web page and records the text it finds there. When that text differs from the previous result, the change is written to the log and, if the task has an email configuration, sent as a notification.',
+            'WebMonitor uses Selenium with headless Chromium, so it can read pages that render their content with JavaScript.',
           ],
         },
         {
           type: 'subsection',
           title: 'XPath selector guide',
           paragraphs: [
-            'XPath helps WebMonitor locate the exact element you want to watch. Here are a few common examples:',
+            'XPath locates the element you want to watch. Here are a few common examples:',
           ],
           codeExamples: [
             { label: 'Select by ID', language: 'xpath', code: '//*[@id="price"]' },
@@ -90,7 +94,7 @@ const docsEn = {
           ],
           tip: {
             type: 'success',
-            text: 'Open developer tools in your browser and use Copy XPath to speed up selector setup.',
+            text: 'Open developer tools in your browser and use Copy XPath, then adjust the expression if the copied path depends on layout or position.',
           },
         },
         {
@@ -104,12 +108,12 @@ const docsEn = {
             items: [
               'Minimum interval: 10 seconds',
               'Default interval: 300 seconds (5 minutes)',
-              'Maximum interval: 86,400 seconds (24 hours)',
+              'You can enter a longer interval according to how often the page changes',
             ],
           },
           tip: {
             type: 'warning',
-            text: 'Very short intervals may trigger rate limits on the target site. Choose a practical interval for your use case.',
+            text: 'Very short intervals may trigger rate limits on the target site. Choose an interval that fits how often the content actually changes.',
           },
         },
         {
@@ -122,7 +126,7 @@ const docsEn = {
             type: 'ul',
             items: [
               'Private task: only you can view and manage it',
-              'Public task: appears in the public marketplace for others to subscribe',
+              'Public task: appears in the Public Tasks list while it is public and active, and other users can subscribe',
             ],
           },
         },
@@ -130,7 +134,8 @@ const docsEn = {
           type: 'subsection',
           title: 'Test a task',
           paragraphs: [
-            'Use the test action after creating a task to verify that your XPath selector and email setup work as expected.',
+            'Use the test action to capture the selected region once and confirm that the XPath and page load work as expected.',
+            'Testing only previews the captured content and does not send email.',
           ],
         },
       ],
@@ -153,7 +158,7 @@ const docsEn = {
               'SMTP port, usually 465 for SSL or 587 for TLS',
               'Sender email address',
               'SMTP password or app password',
-              'Receiver email address',
+              'Recipient email address',
             ],
           },
         },
@@ -175,7 +180,14 @@ const docsEn = {
           type: 'subsection',
           title: 'Send a test email',
           paragraphs: [
-            'After saving a configuration, use the test action to verify that the SMTP settings work correctly.',
+            'After saving a configuration, use the test action to verify that the SMTP settings can connect and send a message.',
+          ],
+        },
+        {
+          type: 'subsection',
+          title: 'Who can use a configuration',
+          paragraphs: [
+            'Email configurations belong to the user who created them and are only used for that user\'s notifications. There is no instance-wide SMTP account, and a task or subscription cannot use another user\'s configuration.',
           ],
         },
       ],
@@ -188,7 +200,7 @@ const docsEn = {
           type: 'subsection',
           title: 'Browse public tasks',
           paragraphs: [
-            'The Public Tasks page lets you discover tasks shared by other users.',
+            'The Public Tasks page lists tasks that their owners have published and left active.',
           ],
           list: {
             type: 'ul',
@@ -205,7 +217,7 @@ const docsEn = {
           type: 'subsection',
           title: 'Subscribe to a task',
           paragraphs: [
-            'When you subscribe, you will receive notifications when that public task detects changes.',
+            'When you subscribe, you receive notifications when that public task detects changes.',
           ],
           list: {
             type: 'ol',
@@ -218,21 +230,21 @@ const docsEn = {
           },
           tip: {
             type: 'info',
-            text: 'You need at least one email configuration before subscribing to public tasks.',
+            text: 'You need at least one email configuration before subscribing.',
           },
         },
         {
           type: 'subsection',
           title: 'Manage subscriptions',
           paragraphs: [
-            'The My Subscriptions page lets you review every subscribed task, turn notifications on or off, switch the email configuration, or unsubscribe.',
+            'The My Subscriptions page lets you review every subscribed task, turn notifications on or off, switch the email configuration, or unsubscribe. Unsubscribing still works after the task owner makes the task private or stops it.',
           ],
         },
         {
           type: 'subsection',
           title: 'Subscription limits',
           paragraphs: [
-            'Each user has a subscription quota. The default limit in this project is 10 subscriptions.',
+            'Each user has a subscription quota. The default is 10 active subscriptions; an administrator can change the limit for a user.',
           ],
         },
       ],
@@ -282,9 +294,9 @@ const docsEn = {
           list: {
             type: 'ul',
             items: [
-              'Normal: check succeeded and no change was detected',
-              'Changed: check succeeded and content changed',
-              'Failed: the check failed because of a network, page, or selector issue',
+              'Unchanged: the check succeeded and no change was detected',
+              'Changed: the check succeeded and the content changed',
+              'Error: the check failed because of a network, page, or selector issue',
             ],
           },
         },
@@ -314,7 +326,7 @@ const docsEn = {
           type: 'subsection',
           title: 'Email delivery fails',
           paragraphs: [
-            'Problem: test mail fails or no notification email arrives.',
+            'Problem: the test email fails or no notification arrives after a change.',
           ],
           list: {
             type: 'ol',
@@ -322,8 +334,9 @@ const docsEn = {
               'Confirm the SMTP host and port',
               'Use an app password instead of your normal login password when required',
               'Make sure SMTP is enabled in your mailbox settings',
-              'Check the spam folder',
               'Make sure the SSL/TLS option matches the selected port',
+              'Check the recipient address in the email configuration, not the account email',
+              'Check the spam folder',
             ],
           },
         },
@@ -338,7 +351,7 @@ const docsEn = {
             items: [
               'Some domains may be blocked by the administrator blacklist',
               'Make sure the URL includes http:// or https://',
-              'Create an email configuration before creating a task',
+              'An email configuration is optional for a task; it is not required to start collecting',
             ],
           },
         },
@@ -355,6 +368,29 @@ const docsEn = {
               'Ask an administrator to increase your quota if needed',
             ],
           },
+        },
+        {
+          type: 'subsection',
+          title: 'The content changed but no email arrived',
+          paragraphs: [
+            'Problem: the monitor log shows a change, but the mailbox received nothing.',
+          ],
+          list: {
+            type: 'ul',
+            items: [
+              'Check whether the task has an email configuration attached',
+              'Test the configuration on the Email Config page',
+              'Check the recipient address and the spam folder',
+            ],
+          },
+        },
+        {
+          type: 'subsection',
+          title: 'Where is this instance\'s data stored?',
+          paragraphs: [
+            'WebMonitor is self-hosted. This instance keeps accounts, monitor tasks, email configurations, subscriptions, and monitor logs in its deployment database.',
+            'Backups are managed by the instance operator. If the deployment container is replaced without a persistent volume or a backup, this data can be lost; ask the operator how backups are handled.',
+          ],
         },
       ],
     },

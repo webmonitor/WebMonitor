@@ -3,9 +3,8 @@ services:
   # 单体服务：FastAPI 同时提供 API 和前端静态页面，浏览器只访问一个 origin。
   # 因此没有跨域：不再有 CORS 配置，也没有第二个前端容器。
   webmonitor:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile
+    image: ${WEBMONITOR_IMAGE:-ghcr.io/webmonitor/webmonitor:latest}
+    pull_policy: always
     container_name: webmonitor
     restart: unless-stopped
     environment:
