@@ -256,14 +256,14 @@ docker compose restart
 
 ### Update or roll back
 
-This update uses a fresh database without reusing or migrating older data. Set `WEBMONITOR_IMAGE` in `.env` to the new tag, pull the image and recreate the container:
+Back up the database and record the current image version, then set `WEBMONITOR_IMAGE` in `.env` to the new tag and run:
 
 ```sh
 docker compose pull
-docker compose up -d --force-recreate --wait
+docker compose up -d --wait
 ```
 
-The default database is cleared when the container is recreated, so create accounts, email configurations, tasks and subscriptions again. If you mounted `/app/data`, use empty storage. To roll back, set `WEBMONITOR_IMAGE` to the previous tag, run the same commands and start with empty storage; cross-version data compatibility is not provided.
+The default database is stored inside the container, so recreating it loses that file unless storage is mounted separately. Follow the backup and storage instructions before updating. To roll back, set `WEBMONITOR_IMAGE` to the previous tag and repeat the commands with data matching that version. Database migration and downgrade are not automatic.
 
 ### Keep data across container recreation
 

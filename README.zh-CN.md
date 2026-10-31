@@ -256,14 +256,14 @@ docker compose restart
 
 ### 升级与回退
 
-本次更新使用全新数据库，不复用或迁移旧版本数据。把 `.env` 中的 `WEBMONITOR_IMAGE` 改为新标签，拉取镜像并重建容器：
+先备份数据库并记录当前镜像版本，再把 `.env` 中的 `WEBMONITOR_IMAGE` 改为新标签，执行：
 
 ```sh
 docker compose pull
-docker compose up -d --force-recreate --wait
+docker compose up -d --wait
 ```
 
-默认数据库随容器重建而清空，账户、邮件配置、任务和订阅需要重新创建。如果自行挂载了 `/app/data`，必须改用空存储。回退时把 `WEBMONITOR_IMAGE` 改成之前的标签，执行相同命令并使用空存储；不提供跨版本数据兼容路径。
+默认数据库位于容器内，未单独挂载存储时，重建容器会丢失该文件。更新前请按上文处理备份和存储。回退时把 `WEBMONITOR_IMAGE` 改成之前的标签，执行相同命令并使用与该版本匹配的数据；不会自动迁移或降级数据库。
 
 ### 让数据在容器重建后保留
 
