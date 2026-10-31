@@ -20,9 +20,8 @@ const LanguageSwitcher = ({ sx = {} }) => {
           alignItems: 'center',
           p: 0.5,
           borderRadius: 999,
-          backgroundColor: 'rgba(148, 163, 184, 0.12)',
+          backgroundColor: '#f1f5f9',
           border: '1px solid rgba(148, 163, 184, 0.18)',
-          backdropFilter: 'blur(8px)',
           ...sx,
         }}
       >
@@ -44,14 +43,9 @@ const LanguageSwitcher = ({ sx = {} }) => {
                 fontWeight: 700,
                 lineHeight: 1,
                 color: isActive ? '#ffffff' : '#64748b',
-                background: isActive
-                  ? `linear-gradient(135deg, ${UI_COLORS.primary} 0%, ${UI_COLORS.primaryDark} 100%)`
-                  : 'transparent',
-                boxShadow: isActive ? '0 6px 18px rgba(16, 185, 129, 0.28)' : 'none',
+                backgroundColor: isActive ? UI_COLORS.primary : 'transparent',
                 '&:hover': {
-                  background: isActive
-                    ? `linear-gradient(135deg, ${UI_COLORS.primary} 0%, ${UI_COLORS.primaryDark} 100%)`
-                    : 'rgba(15, 23, 42, 0.04)',
+                  backgroundColor: isActive ? UI_COLORS.primaryDark : '#e2e8f0',
                 },
               }}
             >

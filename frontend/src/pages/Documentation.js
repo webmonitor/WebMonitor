@@ -347,22 +347,6 @@ const Documentation = () => {
         position: 'relative',
       }}
     >
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: `
-            linear-gradient(${alpha('#e2e8f0', 0.3)} 1px, transparent 1px),
-            linear-gradient(90deg, ${alpha('#e2e8f0', 0.3)} 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
 
       <Box
         component={motion.nav}
@@ -375,8 +359,7 @@ const Documentation = () => {
           left: 0,
           right: 0,
           zIndex: 1100,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
+          backgroundColor: '#ffffff',
           borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
@@ -460,14 +443,8 @@ const Documentation = () => {
                 variant="contained"
                 onClick={() => navigate('/register')}
                 sx={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  color: '#ffffff',
                   px: 2,
                   fontWeight: 600,
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)',
-                  '&:hover': {
-                    boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
-                  },
                 }}
               >
                 {t('common.register')}
@@ -508,8 +485,7 @@ const Documentation = () => {
           width: sidebarWidth,
           height: 'calc(100vh - 72px)',
           borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
+          backgroundColor: '#ffffff',
           overflowY: 'auto',
           zIndex: 1000,
         }}
@@ -591,12 +567,9 @@ const Documentation = () => {
                 size="large"
                 onClick={() => navigate('/register')}
                 sx={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  color: '#ffffff',
                   px: 4,
                   py: 1.5,
                   fontWeight: 600,
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)',
                 }}
               >
                 {content.footerCta.primary}

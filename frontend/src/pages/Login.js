@@ -42,7 +42,6 @@ const Login = () => {
   const location = useLocation();
   const { login, isAuthenticated } = useAuth();
   const { t } = useTranslation();
-  const badges = t('login.badges', { returnObjects: true });
 
   React.useEffect(() => {
     if (isAuthenticated()) {
@@ -100,38 +99,6 @@ const Login = () => {
         overflow: 'hidden',
       }}
     >
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: `
-            radial-gradient(circle at 20% 30%, ${alpha('#10b981', 0.04)} 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, ${alpha('#2563eb', 0.04)} 0%, transparent 50%)
-          `,
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: `
-            linear-gradient(${alpha('#e2e8f0', 0.4)} 1px, transparent 1px),
-            linear-gradient(90deg, ${alpha('#e2e8f0', 0.4)} 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
 
       <Container
         maxWidth="lg"
@@ -213,44 +180,6 @@ const Login = () => {
                   {t('login.heroSubtitle')}
                 </Typography>
 
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                  {badges.map((label, index) => {
-                    const color = ['#10b981', '#2563eb', '#f59e0b'][index];
-                    return (
-                      <motion.div
-                        key={label}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
-                      >
-                        <Box
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            px: 2,
-                            py: 1,
-                            borderRadius: 2,
-                            backgroundColor: alpha(color, 0.08),
-                            border: `1px solid ${alpha(color, 0.15)}`,
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              backgroundColor: color,
-                              mr: 1,
-                            }}
-                          />
-                          <Typography variant="caption" sx={{ color, fontWeight: 600 }}>
-                            {label}
-                          </Typography>
-                        </Box>
-                      </motion.div>
-                    );
-                  })}
-                </Box>
               </Box>
             </motion.div>
           </Grid>
@@ -268,7 +197,6 @@ const Login = () => {
                   background: '#ffffff',
                   border: '1px solid rgba(0, 0, 0, 0.08)',
                   borderRadius: 4,
-                  boxShadow: '0 25px 80px rgba(0, 0, 0, 0.06)',
                 }}
               >
                 <Box sx={{ mb: 4 }}>
@@ -405,57 +333,48 @@ const Login = () => {
                     }}
                   />
 
-                  <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                    <Button
-                      type="submit"
-                      fullWidth
-                      variant="contained"
-                      disabled={loading}
-                      size="large"
-                      sx={{
-                        mt: 4,
-                        mb: 2,
-                        py: 1.75,
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                        color: 'white',
-                        fontWeight: 600,
-                        borderRadius: 2,
-                        fontSize: '1rem',
-                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)',
-                        '&:hover': {
-                          boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
-                        },
-                        '&:disabled': {
-                          background: '#e2e8f0',
-                          color: '#94a3b8',
-                        },
-                      }}
-                      endIcon={!loading && <ArrowForwardIcon />}
-                    >
-                      {loading ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Box
-                            sx={{
-                              width: 20,
-                              height: 20,
-                              mr: 2,
-                              border: '2px solid rgba(255,255,255,0.3)',
-                              borderTop: '2px solid #fff',
-                              borderRadius: '50%',
-                              animation: 'spin 1s linear infinite',
-                              '@keyframes spin': {
-                                '0%': { transform: 'rotate(0deg)' },
-                                '100%': { transform: 'rotate(360deg)' },
-                              },
-                            }}
-                          />
-                          {t('login.submitting')}
-                        </Box>
-                      ) : (
-                        t('login.submit')
-                      )}
-                    </Button>
-                  </motion.div>
+                  <div><Button
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    disabled={loading}
+                    size="large"
+                    sx={{
+                      mt: 4,
+                      mb: 2,
+                      py: 1.75,
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      '&:disabled': {
+                        background: '#e2e8f0',
+                        color: '#94a3b8',
+                      },
+                    }}
+                    endIcon={!loading && <ArrowForwardIcon />}
+                  >
+                    {loading ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            mr: 2,
+                            border: '2px solid rgba(255,255,255,0.3)',
+                            borderTop: '2px solid #fff',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            '@keyframes spin': {
+                              '0%': { transform: 'rotate(0deg)' },
+                              '100%': { transform: 'rotate(360deg)' },
+                            },
+                          }}
+                        />
+                        {t('login.submitting')}
+                      </Box>
+                    ) : (
+                      t('login.submit')
+                    )}
+                  </Button></div>
                 </Box>
 
                 <Box sx={{ mt: 4, width: '100%', textAlign: 'center' }}>

@@ -5,7 +5,6 @@ import {
   Typography,
   Button,
   Grid,
-  Avatar,
   Card,
   CardContent,
   Stack,
@@ -15,18 +14,8 @@ import {
   Paper,
 } from '@mui/material';
 import {
-  Notifications as NotificationsIcon,
-  Security as SecurityIcon,
-  Speed as SpeedIcon,
-  Assessment as AssessmentIcon,
-  Schedule as ScheduleIcon,
   CheckCircle as CheckCircleIcon,
-  TrendingUp as TrendingUpIcon,
-  IntegrationInstructions as IntegrationIcon,
-  AutoAwesome as SparkleIcon,
-  RocketLaunch as RocketIcon,
   ArrowForward as ArrowForwardIcon,
-  PlayArrow as PlayArrowIcon,
   Monitor as MonitorIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -49,27 +38,11 @@ const GitHubIcon = (props) => (
   </svg>
 );
 
-// 展示用配置：图标与颜色只属于页面，文案全部来自翻译资源，按 locale 的 key 对应。
-const FEATURE_PRESENTATION = {
-  realtime: { Icon: MonitorIcon, color: '#10b981' },
-  notifications: { Icon: NotificationsIcon, color: '#2563eb' },
-  secure: { Icon: SecurityIcon, color: '#f59e0b' },
-  performance: { Icon: SpeedIcon, color: '#ec4899' },
-  analysis: { Icon: AssessmentIcon, color: '#8b5cf6' },
-  schedule: { Icon: ScheduleIcon, color: '#06b6d4' },
-};
-
-const ADVANTAGE_PRESENTATION = {
-  setup: { Icon: CheckCircleIcon, color: '#10b981' },
-  scale: { Icon: TrendingUpIcon, color: '#2563eb' },
-  api: { Icon: IntegrationIcon, color: '#f59e0b' },
-};
-
-// 示例数据：数值与颜色是页面固定的演示内容，标签来自 home.previewStats。
+// 示例数据：数值为固定演示内容，标签来自 home.previewStats。
 const PREVIEW_STATS = [
-  { key: 'activeTasks', value: '12', color: '#10b981' },
-  { key: 'changesToday', value: '5', color: '#2563eb' },
-  { key: 'successRate', value: '99%', color: '#f59e0b' },
+  { key: 'activeTasks', value: '12' },
+  { key: 'changesToday', value: '5' },
+  { key: 'successRate', value: '99%' },
 ];
 
 // 示例活动：状态文案来自 home.previewActivities。
@@ -92,14 +65,8 @@ const HomePage = () => {
   const advantagesInView = useInView(refAdvantages, { once: true, margin: '-100px' });
   const ctaInView = useInView(refCTA, { once: true, margin: '-100px' });
 
-  const features = t('home.features', { returnObjects: true }).map((item) => ({
-    ...item,
-    ...FEATURE_PRESENTATION[item.key],
-  }));
-  const advantages = t('home.advantages', { returnObjects: true }).map((item) => ({
-    ...item,
-    ...ADVANTAGE_PRESENTATION[item.key],
-  }));
+  const features = t('home.features', { returnObjects: true });
+  const advantages = t('home.advantages', { returnObjects: true });
 
   const handleLogin = () => {
     navigate('/login');
@@ -111,39 +78,6 @@ const HomePage = () => {
 
   return (
     <Box sx={{ position: 'relative', overflow: 'hidden', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: `
-            radial-gradient(circle at 20% 20%, ${alpha('#10b981', 0.03)} 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, ${alpha('#2563eb', 0.03)} 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, ${alpha('#f8fafc', 0.8)} 0%, transparent 100%)
-          `,
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: `
-            linear-gradient(${alpha('#e2e8f0', 0.3)} 1px, transparent 1px),
-            linear-gradient(90deg, ${alpha('#e2e8f0', 0.3)} 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
 
       <motion.div
         initial={{ y: -100, opacity: 0 }}
@@ -155,8 +89,7 @@ const HomePage = () => {
           left: 0,
           right: 0,
           zIndex: 1000,
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(20px)',
+          backgroundColor: '#ffffff',
           borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
@@ -165,11 +98,13 @@ const HomePage = () => {
             sx={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: { xs: 'stretch', md: 'center' },
+              gap: 2,
               py: 2,
             }}
           >
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <WebMonitorLogo size={40} />
                 <Typography
@@ -184,15 +119,18 @@ const HomePage = () => {
                   WebMonitor
                 </Typography>
               </Box>
-              <Box sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
+              <Box sx={{ display: 'inline-flex' }}>
                 <LanguageSwitcher />
               </Box>
             </Stack>
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Stack direction="row" spacing={{ xs: 0.5, sm: 2 }} sx={{ alignItems: 'center', justifyContent: { xs: 'space-between', md: 'flex-start' } }}>
               <Button
                 variant="text"
                 onClick={() => navigate('/documentation')}
                 sx={{
+                  minWidth: { xs: 0, sm: 64 },
+                  px: { xs: 1, sm: 2 },
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                   color: '#64748b',
                   fontWeight: 500,
                   '&:hover': {
@@ -208,6 +146,9 @@ const HomePage = () => {
                 variant="text"
                 onClick={handleLogin}
                 sx={{
+                  minWidth: { xs: 0, sm: 64 },
+                  px: { xs: 1, sm: 2 },
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                   color: '#64748b',
                   fontWeight: 500,
                   '&:hover': {
@@ -223,19 +164,9 @@ const HomePage = () => {
                 variant="contained"
                 onClick={handleRegister}
                 sx={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  color: '#FFFFFF',
-                  px: 3,
+                  px: { xs: 1.5, sm: 3 },
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                   py: 1,
-                  borderRadius: 2,
-                  fontWeight: 600,
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
-                  },
-                  transition: 'all 0.2s ease',
                 }}
               >
                 {t('home.navRegister')}
@@ -251,7 +182,7 @@ const HomePage = () => {
                       color: '#10b981',
                       backgroundColor: alpha('#10b981', 0.04),
                     },
-                    transition: 'all 0.2s ease',
+                    transition: 'color 0.15s ease, background-color 0.15s ease',
                   }}
                 >
                   <GitHubIcon />
@@ -269,7 +200,7 @@ const HomePage = () => {
           display: 'flex',
           alignItems: 'center',
           position: 'relative',
-          pt: { xs: 12, md: 0 },
+          pt: { xs: 20, md: 0 },
           pb: { xs: 8, md: 0 },
         }}
       >
@@ -282,33 +213,6 @@ const HomePage = () => {
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
                 <Box sx={{ maxWidth: 580 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                    <Box
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        px: 2,
-                        py: 0.75,
-                        borderRadius: 10,
-                        backgroundColor: alpha('#10b981', 0.08),
-                        border: `1px solid ${alpha('#10b981', 0.15)}`,
-                      }}
-                    >
-                      <SparkleIcon sx={{ color: '#10b981', mr: 1, fontSize: 18 }} />
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: '#10b981',
-                          fontWeight: 600,
-                          letterSpacing: 0.5,
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {t('home.badge')}
-                      </Typography>
-                    </Box>
-                  </Box>
-
                   <Typography
                     variant="h1"
                     component="h1"
@@ -323,17 +227,7 @@ const HomePage = () => {
                   >
                     {t('home.heroTitleLine1')}
                     <br />
-                    <Box
-                      component="span"
-                      sx={{
-                        background: 'linear-gradient(135deg, #10b981 0%, #2563eb 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                      }}
-                    >
-                      {t('home.heroTitleLine2')}
-                    </Box>
+                    {t('home.heroTitleLine2')}
                   </Typography>
 
                   <Typography
@@ -350,55 +244,42 @@ const HomePage = () => {
                   </Typography>
 
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button
-                        variant="contained"
-                        size="large"
-                        onClick={handleRegister}
-                        sx={{
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                          color: '#FFFFFF',
-                          py: 2,
-                          px: 4,
-                          fontSize: '1rem',
-                          fontWeight: 600,
-                          borderRadius: 2,
-                          boxShadow: '0 8px 30px rgba(16, 185, 129, 0.25)',
-                          '&:hover': {
-                            boxShadow: '0 12px 40px rgba(16, 185, 129, 0.35)',
-                          },
-                        }}
-                        endIcon={<RocketIcon />}
-                      >
-                        {t('home.heroPrimary')}
-                      </Button>
-                    </motion.div>
+                    <div><Button
+                      variant="contained"
+                      size="large"
+                      onClick={handleRegister}
+                      sx={{
+                        py: 2,
+                        px: 4,
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {t('home.heroPrimary')}
+                    </Button></div>
 
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button
-                        variant="outlined"
-                        size="large"
-                        onClick={handleLogin}
-                        sx={{
-                          borderColor: '#e2e8f0',
-                          color: '#475569',
-                          py: 2,
-                          px: 4,
-                          fontSize: '1rem',
-                          fontWeight: 600,
-                          borderRadius: 2,
-                          backgroundColor: '#ffffff',
-                          '&:hover': {
-                            borderColor: '#10b981',
-                            color: '#10b981',
-                            backgroundColor: alpha('#10b981', 0.04),
-                          },
-                        }}
-                        startIcon={<PlayArrowIcon />}
-                      >
-                        {t('home.heroSecondary')}
-                      </Button>
-                    </motion.div>
+                    <div><Button
+                      variant="outlined"
+                      size="large"
+                      onClick={handleLogin}
+                      sx={{
+                        borderColor: '#e2e8f0',
+                        color: '#475569',
+                        py: 2,
+                        px: 4,
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        borderRadius: 2,
+                        backgroundColor: '#ffffff',
+                        '&:hover': {
+                          borderColor: '#10b981',
+                          color: '#10b981',
+                          backgroundColor: alpha('#10b981', 0.04),
+                        },
+                      }}
+                    >
+                      {t('home.heroSecondary')}
+                    </Button></div>
                   </Stack>
                 </Box>
               </motion.div>
@@ -441,7 +322,6 @@ const HomePage = () => {
                         overflow: 'hidden',
                         background: '#ffffff',
                         border: '1px solid rgba(0, 0, 0, 0.08)',
-                        boxShadow: '0 25px 80px rgba(0, 0, 0, 0.12)',
                       }}
                     >
                       <Box
@@ -499,12 +379,10 @@ const HomePage = () => {
                                 <Box
                                   sx={{
                                     p: 2,
-                                    borderRadius: 2,
-                                    backgroundColor: alpha(stat.color, 0.08),
                                     textAlign: 'center',
                                   }}
                                 >
-                                  <Typography variant="h5" sx={{ fontWeight: 700, color: stat.color }}>
+                                  <Typography variant="h5" sx={{ fontWeight: 700, color: '#334155' }}>
                                     {stat.value}
                                   </Typography>
                                   <Typography variant="caption" sx={{ color: '#64748b' }}>
@@ -559,9 +437,7 @@ const HomePage = () => {
                       </Box>
                     </Paper>
 
-                    <motion.div
-                      animate={{ y: [0, -10, 0] }}
-                      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                    <div
                       style={{
                         position: 'absolute',
                         top: -20,
@@ -573,15 +449,13 @@ const HomePage = () => {
                           p: 2,
                           borderRadius: 3,
                           backgroundColor: '#ffffff',
-                          boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                          border: '1px solid rgba(0, 0, 0, 0.08)',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 1.5,
                         }}
                       >
-                        <Avatar sx={{ width: 36, height: 36, backgroundColor: alpha('#10b981', 0.1) }}>
-                          <CheckCircleIcon sx={{ color: '#10b981', fontSize: 20 }} />
-                        </Avatar>
+                        <CheckCircleIcon sx={{ color: '#10b981', fontSize: 20 }} />
                         <Box>
                           <Typography variant="caption" sx={{ color: '#64748b' }}>
                             {t('home.floatingTitle')}
@@ -591,7 +465,7 @@ const HomePage = () => {
                           </Typography>
                         </Box>
                       </Paper>
-                    </motion.div>
+                    </div>
                   </Box>
                 </Box>
               </motion.div>
@@ -615,18 +489,6 @@ const HomePage = () => {
             transition={{ duration: 0.6 }}
           >
             <Box sx={{ textAlign: 'center', mb: { xs: 8, md: 10 } }}>
-              <Typography
-                variant="overline"
-                component="div"
-                sx={{
-                  color: '#10b981',
-                  fontWeight: 600,
-                  mb: 2,
-                  letterSpacing: 2,
-                }}
-              >
-                {t('home.featuresOverline')}
-              </Typography>
               <Typography
                 variant="h3"
                 component="h2"
@@ -672,26 +534,9 @@ const HomePage = () => {
                       border: '1px solid rgba(0, 0, 0, 0.06)',
                       borderRadius: 3,
                       backgroundColor: '#ffffff',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)',
-                        borderColor: alpha(feature.color, 0.3),
-                      },
                     }}
                   >
                     <CardContent sx={{ p: 3 }}>
-                      <Avatar
-                        sx={{
-                          width: 56,
-                          height: 56,
-                          mb: 3,
-                          backgroundColor: alpha(feature.color, 0.1),
-                          color: feature.color,
-                        }}
-                      >
-                        <feature.Icon sx={{ fontSize: 28 }} />
-                      </Avatar>
                       <Typography variant="h6" component="h3" sx={{ fontWeight: 700, color: '#334155', mb: 1.5 }}>
                         {feature.title}
                       </Typography>
@@ -722,18 +567,6 @@ const HomePage = () => {
             transition={{ duration: 0.6 }}
           >
             <Box sx={{ textAlign: 'center', mb: { xs: 8, md: 10 } }}>
-              <Typography
-                variant="overline"
-                component="div"
-                sx={{
-                  color: '#2563eb',
-                  fontWeight: 600,
-                  mb: 2,
-                  letterSpacing: 2,
-                }}
-              >
-                {t('home.advantagesOverline')}
-              </Typography>
               <Typography
                 variant="h3"
                 component="h2"
@@ -770,26 +603,8 @@ const HomePage = () => {
                       backgroundColor: '#f8fafc',
                       border: '1px solid rgba(0, 0, 0, 0.04)',
                       borderRadius: 3,
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        backgroundColor: '#ffffff',
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)',
-                      },
                     }}
                   >
-                    <Avatar
-                      sx={{
-                        backgroundColor: alpha(advantage.color, 0.1),
-                        color: advantage.color,
-                        width: 72,
-                        height: 72,
-                        mx: 'auto',
-                        mb: 3,
-                      }}
-                    >
-                      <advantage.Icon />
-                    </Avatar>
                     <Typography variant="h6" component="h3" sx={{ fontWeight: 700, color: '#334155', mb: 2 }}>
                       {advantage.title}
                     </Typography>
@@ -814,20 +629,6 @@ const HomePage = () => {
           overflow: 'hidden',
         }}
       >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: `
-              radial-gradient(circle at 20% 50%, ${alpha('#10b981', 0.08)} 0%, transparent 50%),
-              radial-gradient(circle at 80% 50%, ${alpha('#2563eb', 0.08)} 0%, transparent 50%)
-            `,
-            pointerEvents: 'none',
-          }}
-        />
 
         <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, px: { xs: 3, md: 6 } }}>
           <motion.div
@@ -842,7 +643,6 @@ const HomePage = () => {
                 borderRadius: 4,
                 backgroundColor: '#ffffff',
                 border: '1px solid rgba(0, 0, 0, 0.06)',
-                boxShadow: '0 25px 80px rgba(0, 0, 0, 0.06)',
               }}
             >
               <Typography
@@ -872,53 +672,42 @@ const HomePage = () => {
               </Typography>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'center' }}>
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={handleRegister}
-                    sx={{
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: '#ffffff',
-                      py: 2,
-                      px: 5,
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      borderRadius: 2,
-                      boxShadow: '0 8px 30px rgba(16, 185, 129, 0.25)',
-                      '&:hover': {
-                        boxShadow: '0 12px 40px rgba(16, 185, 129, 0.35)',
-                      },
-                    }}
-                    endIcon={<ArrowForwardIcon />}
-                  >
-                    {t('home.heroPrimary')}
-                  </Button>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    variant="outlined"
-                    size="large"
-                    onClick={handleLogin}
-                    sx={{
-                      borderColor: '#e2e8f0',
-                      color: '#475569',
-                      py: 2,
-                      px: 5,
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      borderRadius: 2,
-                      backgroundColor: '#ffffff',
-                      '&:hover': {
-                        borderColor: '#10b981',
-                        color: '#10b981',
-                        backgroundColor: alpha('#10b981', 0.04),
-                      },
-                    }}
-                  >
-                    {t('home.heroSecondary')}
-                  </Button>
-                </motion.div>
+                <div><Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleRegister}
+                  sx={{
+                    py: 2,
+                    px: 5,
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                  }}
+                  endIcon={<ArrowForwardIcon />}
+                >
+                  {t('home.heroPrimary')}
+                </Button></div>
+                <div><Button
+                  variant="outlined"
+                  size="large"
+                  onClick={handleLogin}
+                  sx={{
+                    borderColor: '#e2e8f0',
+                    color: '#475569',
+                    py: 2,
+                    px: 5,
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    borderRadius: 2,
+                    backgroundColor: '#ffffff',
+                    '&:hover': {
+                      borderColor: '#10b981',
+                      color: '#10b981',
+                      backgroundColor: alpha('#10b981', 0.04),
+                    },
+                  }}
+                >
+                  {t('home.heroSecondary')}
+                </Button></div>
               </Stack>
             </Paper>
           </motion.div>

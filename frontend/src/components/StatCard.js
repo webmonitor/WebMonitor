@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, alpha } from '@mui/material';
+import { Card, CardContent, Typography, Box } from '@mui/material';
 
 import { UI_SURFACE } from '../theme/tokens';
 
@@ -19,38 +19,11 @@ const StatCard = ({ title, value, icon, color, subtitle }) => {
         background: UI_SURFACE.card,
         border: UI_SURFACE.border,
         borderRadius: UI_SURFACE.radius,
-        transition: 'all 0.2s ease',
-        position: 'relative',
-        overflow: 'hidden',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: UI_SURFACE.shadowSoft,
-        },
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '4px',
-          background: `linear-gradient(90deg, ${color} 0%, ${alpha(color, 0.6)} 100%)`,
-        },
       }}
     >
       <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Box
-            sx={{
-              background: `linear-gradient(45deg, ${color} 30%, ${alpha(color, 0.7)} 90%)`,
-              color: 'white',
-              borderRadius: 3,
-              p: 1.5,
-              display: 'flex',
-              boxShadow: `0 4px 15px ${alpha(color, 0.3)}`,
-            }}
-          >
-            {icon}
-          </Box>
+        <Box sx={{ display: 'flex', color, mb: 2 }}>
+          {icon}
         </Box>
 
         <Typography

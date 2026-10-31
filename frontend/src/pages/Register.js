@@ -7,7 +7,6 @@ import {
   Alert,
   Container,
   Paper,
-  Avatar,
   Link,
   Grid,
   alpha,
@@ -15,7 +14,6 @@ import {
   InputAdornment,
 } from '@mui/material';
 import {
-  PersonAdd as PersonAddIcon,
   Person as PersonIcon,
   Lock as LockIcon,
   Email as EmailIcon,
@@ -172,38 +170,6 @@ const Register = () => {
         overflow: 'hidden',
       }}
     >
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: `
-            radial-gradient(circle at 80% 30%, ${alpha('#2563eb', 0.04)} 0%, transparent 50%),
-            radial-gradient(circle at 20% 70%, ${alpha('#10b981', 0.04)} 0%, transparent 50%)
-          `,
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: `
-            linear-gradient(${alpha('#e2e8f0', 0.4)} 1px, transparent 1px),
-            linear-gradient(90deg, ${alpha('#e2e8f0', 0.4)} 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
 
       <Container
         maxWidth="lg"
@@ -266,17 +232,7 @@ const Register = () => {
                 >
                   {t('register.heroTitleStart')}
                   <br />
-                  <Box
-                    component="span"
-                    sx={{
-                      background: 'linear-gradient(135deg, #2563eb 0%, #10b981 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                    }}
-                  >
-                    {t('register.heroTitleAccent')}
-                  </Box>
+                  {t('register.heroTitleAccent')}
                 </Typography>
                 <Typography
                   variant="h6"
@@ -296,7 +252,6 @@ const Register = () => {
                     {t('register.benefitsTitle')}
                   </Typography>
                   {benefits.map((benefit, index) => {
-                    const colors = ['#10b981', '#2563eb', '#f59e0b', '#8b5cf6'];
                     return (
                       <motion.div
                         key={benefit}
@@ -305,7 +260,7 @@ const Register = () => {
                         transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <CheckCircleIcon sx={{ color: colors[index], mr: 1.5, fontSize: 20 }} />
+                          <CheckCircleIcon sx={{ color: '#10b981', mr: 1.5, fontSize: 20 }} />
                           <Typography variant="body2" sx={{ color: '#64748b' }}>
                             {benefit}
                           </Typography>
@@ -331,27 +286,15 @@ const Register = () => {
                   background: '#ffffff',
                   border: '1px solid rgba(0, 0, 0, 0.08)',
                   borderRadius: 4,
-                  boxShadow: '0 25px 80px rgba(0, 0, 0, 0.06)',
                 }}
               >
                 <Box sx={{ mb: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Avatar
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        mr: 2,
-                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
-                      }}
-                    >
-                      <PersonAddIcon sx={{ fontSize: 22 }} />
-                    </Avatar>
                     <Typography component="h2" variant="h4" sx={{ fontWeight: 700, color: '#334155' }}>
                       {t('register.formTitle')}
                     </Typography>
                   </Box>
-                  <Typography variant="body2" sx={{ color: '#64748b', ml: 7 }}>
+                  <Typography variant="body2" sx={{ color: '#64748b' }}>
                     {t('register.formSubtitle')}
                   </Typography>
                 </Box>
@@ -565,7 +508,7 @@ const Register = () => {
                               width: `${passwordStrength}%`,
                               backgroundColor: getPasswordStrengthColor(),
                               borderRadius: 2,
-                              transition: 'all 0.3s ease',
+                              transition: 'background-color 0.15s ease',
                             }}
                           />
                         </Box>
@@ -632,57 +575,48 @@ const Register = () => {
                     }}
                   />
 
-                  <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                    <Button
-                      type="submit"
-                      fullWidth
-                      variant="contained"
-                      disabled={loading}
-                      size="large"
-                      sx={{
-                        mt: 4,
-                        mb: 2,
-                        py: 1.75,
-                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                        color: 'white',
-                        fontWeight: 600,
-                        borderRadius: 2,
-                        fontSize: '1rem',
-                        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
-                        '&:hover': {
-                          boxShadow: '0 6px 20px rgba(37, 99, 235, 0.35)',
-                        },
-                        '&:disabled': {
-                          background: '#e2e8f0',
-                          color: '#94a3b8',
-                        },
-                      }}
-                      endIcon={!loading && <ArrowForwardIcon />}
-                    >
-                      {loading ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Box
-                            sx={{
-                              width: 20,
-                              height: 20,
-                              mr: 2,
-                              border: '2px solid rgba(255,255,255,0.3)',
-                              borderTop: '2px solid #fff',
-                              borderRadius: '50%',
-                              animation: 'spin 1s linear infinite',
-                              '@keyframes spin': {
-                                '0%': { transform: 'rotate(0deg)' },
-                                '100%': { transform: 'rotate(360deg)' },
-                              },
-                            }}
-                          />
-                          {t('register.submitting')}
-                        </Box>
-                      ) : (
-                        t('register.submit')
-                      )}
-                    </Button>
-                  </motion.div>
+                  <div><Button
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    disabled={loading}
+                    size="large"
+                    sx={{
+                      mt: 4,
+                      mb: 2,
+                      py: 1.75,
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      '&:disabled': {
+                        background: '#e2e8f0',
+                        color: '#94a3b8',
+                      },
+                    }}
+                    endIcon={!loading && <ArrowForwardIcon />}
+                  >
+                    {loading ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            mr: 2,
+                            border: '2px solid rgba(255,255,255,0.3)',
+                            borderTop: '2px solid #fff',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            '@keyframes spin': {
+                              '0%': { transform: 'rotate(0deg)' },
+                              '100%': { transform: 'rotate(360deg)' },
+                            },
+                          }}
+                        />
+                        {t('register.submitting')}
+                      </Box>
+                    ) : (
+                      t('register.submit')
+                    )}
+                  </Button></div>
                 </Box>
 
                 <Box sx={{ mt: 4, width: '100%', textAlign: 'center' }}>

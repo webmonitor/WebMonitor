@@ -147,18 +147,15 @@ const Layout = () => {
                     px: 3,
                     py: 2.5,
                     minHeight: 'auto',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'background-color 0.15s ease',
                     '&:hover': {
                       backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                      transform: 'translateX(4px)',
                     },
                     '&.Mui-selected': {
-                      background:
-                        'linear-gradient(45deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
                       borderLeft: '3px solid #10b981',
                       '&:hover': {
                         backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                        transform: 'translateX(0)',
                       },
                       '& .MuiListItemIcon-root': { color: '#10b981' },
                       '& .MuiListItemText-primary': { color: '#1a1a1a', fontWeight: 600 },
@@ -204,8 +201,7 @@ const Layout = () => {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
+          background: '#ffffff',
           borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
           color: '#1a1a1a',
         }}
@@ -262,8 +258,7 @@ const Layout = () => {
                   sx={{
                     width: 36,
                     height: 36,
-                    background: 'linear-gradient(45deg, #2563eb 30%, #1d4ed8 90%)',
-                    boxShadow: '0 2px 10px rgba(37, 99, 235, 0.3)',
+                    background: '#10b981',
                   }}
                 >
                   {user?.username?.charAt(0).toUpperCase() || 'U'}
