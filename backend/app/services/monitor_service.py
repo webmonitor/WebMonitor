@@ -14,6 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from ..core.config import settings
 from ..db.crud import (
     create_monitor_log,
     get_monitor_task,
@@ -22,6 +23,7 @@ from ..db.crud import (
 )
 from ..db.database import SessionLocal
 from .email_service import EmailService
+from .target_access import CollectorProxy, TargetForbidden, resolve_target
 
 logger = logging.getLogger(__name__)
 
@@ -36,45 +38,36 @@ class MonitorService:
         self.email_service = EmailService()
 
     def get_content_with_selenium(self, url: str, xpath: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        """使用 Selenium 获取指定网页 xpath 路径的内容。
-
-        Returns:
-            tuple: (内容, 错误信息, 网页标题)
-        """
+        """通过受限代理采集公开 HTTP(S) 页面；每个连接重新校验目标。"""
         driver = None
         try:
-            chrome_options = Options()
-            chrome_options.add_argument("--headless")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument(
-                "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
-
-            logger.info("正在访问: %s", url)
-            driver.get(url)
-
-            wait = WebDriverWait(driver, ELEMENT_WAIT_TIMEOUT_SECONDS)
-            element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
-
-            content = element.text.strip()
-            title = driver.title
-
-            logger.info("成功获取内容: %s - %s...", title, content[:50])
-            return content, None, title
-
-        except Exception as exc:  # Selenium 的异常类型很多，统一转成错误串
-            error_msg = f"获取内容出错 ({url}): {exc}"
-            logger.error(error_msg)
-            return None, error_msg, None
-
-        finally:
-            if driver:
-                driver.quit()
+            with CollectorProxy(settings.TARGET_ALLOWED_ORIGINS) as proxy:
+                resolve_target(url, proxy.exceptions)
+                chrome_options = Options()
+                for argument in ("--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage",
+                                 f"--proxy-server={proxy.url}", "--proxy-bypass-list=<-loopback>",
+                                 "--disable-quic", "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"):
+                    chrome_options.add_argument(argument)
+                chrome_options.add_argument(
+                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                try:
+                    driver = webdriver.Chrome(options=chrome_options)
+                    driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
+                    driver.get(url)
+                    wait = WebDriverWait(driver, ELEMENT_WAIT_TIMEOUT_SECONDS)
+                    element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
+                    content, title = element.text.strip(), driver.title
+                    if proxy.blocked:
+                        raise TargetForbidden("目标地址不在允许范围内")
+                    return content, None, title
+                finally:
+                    if driver is not None:
+                        driver.quit()
+        except TargetForbidden:
+            return None, "目标地址不在允许范围内", None
+        except Exception:
+            logger.warning("网页采集失败")
+            return None, "网页采集失败", None
 
     def check_single_task(self, task_id: int) -> bool:
         """检查单个监控任务。
@@ -209,27 +202,26 @@ class MonitorService:
         """向公开任务的订阅者发送变更通知。"""
         db = SessionLocal()
         try:
-            subscriptions = get_task_subscriptions(db=db, task_id=task.id)
-
-            logger.info("任务 %s 有 %s 个订阅者需要通知", task.name, len(subscriptions))
-
-            for subscription in subscriptions:
-                try:
-                    self.email_service.send_change_notification(
-                        task_name=f"[订阅] {task.name}",
-                        url=task.url,
-                        title=title or "未知标题",
-                        old_content=old_content or "无历史内容",
-                        new_content=new_content,
-                        check_time=check_time,
-                        email_config_id=subscription.email_config_id,
-                        user_id=subscription.user_id,
-                    )
-                    logger.info("已向订阅者 %s 发送通知", subscription.user_id)
-
-                except Exception as exc:
-                    logger.error("向订阅者 %s 发送通知失败: %s", subscription.user_id, exc)
-                    continue
+            cursor = 0
+            while True:
+                db.expire_all()
+                live = get_monitor_task(db, task.id)
+                if live is None or not live.is_public or not live.is_active:
+                    return
+                subscriptions = get_task_subscriptions(db=db, task_id=task.id,
+                                                       after_id=cursor, limit=100)
+                if not subscriptions:
+                    break
+                for subscription in subscriptions:
+                    cursor = subscription.id
+                    try:
+                        self.email_service.send_change_notification(
+                            task_name=f"[订阅] {live.name}", url=live.url,
+                            title=title or "未知标题", old_content=old_content or "无历史内容",
+                            new_content=new_content, check_time=check_time,
+                            email_config_id=subscription.email_config_id, user_id=subscription.user_id)
+                    except Exception:
+                        logger.warning("订阅邮件发送失败，继续处理其他订阅")
 
         except Exception as exc:
             logger.error("获取订阅者列表失败: %s", exc)

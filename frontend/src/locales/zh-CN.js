@@ -472,6 +472,7 @@ const zhCN = {
     loadFailed: '加载任务市场失败',
   },
   subscriptions: {
+    taskUnavailable: '任务已不再公开或已停用',
     title: '我的订阅',
     subtitle: '管理您订阅的公开任务和通知设置',
     totalSubscriptions: '总订阅数',

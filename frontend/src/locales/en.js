@@ -481,6 +481,7 @@ const en = {
     loadFailed: 'Failed to load the marketplace',
   },
   subscriptions: {
+    taskUnavailable: 'Task is no longer public or active',
     title: 'My subscriptions',
     subtitle: 'Manage your subscribed public tasks and notification settings.',
     totalSubscriptions: 'Total subscriptions',

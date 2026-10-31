@@ -453,11 +453,13 @@ def get_user_subscriptions(db: Session, user_id: int, skip: int = 0, limit: int 
     )
 
 
-def get_task_subscriptions(db: Session, task_id: int, skip: int = 0, limit: int = 100) -> List[TaskSubscription]:
+def get_task_subscriptions(db: Session, task_id: int, skip: int = 0, limit: int = 100,
+                           *, after_id: int = 0) -> List[TaskSubscription]:
     """获取任务当前生效的订阅列表"""
     return (
         db.query(TaskSubscription)
-        .filter(TaskSubscription.task_id == task_id, TaskSubscription.is_active == True)  # noqa: E712
+        .filter(TaskSubscription.task_id == task_id, TaskSubscription.is_active == True,
+                TaskSubscription.id > after_id)  # noqa: E712
         .order_by(TaskSubscription.id)
         .offset(skip)
         .limit(limit)

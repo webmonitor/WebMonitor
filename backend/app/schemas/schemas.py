@@ -326,6 +326,7 @@ class TaskSubscriptionResponse(TaskSubscriptionBase):
     task_name: Optional[str] = None
     task_url: Optional[str] = None
     task_owner: Optional[str] = None
+    task_available: bool = True
 
 
 class PublicTaskResponse(BaseModel):

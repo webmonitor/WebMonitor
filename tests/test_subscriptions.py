@@ -266,6 +266,51 @@ class SubscriptionServiceTestCase(unittest.TestCase):
         # 不往 ORM 实例上挂临时属性
         self.assertFalse(hasattr(created, "task_name"))
 
+    def test_private_task_hides_later_edits_but_subscription_can_be_cancelled(self):
+        created = subscription_service.subscribe(self.db, self.task.id, self.reader, self.reader_config.id)
+        self.task.is_public = False
+        self.task.name = "Private updated title"
+        self.task.url = "https://example.com/private-update"
+        self.db.commit()
+        payload = subscription_service.serialize_subscription(created)
+        self.assertFalse(payload.task_available)
+        self.assertIsNone(payload.task_name)
+        self.assertIsNone(payload.task_url)
+        self.assertIsNone(payload.task_owner)
+        subscription_service.delete_subscription(self.db, created.id, self.reader)
+        self.assertEqual(self.db.query(TaskSubscription).count(), 0)
+
+    def test_notification_reaches_subscribers_after_multiple_page_boundaries(self):
+        from datetime import datetime
+        from app.services.monitor_service import MonitorService
+
+        receivers = set()
+        for index in range(205):
+            user = User(username=f"batch-{index}", email=f"batch-{index}@example.com", hashed_password="x")
+            self.db.add(user)
+            self.db.flush()
+            config = EmailConfig(name="Batch", smtp_server="smtp.example.com", smtp_port=2525,
+                smtp_user="sender@example.com", smtp_password="test-only", receiver_email=user.email,
+                is_ssl=False, user_id=user.id)
+            self.db.add(config)
+            self.db.flush()
+            self.db.add(TaskSubscription(user_id=user.id, task_id=self.task.id,
+                email_config_id=config.id, is_active=index != 100))
+            if index != 100:
+                receivers.add(user.email)
+        self.db.commit()
+        service = MonitorService()
+        messages = []
+        def transport(subject, body, server, port, username, password, receiver, ssl):
+            messages.append((receiver, body))
+            return True
+        with mock.patch("app.services.monitor_service.SessionLocal", self.Session), \
+                mock.patch.object(service.email_service, "_send_email", side_effect=transport):
+            service._notify_subscribers(self.task, "Changed", "new-value", "old-value", datetime(2026, 1, 1))
+        self.assertEqual({receiver for receiver, _ in messages}, receivers)
+        self.assertEqual(len(messages), len(receivers))
+        self.assertTrue(all("new-value" in body and "old-value" in body for _, body in messages))
+
     def test_deleting_task_cascades_subscriptions_and_logs(self):
         subscription_service.subscribe(self.db, self.task.id, self.reader, self.reader_config.id)
         self.db.add(MonitorLog(task_id=self.task.id, new_content="x", is_changed=True))

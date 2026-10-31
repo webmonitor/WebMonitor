@@ -127,8 +127,8 @@ python main.py
 
 - 本地从 `backend/` 启动时，数据库文件在 `backend/data/webmonitor.db`（相对当前工作目录）。
 - 容器内工作目录是 `/app`，数据库文件在 `/app/data/webmonitor.db`。
-- 提供的 Compose 文件没有数据卷；容器被重建后数据库为空。升级、回退或 `docker compose down` 前请复制数据库文件备份，详见根目录 README 的“数据与备份”。
-- 发布镜像默认使用 `latest`；需要固定版本时在 `.env` 设置 `WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:1.0.0`。`compose.yaml` 使用 `pull_policy: always`，更新 `latest` 后启动也可能重建容器。
+- 提供的 Compose 文件没有数据卷；容器被重建后数据库为空。本次版本切换使用全新数据库，不复用或迁移旧数据，详见根目录 README 的“数据与备份”。
+- 发布镜像默认使用 `latest`；需要固定版本时在 `.env` 设置 `WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:1.0.2`。`compose.yaml` 使用 `pull_policy: always`，更新 `latest` 后启动也可能重建容器。
 
 ## API 文档
 

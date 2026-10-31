@@ -15,6 +15,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:?请设置 SECRET_KEY（至少 32 个字符的随机串）}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      TARGET_ALLOWED_ORIGINS: ${TARGET_ALLOWED_ORIGINS:-}
 
       # 应用配置
       DEBUG: ${DEBUG:-false}

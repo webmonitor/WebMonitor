@@ -216,12 +216,14 @@ def serialize_subscription(subscription: TaskSubscription) -> TaskSubscriptionRe
     用 `model_copy` 生成新的响应对象，不往 ORM 实例上挂临时属性。
     """
     task = subscription.task
+    visible = task is not None and task.is_public and task.is_active
     owner = task.owner if task is not None else None
 
     return TaskSubscriptionResponse.model_validate(subscription).model_copy(
         update={
-            "task_name": task.name if task is not None else None,
-            "task_url": task.url if task is not None else None,
-            "task_owner": owner.username if owner is not None else None,
+            "task_name": task.name if visible else None,
+            "task_url": task.url if visible else None,
+            "task_owner": owner.username if visible and owner is not None else None,
+            "task_available": visible,
         }
     )

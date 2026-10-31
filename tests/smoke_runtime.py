@@ -782,6 +782,7 @@ def main():
 
     fixture_server, fixture_url = start_fixture()
     FIXTURE_URL = fixture_url
+    os.environ["TARGET_ALLOWED_ORIGINS"] = fixture_url
 
     smtp_server, smtp_port = start_smtp_sink()
     SMTP_PORT = smtp_port

@@ -61,7 +61,7 @@ Create a file named `.env` next to `compose.yaml` and paste this complete templa
 
 ```dotenv
 # Public image; no registry login is needed.
-# Pin a fixed release instead of latest if you prefer: ghcr.io/webmonitor/webmonitor:1.0.1
+# Pin a fixed release instead of latest if you prefer: ghcr.io/webmonitor/webmonitor:1.0.2
 WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:latest
 
 # Required. A random signing key of at least 32 characters.
@@ -81,13 +81,14 @@ Replace both `CHANGE_ME` values before starting.
 
 | Setting | What to enter |
 | --- | --- |
-| `WEBMONITOR_IMAGE` | Optional. The Compose file already defaults to `ghcr.io/webmonitor/webmonitor:latest`; set a fixed tag such as `ghcr.io/webmonitor/webmonitor:1.0.1` when you want reproducible updates |
+| `WEBMONITOR_IMAGE` | Optional. The Compose file already defaults to `ghcr.io/webmonitor/webmonitor:latest`; set a fixed tag such as `ghcr.io/webmonitor/webmonitor:1.0.2` when you want reproducible updates |
 | `SECRET_KEY` | Required. Any random string of at least 32 characters. Generate one with `python -c "import secrets; print(secrets.token_hex(32))"` or `openssl rand -hex 32` |
 | `ADMIN_USERNAME` | The initial administrator username |
 | `ADMIN_EMAIL` | The administrator's email address |
 | `ADMIN_PASSWORD` | The initial administrator password: at least 6 characters, at most 72 UTF-8 bytes |
 | `DEBUG` | Optional. Leave `false` |
 | `LOG_LEVEL` | Optional. Leave `INFO` unless you are diagnosing a problem |
+| `TARGET_ALLOWED_ORIGINS` | Optional. Empty by default: collection permits public HTTP(S) destinations only. For an explicitly authorized internal target, list exact origins such as `http://site:9000`, separated by commas. Scheme and port must match; do not include paths or management origins |
 
 The administrator values are read only when the database has no administrator. Changing them later does not change an existing login.
 
@@ -136,6 +137,7 @@ Click **Test monitor** on the task row. A message shows **Test succeeded! Conten
 
 - A test loads the page once. It sends no email, writes no log entry, and does not change the saved result.
 - If the test fails or the content preview is empty, the page may not have loaded, or the XPath found nothing. Copy the XPath again in your browser, shorten it to a stable attribute, then use **Edit task** to correct it. Section [When something fails](#when-something-fails) has the full checklist.
+- Every browser connection, including redirects and subresources, passes through a target-validating proxy. Local files, loopback, private and reserved destinations are blocked unless an exact HTTP(S) origin is explicitly allowed with `TARGET_ALLOWED_ORIGINS`. DNS results are checked before connecting to a fixed resolved address.
 - If you turned off **Enable monitoring**, open **Edit task**, turn it on, and click **Update task** once the test looks right.
 
 ### 4. See the first result
@@ -199,6 +201,8 @@ You need at least one email configuration before subscribing; the dialog tells y
 
 **My subscriptions** lists every subscription. You can turn notifications on or off, switch the email configuration, or cancel the subscription. A disabled subscription keeps its record but stops email, and you can still cancel it after the owner pauses the task or makes it private.
 
+If a task becomes private or inactive, its current name, URL and owner are hidden from subscribers and the row is marked unavailable; cancellation remains available. Change notifications traverse all enabled subscribers in batches, including subscribers beyond the first 100.
+
 Each account may hold 10 enabled subscriptions by default; **Public tasks** shows your **Remaining slots**. Disabled subscriptions do not use a slot. An administrator can raise your limit in **User management** under **Max subscriptions**.
 
 ## Pause, edit, and delete a task
@@ -252,13 +256,14 @@ docker compose restart
 
 ### Update or roll back
 
-Back up first, then set `WEBMONITOR_IMAGE` in `.env` to the new tag and run the same start command:
+This update uses a fresh database without reusing or migrating older data. Set `WEBMONITOR_IMAGE` in `.env` to the new tag, pull the image and recreate the container:
 
 ```sh
-docker compose up -d --wait
+docker compose pull
+docker compose up -d --force-recreate --wait
 ```
 
-To roll back, set `WEBMONITOR_IMAGE` to the previous tag and run the same command. Different versions do not upgrade the database automatically, so use the database file created by the version you run.
+The default database is cleared when the container is recreated, so create accounts, email configurations, tasks and subscriptions again. If you mounted `/app/data`, use empty storage. To roll back, set `WEBMONITOR_IMAGE` to the previous tag, run the same commands and start with empty storage; cross-version data compatibility is not provided.
 
 ### Keep data across container recreation
 

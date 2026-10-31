@@ -298,7 +298,7 @@ const MySubscriptions = () => {
                         </Avatar>
                         <Box>
                           <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {subscription.task_name}
+                            {subscription.task_available ? subscription.task_name : t('subscriptions.taskUnavailable')}
                           </Typography>
                           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {t('subscriptions.owner')}: {subscription.task_owner || emptyValue}
@@ -309,7 +309,7 @@ const MySubscriptions = () => {
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <LinkIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
-                        <Tooltip title={subscription.task_url} arrow>
+                        <Tooltip title={subscription.task_url || ''} arrow>
                           <Typography
                             variant="body2"
                             sx={{maxWidth: 200,
@@ -319,7 +319,7 @@ const MySubscriptions = () => {
                               color: 'text.secondary',
                             }}
                           >
-                            {subscription.task_url}
+                            {subscription.task_url || emptyValue}
                           </Typography>
                         </Tooltip>
                       </Box>
@@ -327,9 +327,9 @@ const MySubscriptions = () => {
                     <TableCell>
                       <Chip
                         size="small"
-                        label={subscription.is_active ? t('subscriptions.enabled') : t('subscriptions.disabled')}
-                        color={subscription.is_active ? 'success' : 'default'}
-                        icon={subscription.is_active ? <NotificationsActiveIcon /> : <NotificationsOffIcon />}
+                        label={!subscription.task_available ? t('subscriptions.taskUnavailable') : subscription.is_active ? t('subscriptions.enabled') : t('subscriptions.disabled')}
+                        color={subscription.task_available && subscription.is_active ? 'success' : 'default'}
+                        icon={subscription.task_available && subscription.is_active ? <NotificationsActiveIcon /> : <NotificationsOffIcon />}
                         variant="outlined"
                       />
                     </TableCell>

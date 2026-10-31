@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # 应用基础设置
     APP_NAME: str = "WebMonitor"
-    APP_VERSION: str = "1.0.1"
+    APP_VERSION: str = "1.0.2"
     DEBUG: bool = False
 
     # 数据库设置
@@ -41,6 +41,8 @@ class Settings(BaseSettings):
 
     # 日志设置
     LOG_LEVEL: str = "INFO"
+    # 本地验收或明确授权的内网站点例外；逗号分隔的精确 HTTP(S) origin。
+    TARGET_ALLOWED_ORIGINS: str = ""
 
     # JWT设置
     SECRET_KEY: SecretStr
@@ -54,6 +56,13 @@ class Settings(BaseSettings):
 
     # 前端构建产物目录（镜像里把 CRA 的 build/ 拷到这里）
     FRONTEND_DIST: str = "web"
+    @field_validator("TARGET_ALLOWED_ORIGINS")
+    @classmethod
+    def _validate_target_origins(cls, value: str) -> str:
+        from ..services.target_access import allowed_origins
+        allowed_origins(value)
+        return value
+
 
     @field_validator("SECRET_KEY")
     @classmethod

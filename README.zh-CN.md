@@ -61,7 +61,7 @@ curl -fsSLo compose.yaml https://raw.githubusercontent.com/webmonitor/WebMonitor
 
 ```dotenv
 # 公开镜像，无需登录镜像仓库。
-# 想固定版本可改为：ghcr.io/webmonitor/webmonitor:1.0.1
+# 想固定版本可改为：ghcr.io/webmonitor/webmonitor:1.0.2
 WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:latest
 
 # 必填。至少 32 个字符的随机签名密钥。
@@ -81,13 +81,14 @@ LOG_LEVEL=INFO
 
 | 配置项 | 填写内容 |
 | --- | --- |
-| `WEBMONITOR_IMAGE` | 可选。Compose 文件已默认使用 `ghcr.io/webmonitor/webmonitor:latest`；需要可复现的更新时，改为 `ghcr.io/webmonitor/webmonitor:1.0.1` 这类固定标签 |
+| `WEBMONITOR_IMAGE` | 可选。Compose 文件已默认使用 `ghcr.io/webmonitor/webmonitor:latest`；需要可复现的更新时，改为 `ghcr.io/webmonitor/webmonitor:1.0.2` 这类固定标签 |
 | `SECRET_KEY` | 必填。至少 32 个字符的随机字符串。可用 `python -c "import secrets; print(secrets.token_hex(32))"` 或 `openssl rand -hex 32` 生成 |
 | `ADMIN_USERNAME` | 初始管理员用户名 |
 | `ADMIN_EMAIL` | 管理员邮箱地址 |
 | `ADMIN_PASSWORD` | 初始管理员密码：至少 6 个字符，最多 72 个 UTF-8 字节 |
 | `DEBUG` | 可选。保持 `false` |
 | `LOG_LEVEL` | 可选。保持 `INFO`，排查问题时再调整 |
+| `TARGET_ALLOWED_ORIGINS` | 可选，默认留空，只采集公网 HTTP(S) 目标。明确授权的内网站点可填写 `http://site:9000` 这类精确 origin，多个用逗号分隔；协议和端口必须一致，不包含路径或管理端 origin |
 
 管理员配置只在数据库没有管理员时读取。之后再改这些值不会改变已有账户的登录信息。
 
@@ -136,6 +137,7 @@ docker compose up -d --wait
 
 - 测试只加载页面一次：不发邮件、不写日志，也不改动已保存的结果。
 - 如果测试失败或内容预览为空，可能是页面没有打开，或 XPath 没有匹配到内容。在浏览器里重新复制 XPath，缩短为稳定的属性，再用“编辑任务”修正。完整的排查步骤见[失败时怎么办](#失败时怎么办)。
+- 浏览器的每个连接（包括重定向和子资源）都经过校验目标的代理。默认阻止本地文件、回环、私网和保留地址；只有在 `TARGET_ALLOWED_ORIGINS` 中显式列出的精确 HTTP(S) origin 才能例外放行。代理先验证 DNS 结果，再连接固定的已解析地址。
 - 如果之前关闭了“启用监控”，测试正常后打开“编辑任务”，开启它，再点击“更新任务”。
 
 ### 4. 查看首次结果
@@ -199,6 +201,8 @@ docker compose up -d --wait
 
 “我的订阅”列出所有订阅。你可以开启或关闭通知、更换邮箱配置，或取消订阅。关闭通知后订阅记录保留，但不再发邮件；任务所有者暂停任务或改为私有后，你仍然可以取消订阅。
 
+任务改为私有或停用后，订阅者看不到它当前的名称、URL 和所有者，列表会标记任务不可用；仍可取消订阅。变化通知会分批遍历全部启用中的订阅者，第 100 位以后的订阅者也会收到通知。
+
 默认每个账户最多有 10 个启用中的订阅；“公开任务”页面显示“剩余额度”。关闭通知的订阅不占额度。管理员可以在“用户管理”的“最大订阅数量”中调整你的上限。
 
 ## 暂停、编辑与删除任务
@@ -252,13 +256,14 @@ docker compose restart
 
 ### 升级与回退
 
-先备份，然后把 `.env` 中的 `WEBMONITOR_IMAGE` 改为新标签，执行同一条启动命令：
+本次更新使用全新数据库，不复用或迁移旧版本数据。把 `.env` 中的 `WEBMONITOR_IMAGE` 改为新标签，拉取镜像并重建容器：
 
 ```sh
-docker compose up -d --wait
+docker compose pull
+docker compose up -d --force-recreate --wait
 ```
 
-回退时把 `WEBMONITOR_IMAGE` 改成之前的标签，再执行同一条命令。不同版本之间不会自动升级数据库，请使用与所运行版本对应的数据库文件。
+默认数据库随容器重建而清空，账户、邮件配置、任务和订阅需要重新创建。如果自行挂载了 `/app/data`，必须改用空存储。回退时把 `WEBMONITOR_IMAGE` 改成之前的标签，执行相同命令并使用空存储；不提供跨版本数据兼容路径。
 
 ### 让数据在容器重建后保留
 

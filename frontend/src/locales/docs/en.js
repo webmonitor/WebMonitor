@@ -78,6 +78,7 @@ const docsEn = {
           paragraphs: [
             'A task belongs to one page and one element. On each run WebMonitor loads Monitor URL, waits for the XPath element, and stores its text. If the text differs from the previous stored value, the run is marked Changed; when an Email config is attached, that change is also sent as email.',
             'Only the selected element is compared, so menus, ads, and other parts of the page do not trigger changes. Pages that fill in their content with JavaScript are supported.',
+            'Collection permits public HTTP(S) targets. Redirects and subresources use the same connection checks; local files and private addresses are blocked. Administrators can explicitly allow an exact internal origin with TARGET_ALLOWED_ORIGINS.',
           ],
         },
         {
@@ -238,6 +239,7 @@ const docsEn = {
           title: 'Manage subscriptions',
           paragraphs: [
             'My subscriptions lists every subscription. Turn notifications on or off, switch the email configuration, or cancel the subscription. A disabled subscription keeps its record but stops email, and you can still cancel it after the owner pauses the task or makes it private.',
+            'When a task becomes private or inactive, its current name, URL and owner are hidden and the subscription is marked unavailable. You can still cancel it. Notifications process all enabled subscribers in batches.',
           ],
         },
         {
