@@ -504,7 +504,9 @@ const MonitorTasks = () => {
                   slotProps={{ htmlInput: { min: 10 } }}
                 />
                 <FormControl fullWidth>
-                  <InputLabel id="email-config-label">{t('tasks.emailConfig')}</InputLabel>
+                  <InputLabel id="email-config-label" shrink>
+                    {t('tasks.emailConfig')}
+                  </InputLabel>
                   <Select
                     labelId="email-config-label"
                     value={formData.email_config_id}

@@ -206,6 +206,12 @@ const theme = createTheme({
     MuiTableRow: {
       styleOverrides: { root: { '&:hover': { backgroundColor: 'rgba(17, 24, 39, 0.03)' } } },
     },
+    MuiTextField: {
+      defaultProps: { size: 'small' },
+    },
+    MuiSelect: {
+      defaultProps: { size: 'small' },
+    },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
@@ -221,14 +227,11 @@ const theme = createTheme({
             borderWidth: 1,
           },
         },
-        input: { padding: '10px 12px' },
-        inputSizeSmall: { padding: '8px 10px' },
       },
     },
     MuiInputLabel: {
       styleOverrides: {
-        root: { fontSize: 14, color: UI_COLORS.secondary },
-        shrink: { fontSize: 13 },
+        root: { fontSize: 15, color: UI_COLORS.secondary },
       },
     },
     MuiFormHelperText: {

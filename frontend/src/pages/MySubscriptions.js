@@ -426,7 +426,7 @@ const MySubscriptions = () => {
                   </Alert>
                 )}
                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="subscription-email-config-label">
+                  <InputLabel id="subscription-email-config-label" shrink>
                     {t('subscriptions.emailConfigLabel')}
                   </InputLabel>
                   <Select
