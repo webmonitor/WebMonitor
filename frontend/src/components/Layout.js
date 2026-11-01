@@ -6,17 +6,14 @@ import {
   Drawer,
   IconButton,
   List,
-  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Toolbar,
   Typography,
-  CssBaseline,
   Menu,
   MenuItem,
   Avatar,
-  Tooltip,
   Divider,
 } from '@mui/material';
 import {
@@ -26,35 +23,77 @@ import {
   History as LogIcon,
   People as PeopleIcon,
   Logout as LogoutIcon,
-  AccountCircle as AccountIcon,
   Mail as MailIcon,
   Security as SecurityIcon,
   Public as PublicIcon,
   BookmarkBorder as SubscriptionsIcon,
+  KeyboardArrowDown as ChevronIcon,
 } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '../contexts/AuthContext';
 import LanguageSwitcher from './LanguageSwitcher';
-import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
 import PageLoading from './PageLoading';
+import { BrandLockup } from './WebMonitorLogo';
+import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
+import { UI_COLORS, UI_FONTS } from '../theme/tokens';
+import { formatRelativeTime } from '../utils/date';
+import api from '../api/client';
+import { keys } from '../api/queryKeys';
 
-const drawerWidth = 280;
+const drawerWidth = 264;
 
 // 菜单只有一份：图标在这里，文案来自 i18n
 const BASE_MENU_ITEMS = [
-  { key: 'dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { key: 'tasks', icon: <TaskIcon />, path: '/tasks' },
-  { key: 'publicTasks', icon: <PublicIcon />, path: '/public-tasks' },
-  { key: 'mySubscriptions', icon: <SubscriptionsIcon />, path: '/my-subscriptions' },
-  { key: 'logs', icon: <LogIcon />, path: '/logs' },
-  { key: 'emailConfig', icon: <MailIcon />, path: '/email-config' },
+  { key: 'dashboard', icon: DashboardIcon, path: '/dashboard' },
+  { key: 'tasks', icon: TaskIcon, path: '/tasks' },
+  { key: 'publicTasks', icon: PublicIcon, path: '/public-tasks' },
+  { key: 'mySubscriptions', icon: SubscriptionsIcon, path: '/my-subscriptions' },
+  { key: 'logs', icon: LogIcon, path: '/logs' },
+  { key: 'emailConfig', icon: MailIcon, path: '/email-config' },
 ];
 
 const ADMIN_MENU_ITEMS = [
-  { key: 'blacklist', icon: <SecurityIcon />, path: '/blacklist-management' },
-  { key: 'users', icon: <PeopleIcon />, path: '/user-management' },
+  { key: 'blacklist', icon: SecurityIcon, path: '/blacklist-management' },
+  { key: 'users', icon: PeopleIcon, path: '/user-management' },
 ];
+
+const GROUP_KEYS = {
+  dashboard: 'monitor',
+  tasks: 'monitor',
+  publicTasks: 'monitor',
+  mySubscriptions: 'monitor',
+  logs: 'monitor',
+  emailConfig: 'settings',
+  blacklist: 'admin',
+  users: 'admin',
+};
+
+const NavRow = ({ item, active, onClick, t }) => {
+  const Icon = item.icon;
+
+  return (
+    <ListItemButton
+      selected={active}
+      onClick={onClick}
+      sx={{
+        mx: 1,
+        px: 1.5,
+        minHeight: 36,
+        height: 36,
+        gap: 1.25,
+        color: active ? 'text.primary' : 'text.secondary',
+        '& .MuiListItemIcon-root': { color: active ? UI_COLORS.primary : UI_COLORS.muted },
+      }}
+    >
+      <ListItemIcon sx={{ minWidth: 18, '& svg': { fontSize: 18 } }}>
+        <Icon />
+      </ListItemIcon>
+      <ListItemText primary={t(`navigation.${item.key}`)} slotProps={{ primary: { sx: { fontSize: 14 } } }} />
+    </ListItemButton>
+  );
+};
 
 const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -62,40 +101,40 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isAdmin } = useAuth();
-  const { t } = useTranslation();
-  const faviconSrc = `${process.env.PUBLIC_URL || ''}/favicon.svg`;
+  const { t, i18n } = useTranslation();
 
-  const menuItems = useMemo(() => {
+  const groups = useMemo(() => {
     const items = BASE_MENU_ITEMS.map((item) => ({
       ...item,
       text: t(`navigation.${item.key}`),
-      description: t(`navigation.${item.key}Hint`),
     }));
 
-    if (!isAdmin()) {
-      return items;
-    }
+    const all = isAdmin()
+      ? [
+          ...items,
+          ...ADMIN_MENU_ITEMS.map((item) => ({ ...item, text: t(`navigation.${item.key}`) })),
+        ]
+      : items;
 
-    return [
-      ...items,
-      ...ADMIN_MENU_ITEMS.map((item) => ({
-        ...item,
-        text: t(`navigation.${item.key}`),
-        description: t(`navigation.${item.key}Hint`),
-      })),
-    ];
+    return ['monitor', 'settings', 'admin']
+      .map((group) => ({ group, items: all.filter((item) => GROUP_KEYS[item.key] === group) }))
+      .filter((entry) => entry.items.length > 0);
   }, [isAdmin, t]);
 
-  const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
+  const latestLogQuery = useQuery({
+    queryKey: keys.latestLogs(user?.id, 1),
+    queryFn: ({ signal }) =>
+      api.get('/api/monitor-logs/latest', { params: { limit: 1 }, signal }).then((response) => response.data),
+    enabled: !!user,
+    refetchInterval: 60000,
+  });
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleMenuItemClick = (path) => {
-    navigate(path);
-    setMobileOpen(false);
-  };
+  const latestLog = latestLogQuery.data?.[0];
+  const statusTone = latestLog?.error_message
+    ? UI_COLORS.danger
+    : latestLog?.is_changed
+      ? UI_COLORS.warning
+      : UI_COLORS.success;
 
   const handleLogout = async () => {
     setUserMenuAnchor(null);
@@ -105,258 +144,110 @@ const Layout = () => {
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+      <Box sx={{ px: 2.5, pt: 2.25, pb: 1.5 }}>
+        <BrandLockup size={22} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1.25 }}>
           <Box
-            component="img"
-            src={faviconSrc}
-            alt="WebMonitor"
-            sx={{ width: 40, height: 40, mr: 2, display: 'block', objectFit: 'contain' }}
+            component="span"
+            sx={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              backgroundColor: latestLogQuery.isLoading ? UI_COLORS.muted : statusTone,
+              flexShrink: 0,
+            }}
           />
-          <Box>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 700,
-                background: 'linear-gradient(45deg, #1a1a1a, #10b981)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              WebMonitor
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {t('navigation.platformTagline')}
-            </Typography>
-          </Box>
+          <Typography
+            component="span"
+            sx={{ fontFamily: UI_FONTS.mono, fontSize: 11, color: UI_COLORS.muted, letterSpacing: 0 }}
+          >
+            {latestLog
+              ? t('shell.lastCheck', { time: formatRelativeTime(latestLog.check_time, i18n.language) })
+              : t('shell.noChecks')}
+          </Typography>
         </Box>
       </Box>
 
-      <Box sx={{ flexGrow: 1, py: 2 }}>
-        <List sx={{ p: 0 }}>
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <ListItem key={item.key} disablePadding sx={{ px: 2, mb: 1 }}>
-                <ListItemButton
-                  selected={isActive}
-                  onClick={() => handleMenuItemClick(item.path)}
-                  sx={{
-                    borderRadius: 2,
-                    px: 3,
-                    py: 2.5,
-                    minHeight: 'auto',
-                    transition: 'background-color 0.15s ease',
-                    '&:hover': {
-                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    },
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                      borderLeft: '3px solid #10b981',
-                      '&:hover': {
-                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                      },
-                      '& .MuiListItemIcon-root': { color: '#10b981' },
-                      '& .MuiListItemText-primary': { color: '#1a1a1a', fontWeight: 600 },
-                      '& .MuiListItemText-secondary': { color: 'rgba(16, 185, 129, 0.8)' },
-                    },
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', pb: 2 }}>
+        {groups.map(({ group, items }) => (
+          <Box key={group} sx={{ mt: group === 'monitor' ? 2 : 3 }}>
+            <Typography
+              component="div"
+              sx={{ px: 2.5, mb: 0.5, fontSize: 11, fontWeight: 500, color: UI_COLORS.muted, letterSpacing: 0 }}
+            >
+              {t(`navigation.groups.${group}`)}
+            </Typography>
+            <List sx={{ p: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+              {items.map((item) => (
+                <NavRow
+                  key={item.key}
+                  item={item}
+                  t={t}
+                  active={location.pathname === item.path}
+                  onClick={() => {
+                    navigate(item.path);
+                    setMobileOpen(false);
                   }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 40,
-                      color: isActive ? '#10b981' : 'rgba(0, 0, 0, 0.6)',
-                      '& svg': { fontSize: 20 },
-                    }}
-                  >
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.text}
-                    secondary={item.description}
-                    slotProps={{
-                      primary: {
-                        sx: { fontSize: '0.9rem', fontWeight: isActive ? 600 : 500 },
-                      },
-                      secondary: { sx: { fontSize: '0.75rem' } },
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
+                />
+              ))}
+            </List>
+          </Box>
+        ))}
       </Box>
 
+      <Box sx={{ borderTop: `1px solid ${UI_COLORS.hairline}`, p: 1.5 }}>
+        <LanguageSwitcher sx={{ mb: 1 }} />
+        <ListItemButton
+          onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+          sx={{ px: 1, minHeight: 36, height: 36, gap: 1 }}
+        >
+          <Avatar sx={{ width: 26, height: 26 }}>{user?.username?.charAt(0).toUpperCase() || 'U'}</Avatar>
+          <ListItemText
+            primary={user?.username || t('common.user')}
+            slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 500 } } }}
+          />
+          <ChevronIcon sx={{ fontSize: 18, color: UI_COLORS.muted }} />
+        </ListItemButton>
+      </Box>
     </Box>
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar
-        position="fixed"
-        elevation={0}
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-          background: '#ffffff',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-          color: '#1a1a1a',
-        }}
-      >
-        <Toolbar sx={{ minHeight: 72 }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: UI_COLORS.background }}>
+      <AppBar position="fixed" sx={{ display: { sm: 'none' } }}>
+        <Toolbar sx={{ minHeight: 52, gap: 1 }}>
           <IconButton
-            color="inherit"
-            aria-label={t('common.openDrawer')}
             edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' }, color: '#10b981' }}
+            aria-label={t('common.openDrawer')}
+            onClick={() => setMobileOpen(true)}
+            sx={{ ml: -1 }}
           >
-            <MenuIcon />
+            <MenuIcon sx={{ fontSize: 20 }} />
           </IconButton>
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
-              <Box
-                component="img"
-                src={faviconSrc}
-                alt="WebMonitor"
-                sx={{
-                  width: 32,
-                  height: 32,
-                  mr: 1.5,
-                  // 窄屏顶栏已经有语言切换，省掉与侧栏重复的图标
-                  display: { xs: 'none', sm: 'block' },
-                  objectFit: 'contain',
-                }}
-              />
-              <Box>
-                <Typography variant="h6" noWrap sx={{ fontWeight: 700, color: '#1a1a1a', lineHeight: 1.2 }}>
-                  {currentMenuItem?.text || 'WebMonitor'}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {currentMenuItem?.description || ''}
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <LanguageSwitcher sx={{ mr: 0.5 }} />
-
-            <Tooltip title={t('common.userMenu')}>
-              <IconButton
-                size="small"
-                aria-label={t('common.userMenu')}
-                aria-controls="menu-appbar"
-                aria-haspopup="true"
-                onClick={(event) => setUserMenuAnchor(event.currentTarget)}
-                sx={{ p: 0.5, '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}
-              >
-                <Avatar
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    background: '#10b981',
-                  }}
-                >
-                  {user?.username?.charAt(0).toUpperCase() || 'U'}
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-
-            <Menu
-              id="menu-appbar"
-              anchorEl={userMenuAnchor}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              keepMounted
-              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              open={Boolean(userMenuAnchor)}
-              onClose={() => setUserMenuAnchor(null)}
-              slotProps={{
-                paper: {
-                  sx: {
-                    mt: 1,
-                    minWidth: 200,
-                    borderRadius: 2,
-                    border: '1px solid rgba(0, 0, 0, 0.06)',
-                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-                  },
-                },
-              }}
-            >
-              <MenuItem disabled sx={{ py: 2, opacity: '1 !important' }}>
-                <AccountIcon sx={{ mr: 2, color: '#2563eb' }} />
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {user?.username || t('common.user')}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                    {user?.email || ''}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                    {isAdmin() ? t('common.admin') : t('common.user')}
-                  </Typography>
-                </Box>
-              </MenuItem>
-              <Divider />
-              {isAdmin() && (
-                <MenuItem
-                  onClick={() => {
-                    setUserMenuAnchor(null);
-                    navigate('/user-management');
-                  }}
-                  sx={{ py: 1.5, '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}
-                >
-                  <PeopleIcon sx={{ mr: 2, color: '#10b981' }} />
-                  {t('navigation.users')}
-                </MenuItem>
-              )}
-              <MenuItem
-                onClick={handleLogout}
-                sx={{ py: 1.5, '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'error.main' } }}
-              >
-                <LogoutIcon sx={{ mr: 2 }} />
-                {t('common.logout')}
-              </MenuItem>
-            </Menu>
-          </Box>
+          <BrandLockup size={20} sx={{ flexGrow: 1 }} />
+          <LanguageSwitcher />
         </Toolbar>
       </AppBar>
-      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }} aria-label={t('navigation.dashboard')}>
+
+      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }} aria-label={t('navigation.groups.monitor')}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={handleDrawerToggle}
+          onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-            },
-          }}
+          sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
         >
           {drawer}
         </Drawer>
         <Drawer
           variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-              backgroundColor: 'rgba(255, 255, 255, 0.98)',
-            },
-          }}
+          sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
           open
         >
           {drawer}
         </Drawer>
       </Box>
+
       <Box
         component="main"
         sx={{
@@ -364,22 +255,19 @@ const Layout = () => {
           // minWidth: 0 让 flex 子项可以被压缩：否则宽表格会撑开整页并产生横向滚动
           minWidth: 0,
           minHeight: '100vh',
-          backgroundColor: '#f8fafc',
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        <Toolbar />
-        <Box sx={{ p: 3, flexGrow: 1 }}>
+        <Toolbar sx={{ display: { sm: 'none' }, minHeight: 52 }} />
+        <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 3, md: 4 }, flexGrow: 1 }}>
           {/* 页面级 Suspense：切换私有页时只替换内容，侧栏不卸载 */}
           <Suspense fallback={<PageLoading />}>
             <Outlet />
           </Suspense>
         </Box>
-
-        {/* 全站唯一的页脚：一行说明，贴着页面最底部，不再每页一个框 */}
-        <Box component="footer" sx={{ px: 3, pb: 2, textAlign: 'center' }}>
+        <Box sx={{ px: { xs: 2, md: 4 }, pb: 2.5 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             <Box
               component="a"
@@ -404,6 +292,46 @@ const Layout = () => {
           </Typography>
         </Box>
       </Box>
+
+      <Menu
+        id="menu-appbar"
+        anchorEl={userMenuAnchor}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        open={Boolean(userMenuAnchor)}
+        onClose={() => setUserMenuAnchor(null)}
+      >
+        <Box sx={{ px: 2, py: 1.25, minWidth: 200 }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {user?.username || t('common.user')}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+            {user?.email || ''}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+            {isAdmin() ? t('common.admin') : t('common.user')}
+          </Typography>
+        </Box>
+        {isAdmin() && (
+          <>
+            <Divider />
+            <MenuItem
+              onClick={() => {
+                setUserMenuAnchor(null);
+                navigate('/user-management');
+              }}
+            >
+              <PeopleIcon sx={{ fontSize: 18 }} />
+              {t('navigation.users')}
+            </MenuItem>
+          </>
+        )}
+        <Divider />
+        <MenuItem onClick={handleLogout}>
+          <LogoutIcon sx={{ fontSize: 18 }} />
+          {t('common.logout')}
+        </MenuItem>
+      </Menu>
     </Box>
   );
 };

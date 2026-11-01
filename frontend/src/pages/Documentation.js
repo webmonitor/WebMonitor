@@ -1,51 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
-  Container,
-  Typography,
   Button,
-  Avatar,
+  Container,
+  Drawer,
+  IconButton,
   List,
   ListItemButton,
   ListItemText,
   Paper,
-  IconButton,
-  Drawer,
-  alpha,
-  Chip,
   Stack,
+  Typography,
 } from '@mui/material';
-import {
-  Menu as MenuIcon,
-  ArrowBack as ArrowBackIcon,
-  RocketLaunch as RocketIcon,
-  Assignment as TaskIcon,
-  Email as EmailIcon,
-  Public as PublicIcon,
-  Dashboard as DashboardIcon,
-  Help as HelpIcon,
-  ContentCopy as CopyIcon,
-  Check as CheckIcon,
-} from '@mui/icons-material';
+import { Menu as MenuIcon, ContentCopy as CopyIcon, Check as CheckIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
-import WebMonitorLogo from '../components/WebMonitorLogo';
+import { BrandLockup } from '../components/WebMonitorLogo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import docsEn from '../locales/docs/en';
 import docsZhCN from '../locales/docs/zh-CN';
 import { normalizeLanguage } from '../utils/i18n';
 import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
+import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
-const iconMap = {
-  'quick-start': <RocketIcon />,
-  'monitor-tasks': <TaskIcon />,
-  'email-config': <EmailIcon />,
-  'public-tasks': <PublicIcon />,
-  dashboard: <DashboardIcon />,
-  faq: <HelpIcon />,
-};
+const mono = { fontFamily: UI_FONTS.mono, letterSpacing: 0 };
 
 const CodeBlock = ({ children }) => {
   const [copied, setCopied] = useState(false);
@@ -60,7 +39,8 @@ const CodeBlock = ({ children }) => {
     <Box
       sx={{
         position: 'relative',
-        backgroundColor: '#1e293b',
+        backgroundColor: UI_COLORS.codeBackground,
+        border: `1px solid ${UI_COLORS.codeBorder}`,
         borderRadius: 2,
         p: 2,
         my: 2,
@@ -70,23 +50,26 @@ const CodeBlock = ({ children }) => {
       <IconButton
         onClick={handleCopy}
         size="small"
+        aria-label="Copy"
         sx={{
           position: 'absolute',
-          top: 8,
-          right: 8,
-          color: '#94a3b8',
-          '&:hover': { color: '#ffffff' },
+          top: 6,
+          right: 6,
+          color: UI_COLORS.codeMuted,
+          '&:hover': { color: UI_COLORS.codeText, backgroundColor: UI_COLORS.codeBorder },
         }}
       >
-        {copied ? <CheckIcon fontSize="small" /> : <CopyIcon fontSize="small" />}
+        {copied ? <CheckIcon sx={{ fontSize: 16 }} /> : <CopyIcon sx={{ fontSize: 16 }} />}
       </IconButton>
       <Typography
         component="pre"
         sx={{
-          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-          fontSize: '0.875rem',
-          color: '#e2e8f0',
+          ...mono,
+          fontSize: 13,
+          lineHeight: 1.65,
+          color: UI_COLORS.codeText,
           margin: 0,
+          pr: 4,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
         }}
@@ -97,89 +80,46 @@ const CodeBlock = ({ children }) => {
   );
 };
 
-const DocSection = ({ id, title, icon, children }) => (
-  <Box
-    id={id}
-    component={motion.section}
-    initial={{ opacity: 0, y: 20 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, margin: '-100px' }}
-    transition={{ duration: 0.5 }}
-    sx={{ mb: 8, scrollMarginTop: '100px' }}
-  >
-    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-      <Avatar
-        sx={{
-          width: 40,
-          height: 40,
-          mr: 2,
-          backgroundColor: alpha('#10b981', 0.1),
-          color: '#10b981',
-        }}
-      >
-        {icon}
-      </Avatar>
-      <Typography
-        variant="h4"
-        component="h2"
-        sx={{
-          fontWeight: 700,
-          color: '#334155',
-          fontSize: { xs: '1.5rem', md: '1.75rem' },
-        }}
-      >
-        {title}
-      </Typography>
-    </Box>
+const DocSection = ({ id, title, children }) => (
+  <Box id={id} component="section" sx={{ mb: 7, scrollMarginTop: '88px' }}>
+    <Typography component="h2" variant="h3" sx={{ pb: 1.5, mb: 3, borderBottom: UI_SURFACE.divider }}>
+      {title}
+    </Typography>
     {children}
   </Box>
 );
 
 const SubSection = ({ title, children }) => (
   <Box sx={{ mb: 4 }}>
-    <Typography
-      variant="h6"
-      component="h3"
-      sx={{
-        fontWeight: 600,
-        color: '#334155',
-        mb: 2,
-        pb: 1,
-        borderBottom: '2px solid',
-        borderColor: alpha('#10b981', 0.3),
-        display: 'inline-block',
-      }}
-    >
+    <Typography component="h3" variant="h5" sx={{ mb: 1.5 }}>
       {title}
     </Typography>
-    <Box sx={{ color: '#64748b', lineHeight: 1.8 }}>{children}</Box>
+    <Box sx={{ color: UI_COLORS.secondary, fontSize: 14, lineHeight: 1.75 }}>{children}</Box>
   </Box>
 );
 
-const TipBox = ({ type = 'info', children }) => {
-  const colors = {
-    info: { bg: '#2563eb', light: alpha('#2563eb', 0.08) },
-    warning: { bg: '#f59e0b', light: alpha('#f59e0b', 0.08) },
-    success: { bg: '#10b981', light: alpha('#10b981', 0.08) },
-  };
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2,
-        my: 2,
-        borderRadius: 2,
-        backgroundColor: colors[type].light,
-        borderLeft: `4px solid ${colors[type].bg}`,
-      }}
-    >
-      <Typography variant="body2" sx={{ color: '#334155' }}>
-        {children}
-      </Typography>
-    </Paper>
-  );
+const TIP_COLORS = {
+  info: UI_COLORS.info,
+  warning: UI_COLORS.warning,
+  success: UI_COLORS.success,
 };
+
+const TipBox = ({ type = 'info', children }) => (
+  <Box
+    sx={{
+      my: 2,
+      px: 2,
+      py: 1.5,
+      backgroundColor: UI_COLORS.background,
+      borderLeft: `2px solid ${TIP_COLORS[type] || UI_COLORS.info}`,
+      borderRadius: '0 8px 8px 0',
+    }}
+  >
+    <Typography variant="body2" sx={{ color: UI_COLORS.text }}>
+      {children}
+    </Typography>
+  </Box>
+);
 
 const renderList = (list) => {
   if (!list) {
@@ -189,7 +129,7 @@ const renderList = (list) => {
   const Component = list.type === 'ol' ? 'ol' : 'ul';
 
   return (
-    <Box component={Component} sx={{ pl: 3, color: '#64748b' }}>
+    <Box component={Component} sx={{ pl: 3, my: 2, color: UI_COLORS.secondary, fontSize: 14, lineHeight: 1.75 }}>
       {list.items.map((item) => (
         <li key={item}>{item}</li>
       ))}
@@ -200,7 +140,7 @@ const renderList = (list) => {
 const renderBlock = (block) => {
   if (block.type === 'text') {
     return block.paragraphs.map((paragraph) => (
-      <Typography key={paragraph} sx={{ color: '#64748b', lineHeight: 1.8, mb: 2 }}>
+      <Typography key={paragraph} sx={{ color: UI_COLORS.secondary, fontSize: 14, lineHeight: 1.75, mb: 2 }}>
         {paragraph}
       </Typography>
     ));
@@ -210,14 +150,14 @@ const renderBlock = (block) => {
     return (
       <SubSection key={block.title} title={block.title}>
         {block.paragraphs?.map((paragraph) => (
-          <Typography key={paragraph} sx={{ mb: 2 }}>
+          <Typography key={paragraph} sx={{ mb: 2, fontSize: 14, lineHeight: 1.75 }}>
             {paragraph}
           </Typography>
         ))}
         {renderList(block.list)}
         {block.codeExamples?.map((example) => (
           <Box key={`${example.label}-${example.code}`}>
-            <Typography variant="subtitle2" sx={{ color: '#334155', mt: 2, mb: 1 }}>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>
               {example.label}
             </Typography>
             <CodeBlock>{example.code}</CodeBlock>
@@ -231,6 +171,8 @@ const renderBlock = (block) => {
   return null;
 };
 
+const sidebarWidth = 248;
+
 const Documentation = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -239,17 +181,11 @@ const Documentation = () => {
   const [activeSection, setActiveSection] = useState('quick-start');
 
   const content = normalizeLanguage(i18n.language) === 'zh-CN' ? docsZhCN : docsEn;
-  const sections = useMemo(
-    () => content.sections.map((section) => ({
-      ...section,
-      icon: iconMap[section.id] || <HelpIcon />,
-    })),
-    [content.sections]
-  );
+  const sections = useMemo(() => content.sections, [content.sections]);
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollPosition = window.scrollY + 150;
+      const scrollPosition = window.scrollY + 120;
 
       for (let i = sections.length - 1; i >= 0; i -= 1) {
         const section = document.getElementById(sections[i].id);
@@ -284,55 +220,20 @@ const Documentation = () => {
     setMobileOpen(false);
   };
 
-  const sidebarWidth = 260;
-
   const SidebarContent = () => (
-    <Box sx={{ p: 2 }}>
-      <Typography
-        variant="overline"
-        sx={{
-          color: '#94a3b8',
-          fontWeight: 600,
-          letterSpacing: 1,
-          px: 2,
-          mb: 1,
-          display: 'block',
-        }}
-      >
+    <Box sx={{ p: 1.5 }}>
+      <Typography sx={{ ...mono, fontSize: 11, color: UI_COLORS.muted, px: 1.5, mb: 0.5 }}>
         {t('documentation.contents')}
       </Typography>
-      <List sx={{ pt: 0 }}>
+      <List sx={{ pt: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
         {sections.map((section) => (
           <ListItemButton
             key={section.id}
+            selected={activeSection === section.id}
             onClick={() => scrollToSection(section.id)}
-            sx={{
-              borderRadius: 2,
-              mb: 0.5,
-              backgroundColor: activeSection === section.id ? alpha('#10b981', 0.1) : 'transparent',
-              color: activeSection === section.id ? '#10b981' : '#64748b',
-              '&:hover': {
-                backgroundColor: alpha('#10b981', 0.08),
-                color: '#10b981',
-              },
-            }}
+            sx={{ minHeight: 32, height: 32, px: 1.5 }}
           >
-            <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center' }}>
-              {React.cloneElement(section.icon, {
-                sx: { fontSize: 20, color: activeSection === section.id ? '#10b981' : '#94a3b8' },
-              })}
-            </Box>
-            <ListItemText
-              primary={section.title}
-              slotProps={{
-                primary: {
-                  sx: {
-                    fontSize: '0.9rem',
-                    fontWeight: activeSection === section.id ? 600 : 500,
-                  },
-                },
-              }}
-            />
+            <ListItemText primary={section.title} slotProps={{ primary: { sx: { fontSize: 13 } } }} />
           </ListItemButton>
         ))}
       </List>
@@ -340,116 +241,57 @@ const Documentation = () => {
   );
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        backgroundColor: '#ffffff',
-        position: 'relative',
-      }}
-    >
-
+    <Box sx={{ minHeight: '100vh', backgroundColor: UI_COLORS.surface }}>
       <Box
-        component={motion.nav}
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6 }}
+        component="header"
         sx={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           zIndex: 1100,
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+          height: 64,
+          backgroundColor: UI_COLORS.surface,
+          borderBottom: UI_SURFACE.divider,
         }}
       >
-        <Container maxWidth="xl" sx={{ px: { xs: 2, md: 4 } }}>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              py: 2,
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Container maxWidth={false} sx={{ px: { xs: 2, md: 3 } }}>
+          <Box sx={{ height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton
                 aria-label={t('documentation.openNavigation')}
                 onClick={() => setMobileOpen(true)}
-                sx={{ display: { md: 'none' }, color: '#64748b' }}
+                sx={{ display: { md: 'none' }, width: 32, height: 32 }}
               >
-                <MenuIcon />
+                <MenuIcon sx={{ fontSize: 20 }} />
               </IconButton>
-
               <Box
                 onClick={() => navigate('/')}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  cursor: 'pointer',
-                  '&:hover': { opacity: 0.8 },
-                }}
+                sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1.5 }}
               >
-                <WebMonitorLogo size={36} />
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 700,
-                    color: '#334155',
-                    display: { xs: 'none', sm: 'block' },
-                  }}
-                >
-                  WebMonitor
-                </Typography>
+                <BrandLockup size={20} />
               </Box>
-
-              <Chip
-                label={t('documentation.badge')}
-                size="small"
-                sx={{
-                  backgroundColor: alpha('#10b981', 0.1),
-                  color: '#10b981',
-                  fontWeight: 600,
-                }}
-              />
-
-              <Box sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
-                <LanguageSwitcher />
-              </Box>
+              <Typography variant="caption" sx={{ color: UI_COLORS.muted, ml: 0.5, display: { xs: 'none', sm: 'block' } }}>
+                {t('documentation.badge')}
+              </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <LanguageSwitcher sx={{ display: { xs: 'none', sm: 'inline-flex' } }} />
               <Button
-                variant="text"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => navigate('/')}
-                sx={{
-                  color: '#64748b',
-                  display: { xs: 'none', sm: 'flex' },
-                  '&:hover': { color: '#10b981' },
-                }}
-              >
-                {t('common.backHome')}
-              </Button>
-              <Button
-                variant="text"
                 onClick={() => navigate('/login')}
-                sx={{ color: '#64748b', '&:hover': { color: '#10b981' } }}
+                sx={{ display: { xs: 'none', sm: 'inline-flex' }, color: 'text.secondary' }}
               >
                 {t('common.login')}
               </Button>
               <Button
                 variant="contained"
                 onClick={() => navigate('/register')}
-                sx={{
-                  px: 2,
-                  fontWeight: 600,
-                }}
+                sx={{ px: { xs: 1.5, sm: 2 }, whiteSpace: 'nowrap' }}
               >
                 {t('common.register')}
               </Button>
-            </Stack>
+            </Box>
           </Box>
         </Container>
       </Box>
@@ -459,14 +301,7 @@ const Documentation = () => {
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
         ModalProps={{ keepMounted: true }}
-        sx={{
-          display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': {
-            width: sidebarWidth,
-            backgroundColor: '#ffffff',
-            borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-          },
-        }}
+        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: sidebarWidth } }}
       >
         <Box sx={{ pt: 8 }}>
           <Box sx={{ px: 2, display: 'flex', justifyContent: 'center' }}>
@@ -480,12 +315,12 @@ const Documentation = () => {
         sx={{
           display: { xs: 'none', md: 'block' },
           position: 'fixed',
-          top: 72,
+          top: 64,
           left: 0,
           width: sidebarWidth,
-          height: 'calc(100vh - 72px)',
-          borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-          backgroundColor: '#ffffff',
+          height: 'calc(100vh - 64px)',
+          borderRight: UI_SURFACE.divider,
+          backgroundColor: UI_COLORS.surface,
           overflowY: 'auto',
           zIndex: 1000,
         }}
@@ -493,122 +328,65 @@ const Documentation = () => {
         <SidebarContent />
       </Box>
 
-      <Box
-        sx={{
-          pt: '72px',
-          pl: { xs: 0, md: `${sidebarWidth}px` },
-          minHeight: '100vh',
-        }}
-      >
-        <Container maxWidth="md" sx={{ py: 6, px: { xs: 3, md: 4 } }}>
-          <Box
-            component={motion.div}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            sx={{ mb: 8, textAlign: 'center' }}
-          >
-            <Typography
-              variant="h2"
-              component="h1"
-              sx={{
-                fontWeight: 800,
-                color: '#334155',
-                mb: 2,
-                fontSize: { xs: '2rem', md: '2.75rem' },
-                letterSpacing: '-0.02em',
-              }}
-            >
+      <Box sx={{ pt: '64px', pl: { xs: 0, md: `${sidebarWidth}px` }, minHeight: '100vh' }}>
+        <Box sx={{ maxWidth: 824, mx: { xs: 'auto', md: 0 }, py: { xs: 5, md: 7 }, px: { xs: 2.5, md: 4 } }}>
+          <Box className="enter" sx={{ mb: 7 }}>
+            <Typography component="h1" variant="h1" sx={{ fontSize: { xs: 34, md: 40 } }}>
               {content.title}
             </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                color: '#64748b',
-                fontWeight: 400,
-                maxWidth: 500,
-                mx: 'auto',
-              }}
-            >
+            <Typography sx={{ mt: 2, fontSize: 16, lineHeight: 1.6, color: UI_COLORS.secondary, maxWidth: '56ch' }}>
               {content.subtitle}
             </Typography>
           </Box>
 
           {sections.map((section) => (
-            <DocSection key={section.id} id={section.id} title={section.title} icon={section.icon}>
+            <DocSection key={section.id} id={section.id} title={section.title}>
               {section.blocks.map((block) => renderBlock(block))}
             </DocSection>
           ))}
 
           <Paper
-            component={motion.div}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
             elevation={0}
             sx={{
-              p: { xs: 4, md: 6 },
+              p: { xs: 3, md: 5 },
               mt: 8,
-              borderRadius: 4,
-              backgroundColor: '#f8fafc',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              textAlign: 'center',
+              borderRadius: 3,
+              border: UI_SURFACE.border,
+              display: 'flex',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              justifyContent: 'space-between',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 3,
             }}
           >
-            <Typography variant="h5" sx={{ fontWeight: 700, color: '#334155', mb: 2 }}>
-              {content.footerCta.title}
-            </Typography>
-            <Typography sx={{ color: '#64748b', mb: 4 }}>
-              {content.footerCta.subtitle}
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'center' }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => navigate('/register')}
-                sx={{
-                  px: 4,
-                  py: 1.5,
-                  fontWeight: 600,
-                }}
-              >
+            <Box>
+              <Typography variant="h5" component="h2">
+                {content.footerCta.title}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.75, color: UI_COLORS.secondary }}>
+                {content.footerCta.subtitle}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1.5} sx={{ flexShrink: 0 }}>
+              <Button variant="contained" onClick={() => navigate('/register')}>
                 {content.footerCta.primary}
               </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                onClick={() => navigate('/login')}
-                sx={{
-                  borderColor: '#e2e8f0',
-                  color: '#475569',
-                  px: 4,
-                  py: 1.5,
-                  fontWeight: 600,
-                  '&:hover': {
-                    borderColor: '#10b981',
-                    color: '#10b981',
-                  },
-                }}
-              >
+              <Button onClick={() => navigate('/login')} sx={{ color: 'text.secondary' }}>
                 {content.footerCta.secondary}
               </Button>
             </Stack>
           </Paper>
 
-          <Box sx={{ mt: 8, pt: 4, borderTop: '1px solid rgba(0, 0, 0, 0.06)', textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: '#94a3b8' }}>
-              © 2024 WebMonitor. All rights reserved.
-            </Typography>
-            <Typography variant="caption" sx={{ color: '#cbd5e1' }}>
-              {t('common.footerCta')}
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#cbd5e1' }}>
+          <Box sx={{ mt: 7, pt: 3, borderTop: UI_SURFACE.divider }}>
+            <Typography variant="caption" sx={{ color: UI_COLORS.muted }}>
+              {t('home.license')}
+              {' · '}
               <Box
                 component="a"
                 href={PROJECT_REPO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                sx={{ color: '#94a3b8', textDecoration: 'none', '&:hover': { color: '#10b981' } }}
+                sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 {t('common.repoLink')}
               </Box>
@@ -619,13 +397,13 @@ const Documentation = () => {
                 href={PROJECT_AUTHOR_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                sx={{ color: '#94a3b8', textDecoration: 'none', '&:hover': { color: '#10b981' } }}
+                sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 ox0pine
               </Box>
             </Typography>
           </Box>
-        </Container>
+        </Box>
       </Box>
     </Box>
   );

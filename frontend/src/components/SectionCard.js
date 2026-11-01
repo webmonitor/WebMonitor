@@ -12,9 +12,9 @@ const SectionCard = ({ title, action, children, sx, contentSx, bareBody = false,
   <Paper
     id={id}
     sx={{
-      borderRadius: UI_SURFACE.radius,
+      borderRadius: 3,
       border: UI_SURFACE.border,
-      backgroundColor: '#ffffff',
+      backgroundColor: UI_SURFACE.card,
       overflow: 'hidden',
       ...sx,
     }}
@@ -22,8 +22,9 @@ const SectionCard = ({ title, action, children, sx, contentSx, bareBody = false,
     {(title || action) && (
       <Box
         sx={{
-          px: 3,
-          py: 2.5,
+          px: 2.5,
+          py: 1.75,
+          minHeight: 52,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -31,13 +32,13 @@ const SectionCard = ({ title, action, children, sx, contentSx, bareBody = false,
           borderBottom: UI_SURFACE.divider,
         }}
       >
-        <Typography variant="h6" component="h2" sx={{ fontWeight: 600, minWidth: 0 }}>
+        <Typography variant="h6" component="h2" sx={{ fontWeight: 500, minWidth: 0 }}>
           {title}
         </Typography>
         {action}
       </Box>
     )}
-    <Box sx={{ ...(bareBody ? {} : { p: 3 }), ...contentSx }}>{children}</Box>
+    <Box sx={{ ...(bareBody ? {} : { p: 2.5 }), ...contentSx }}>{children}</Box>
   </Paper>
 );
 

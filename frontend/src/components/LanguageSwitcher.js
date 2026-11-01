@@ -9,19 +9,23 @@ const LANGUAGE_OPTIONS = [
   { value: 'zh-CN', labelKey: 'language.zhCN' },
 ];
 
+/**
+ * 语言切换：两段文字，选中项用抬高层，不抢主操作的强调色。
+ */
 const LanguageSwitcher = ({ sx = {} }) => {
   const { t, i18n } = useTranslation();
 
   return (
     <Tooltip title={t('language.label')}>
       <Box
+        role="group"
+        aria-label={t('language.label')}
         sx={{
           display: 'inline-flex',
           alignItems: 'center',
-          p: 0.5,
-          borderRadius: 999,
-          backgroundColor: '#f1f5f9',
-          border: '1px solid rgba(148, 163, 184, 0.18)',
+          p: '2px',
+          borderRadius: 2,
+          backgroundColor: UI_COLORS.raised,
           ...sx,
         }}
       >
@@ -33,19 +37,21 @@ const LanguageSwitcher = ({ sx = {} }) => {
               key={option.value}
               onClick={() => i18n.changeLanguage(option.value)}
               disableElevation
+              aria-pressed={isActive}
               sx={{
-                minWidth: 56,
-                px: 1.75,
-                py: 0.75,
-                borderRadius: 999,
-                textTransform: 'none',
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                lineHeight: 1,
-                color: isActive ? '#ffffff' : '#64748b',
-                backgroundColor: isActive ? UI_COLORS.primary : 'transparent',
+                minWidth: 40,
+                minHeight: 24,
+                px: 1,
+                py: 0,
+                borderRadius: 1,
+                fontSize: 12,
+                fontWeight: 500,
+                lineHeight: 1.4,
+                color: isActive ? 'text.primary' : 'text.secondary',
+                backgroundColor: isActive ? UI_COLORS.surface : 'transparent',
                 '&:hover': {
-                  backgroundColor: isActive ? UI_COLORS.primaryDark : '#e2e8f0',
+                  backgroundColor: isActive ? UI_COLORS.surface : 'transparent',
+                  color: 'text.primary',
                 },
               }}
             >

@@ -1,39 +1,35 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Grid,
   Alert,
+  Box,
+  Button,
+  CircularProgress,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  IconButton,
+  InputAdornment,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
-  Switch,
-  Avatar,
+  TextField,
   Tooltip,
-  InputAdornment,
-  CircularProgress,
+  Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
-  Send as TestIcon,
+  Edit as EditIcon,
   Mail as MailIcon,
-  Security as SecurityIcon,
-  Settings as SettingsIcon,
+  Send as TestIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  Email as EmailIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +43,7 @@ import FeedbackSnackbar from '../components/FeedbackSnackbar';
 import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
-import { UI_COLORS } from '../theme/tokens';
+import { UI_FONTS } from '../theme/tokens';
 
 const EmailConfig = () => {
   const [openDialog, setOpenDialog] = useState(false);
@@ -224,10 +220,8 @@ const EmailConfig = () => {
         action={
           <Button
             variant="contained"
-            disableElevation
-            startIcon={<AddIcon />}
+            startIcon={<AddIcon sx={{ fontSize: 18 }} />}
             onClick={() => handleOpenDialog()}
-            sx={{ textTransform: 'none', borderRadius: 2 }}
           >
             {t('emailConfig.addConfig')}
           </Button>
@@ -240,8 +234,7 @@ const EmailConfig = () => {
             key: 'total',
             title: t('emailConfig.emailConfigs'),
             value: emailConfigsLoading || emailConfigsError ? null : emailConfigs.length,
-            icon: <MailIcon />,
-            color: UI_COLORS.primary,
+            subtitle: t('emailConfig.sectionTitle'),
           },
           {
             key: 'ssl',
@@ -250,8 +243,7 @@ const EmailConfig = () => {
               emailConfigsLoading || emailConfigsError
                 ? null
                 : emailConfigs.filter((config) => config.is_ssl).length,
-            icon: <SecurityIcon />,
-            color: UI_COLORS.info,
+            subtitle: t('emailConfig.useSsl'),
           },
           {
             key: 'receivers',
@@ -260,8 +252,7 @@ const EmailConfig = () => {
               emailConfigsLoading || emailConfigsError
                 ? null
                 : new Set(emailConfigs.map((config) => config.receiver_email)).size,
-            icon: <SettingsIcon />,
-            color: UI_COLORS.accent,
+            subtitle: t('emailConfig.notificationReceiver'),
           },
         ]}
       />
@@ -271,10 +262,9 @@ const EmailConfig = () => {
       </Alert>
 
       <SectionCard title={t('emailConfig.sectionTitle')} bareBody>
-
         {emailConfigsLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
-            <CircularProgress size={32} />
+            <CircularProgress />
           </Box>
         )}
 
@@ -285,11 +275,9 @@ const EmailConfig = () => {
             subtitle={t('emailConfig.noConfigsSubtitle')}
             action={
               <Button
-                variant="contained"
-                disableElevation
-                startIcon={<AddIcon />}
+                variant="outlined"
+                startIcon={<AddIcon sx={{ fontSize: 18 }} />}
                 onClick={() => handleOpenDialog()}
-                sx={{ textTransform: 'none', borderRadius: 2 }}
               >
                 {t('emailConfig.createFirstConfig')}
               </Button>
@@ -298,112 +286,80 @@ const EmailConfig = () => {
         )}
 
         {showTable && (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 720 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'rgba(37, 99, 235, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600, py: 2 }}>{t('emailConfig.configDetails')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600, py: 2 }}>{t('emailConfig.senderEmail')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600, py: 2 }}>{t('emailConfig.receiverEmail')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600, py: 2, textAlign: 'center' }}>{t('emailConfig.actions')}</TableCell>
+                <TableRow>
+                  <TableCell>{t('emailConfig.configDetails')}</TableCell>
+                  <TableCell>{t('emailConfig.senderEmail')}</TableCell>
+                  <TableCell>{t('emailConfig.receiverEmail')}</TableCell>
+                  <TableCell align="right">{t('emailConfig.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {emailConfigs.map((config) => (
-                  <TableRow
-                    key={config.id}
-                    sx={{
-                      '&:hover': { backgroundColor: 'rgba(37, 99, 235, 0.03)' },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
+                  <TableRow key={config.id}>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {config.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                        <Typography
                           sx={{
-                            width: 40,
-                            height: 40,
-                            mr: 2,
-                            bgcolor: UI_COLORS.info,
-                            fontSize: '1rem',
+                            fontFamily: UI_FONTS.mono,
+                            fontVariantNumeric: 'tabular-nums',
+                            fontSize: 12,
+                            color: 'text.secondary',
                           }}
                         >
-                          {config.name.charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {config.name}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {config.smtp_server}:{config.smtp_port} {config.is_ssl ? 'SSL' : ''}
-                          </Typography>
-                        </Box>
+                          {config.smtp_server}:{config.smtp_port}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {config.is_ssl ? 'SSL' : '—'}
+                        </Typography>
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <EmailIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {config.smtp_user}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {t('emailConfig.smtpSenderAccount')}
-                          </Typography>
-                        </Box>
-                      </Box>
+                      <Typography variant="body2">{config.smtp_user}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {t('emailConfig.smtpSenderAccount')}
+                      </Typography>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <EmailIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {config.receiver_email}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {t('emailConfig.notificationReceiver')}
-                          </Typography>
-                        </Box>
-                      </Box>
+                      <Typography variant="body2">{config.receiver_email}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {t('emailConfig.notificationReceiver')}
+                      </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
                         <Tooltip title={t('emailConfig.testConnection')}>
                           <IconButton
                             size="small"
+                            aria-label={t('emailConfig.testConnection')}
                             onClick={() => handleTestConfig(config.id)}
                             disabled={testConfigMutation.isPending}
-                            sx={{
-                              color: '#2563eb',
-                              '&:hover': { backgroundColor: 'rgba(37, 99, 235, 0.1)' },
-                            }}
                           >
-                            <TestIcon />
+                            <TestIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title={t('emailConfig.editConfig')}>
                           <IconButton
                             size="small"
+                            aria-label={t('emailConfig.editConfig')}
                             onClick={() => handleOpenDialog(config)}
-                            sx={{
-                              color: '#10b981',
-                              '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-                            }}
                           >
-                            <EditIcon />
+                            <EditIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title={t('emailConfig.deleteConfig')}>
                           <IconButton
                             size="small"
+                            aria-label={t('emailConfig.deleteConfig')}
                             onClick={() => setConfirmTarget(config)}
                             disabled={deleteConfigMutation.isPending}
-                            sx={{
-                              color: '#ef4444',
-                              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-                            }}
                           >
-                            <DeleteIcon />
+                            <DeleteIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                       </Box>
@@ -416,27 +372,26 @@ const EmailConfig = () => {
         )}
 
         {emailConfigsError && (
-          <Alert severity="error" sx={{ m: 3, borderRadius: 2 }}>
-            {getApiErrorMessage(emailConfigsError, t('emailConfig.loadFailed'))}
-          </Alert>
+          <Box sx={{ p: 2.5 }}>
+            <Alert severity="error">
+              {getApiErrorMessage(emailConfigsError, t('emailConfig.loadFailed'))}
+            </Alert>
+          </Box>
         )}
       </SectionCard>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          {editingConfig ? <EditIcon color="primary" /> : <AddIcon color="primary" />}
-          <Box>
-            <Typography variant="h6" component="div">
-              {editingConfig ? t('emailConfig.editDialogTitle') : t('emailConfig.createDialogTitle')}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {t('emailConfig.dialogSubtitle')}
-            </Typography>
-          </Box>
+        <DialogTitle>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
+            {editingConfig ? t('emailConfig.editDialogTitle') : t('emailConfig.createDialogTitle')}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+            {t('emailConfig.dialogSubtitle')}
+          </Typography>
         </DialogTitle>
         <form onSubmit={handleSubmit}>
-          <DialogContent sx={{ pt: 3 }}>
-            <Grid container spacing={3}>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ pt: 1 }}>
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label={t('emailConfig.configName')}
@@ -444,17 +399,6 @@ const EmailConfig = () => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(37, 99, 235, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#2563eb',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -465,26 +409,6 @@ const EmailConfig = () => {
                   onChange={(e) => setFormData({ ...formData, smtp_server: e.target.value })}
                   required
                   placeholder="smtp.example.com"
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <MailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(37, 99, 235, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#2563eb',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -495,17 +419,6 @@ const EmailConfig = () => {
                   value={formData.smtp_port}
                   onChange={(e) => setFormData({ ...formData, smtp_port: parseInt(e.target.value, 10) || '' })}
                   required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(37, 99, 235, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#2563eb',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -516,26 +429,6 @@ const EmailConfig = () => {
                   value={formData.smtp_user}
                   onChange={(e) => setFormData({ ...formData, smtp_user: e.target.value })}
                   required
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(37, 99, 235, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#2563eb',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -553,34 +446,22 @@ const EmailConfig = () => {
                   }
                   slotProps={{
                     input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SecurityIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
                       endAdornment: (
                         <InputAdornment position="end">
                           <IconButton
+                            size="small"
                             aria-label={t('common.togglePasswordVisibility')}
                             onClick={() => setShowPassword(!showPassword)}
                             edge="end"
-                            sx={{ color: 'rgba(0, 0, 0, 0.6)' }}
                           >
-                            {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            {showPassword ? (
+                              <VisibilityOffIcon sx={{ fontSize: 18 }} />
+                            ) : (
+                              <VisibilityIcon sx={{ fontSize: 18 }} />
+                            )}
                           </IconButton>
                         </InputAdornment>
                       ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(37, 99, 235, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#2563eb',
-                        borderWidth: 2,
-                      },
                     },
                   }}
                 />
@@ -593,44 +474,16 @@ const EmailConfig = () => {
                   value={formData.receiver_email}
                   onChange={(e) => setFormData({ ...formData, receiver_email: e.target.value })}
                   required
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(37, 99, 235, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#2563eb',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(37, 99, 235, 0.05)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                   <Switch
                     checked={formData.is_ssl}
                     onChange={(e) => setFormData({ ...formData, is_ssl: e.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-thumb': {
-                        backgroundColor: formData.is_ssl ? '#2563eb' : 'default',
-                      },
-                      '& .MuiSwitch-track': {
-                        backgroundColor: formData.is_ssl ? 'rgba(37, 99, 235, 0.5)' : 'default',
-                      },
-                    }}
                   />
-                  <Box sx={{ ml: 2 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  <Box sx={{ pt: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {t('emailConfig.useSsl')}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -641,23 +494,12 @@ const EmailConfig = () => {
               </Grid>
             </Grid>
           </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button
-              onClick={handleCloseDialog}
-              sx={{
-                px: 3,
-                borderRadius: 2,
-                '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-              }}
-            >
-              {t('emailConfig.cancel')}
-            </Button>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>{t('emailConfig.cancel')}</Button>
             <Button
               type="submit"
               variant="contained"
-              disableElevation
               disabled={createConfigMutation.isPending || updateConfigMutation.isPending}
-              sx={{ textTransform: 'none', borderRadius: 2 }}
             >
               {editingConfig ? t('emailConfig.updateConfig') : t('emailConfig.createConfig')}
             </Button>
@@ -682,7 +524,6 @@ const EmailConfig = () => {
         severity={feedback.severity}
         onClose={closeFeedback}
       />
-
     </Box>
   );
 };

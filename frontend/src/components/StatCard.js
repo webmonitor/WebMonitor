@@ -1,53 +1,51 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 
-import { UI_SURFACE } from '../theme/tokens';
+import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
 /**
- * 统计卡：只展示调用方给的数值。
+ * 统计卡：标签、读数、说明。
  *
- * 没有趋势、没有百分比进度条——那些数字以前是编的。数值为空时显示 "—"，
- * 让"没有数据"和"数值为 0"在界面上可区分。
+ * 没有图标、迷你图和彩色装饰；数值用等宽字体并右对齐成一组读数。
+ * 数值为空时显示 "—"，让"没有数据"和"数值为 0"在界面上可区分。
  */
-const StatCard = ({ title, value, icon, color, subtitle }) => {
+const StatCard = ({ title, value, subtitle }) => {
   const hasValue = value !== null && value !== undefined && value !== '';
 
   return (
-    <Card
+    <Box
       sx={{
         height: '100%',
         background: UI_SURFACE.card,
         border: UI_SURFACE.border,
-        borderRadius: UI_SURFACE.radius,
+        borderRadius: 3,
+        px: 2.5,
+        py: 2,
       }}
     >
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', color, mb: 2 }}>
-          {icon}
-        </Box>
-
-        <Typography
-          variant="h3"
-          component="div"
-          sx={{
-            fontWeight: 700,
-            color: '#1a1a1a',
-            mb: 0.5,
-            fontSize: { xs: '1.8rem', md: '2.2rem' },
-          }}
-        >
-          {hasValue ? value : '—'}
+      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+        {title}
+      </Typography>
+      <Typography
+        component="div"
+        sx={{
+          fontFamily: UI_FONTS.mono,
+          fontVariantNumeric: 'tabular-nums',
+          fontSize: 30,
+          lineHeight: 1.15,
+          fontWeight: 500,
+          color: UI_COLORS.text,
+          mt: 1,
+        }}
+      >
+        {hasValue ? value : '—'}
+      </Typography>
+      {subtitle && (
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+          {subtitle}
         </Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500, mb: subtitle ? 0.5 : 0 }}>
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {subtitle}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </Box>
   );
 };
 

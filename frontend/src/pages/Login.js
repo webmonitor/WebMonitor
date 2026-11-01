@@ -1,39 +1,35 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  TextField,
-  Button,
-  Typography,
   Alert,
+  Box,
+  Button,
   Container,
-  Paper,
   Grid,
-  alpha,
   IconButton,
   InputAdornment,
   Link,
+  Paper,
+  TextField,
+  Typography,
 } from '@mui/material';
 import {
-  Lock as LockIcon,
-  Person as PersonIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   ArrowBack as ArrowBackIcon,
-  ArrowForward as ArrowForwardIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+
 import { useAuth } from '../contexts/AuthContext';
-import { motion } from 'framer-motion';
 import api, { getApiErrorMessage } from '../api/client';
-import WebMonitorLogo from '../components/WebMonitorLogo';
+import { BrandLockup } from '../components/WebMonitorLogo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
+
+const mono = { fontFamily: UI_FONTS.mono, fontSize: 11, color: UI_COLORS.muted, letterSpacing: 0 };
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -50,16 +46,13 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate, location]);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = (event) => {
+    setFormData({ ...formData, [event.target.name]: event.target.value });
     setError('');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError('');
 
@@ -69,9 +62,7 @@ const Login = () => {
       formFormData.append('password', formData.password);
 
       const response = await api.post('/api/auth/login', formFormData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       const { access_token, user } = response.data;
@@ -86,152 +77,57 @@ const Login = () => {
     }
   };
 
-  const handleTogglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: '#ffffff',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
+    <Box sx={{ minHeight: '100vh', backgroundColor: UI_COLORS.background, display: 'flex', flexDirection: 'column' }}>
+      <Box component="header" sx={{ borderBottom: UI_SURFACE.divider, backgroundColor: UI_COLORS.surface }}>
+        <Container maxWidth="lg">
+          <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+            <BrandLockup size={22} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <IconButton aria-label={t('common.backHome')} onClick={() => navigate('/')} sx={{ width: 32, height: 32 }}>
+                <ArrowBackIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <LanguageSwitcher />
+            </Box>
+          </Box>
+        </Container>
+      </Box>
 
-      <Container
-        maxWidth="lg"
-        sx={{
-          position: 'relative',
-          zIndex: 1,
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          py: 4,
-        }}
-      >
-        <Grid container spacing={8} sx={{ alignItems: 'center' }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <Box sx={{ pr: { md: 6 } }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                  <IconButton
-                    aria-label={t('common.backHome')}
-                    onClick={() => navigate('/')}
-                    sx={{
-                      color: '#64748b',
-                      border: '1px solid #e2e8f0',
-                      '&:hover': {
-                        color: '#10b981',
-                        borderColor: '#10b981',
-                        backgroundColor: alpha('#10b981', 0.04),
-                      },
-                    }}
-                  >
-                    <ArrowBackIcon />
-                  </IconButton>
-                  <LanguageSwitcher sx={{ ml: 'auto' }} />
-                </Box>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-                  <Box sx={{ mr: 2 }}>
-                    <WebMonitorLogo size={48} />
-                  </Box>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      fontWeight: 700,
-                      color: '#334155',
-                    }}
-                  >
-                    WebMonitor
-                  </Typography>
-                </Box>
-
-                <Typography
-                  variant="h2"
-                  component="h1"
-                  sx={{
-                    color: '#334155',
-                    fontWeight: 800,
-                    mb: 3,
-                    fontSize: { xs: '2.5rem', md: '3.5rem' },
-                    lineHeight: 1.1,
-                    letterSpacing: '-0.02em',
-                  }}
-                >
+      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', py: { xs: 6, md: 8 } }}>
+        <Container maxWidth="lg">
+          <Grid container spacing={{ xs: 5, md: 8 }} sx={{ alignItems: 'center' }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Box className="enter">
+                <Typography component="h1" variant="h1" sx={{ fontSize: { xs: 36, md: 44 }, maxWidth: '18ch' }}>
                   {t('login.heroTitle')}
                 </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    color: '#64748b',
-                    mb: 4,
-                    fontSize: { xs: '1rem', md: '1.15rem' },
-                    lineHeight: 1.7,
-                    fontWeight: 400,
-                  }}
-                >
+                <Typography sx={{ mt: 2, fontSize: 16, lineHeight: 1.6, color: UI_COLORS.secondary, maxWidth: '42ch' }}>
                   {t('login.heroSubtitle')}
                 </Typography>
-
+                <Typography sx={{ ...mono, mt: 4 }}>{t('login.facts')}</Typography>
               </Box>
-            </motion.div>
-          </Grid>
+            </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
+            <Grid size={{ xs: 12, md: 6 }}>
               <Paper
                 elevation={0}
-                sx={{
-                  p: { xs: 4, md: 5 },
-                  background: '#ffffff',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                  borderRadius: 4,
-                }}
+                sx={{ p: { xs: 3, md: 4 }, border: UI_SURFACE.border, borderRadius: 4, backgroundColor: UI_COLORS.surface }}
               >
-                <Box sx={{ mb: 4 }}>
-                  <Typography component="h2" variant="h4" sx={{ fontWeight: 700, color: '#334155', mb: 1 }}>
-                    {t('login.formTitle')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    {t('login.formSubtitle')}
-                  </Typography>
-                </Box>
+                <Typography component="h2" variant="h5">
+                  {t('login.formTitle')}
+                </Typography>
+                <Typography variant="body2" sx={{ color: UI_COLORS.secondary, mt: 0.5 }}>
+                  {t('login.formSubtitle')}
+                </Typography>
 
                 {error && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                    <Alert
-                      severity="error"
-                      sx={{
-                        width: '100%',
-                        mb: 3,
-                        borderRadius: 2,
-                        backgroundColor: alpha('#ef4444', 0.08),
-                        border: `1px solid ${alpha('#ef4444', 0.2)}`,
-                        color: '#dc2626',
-                        '& .MuiAlert-icon': {
-                          color: '#ef4444',
-                        },
-                      }}
-                    >
-                      {error}
-                    </Alert>
-                  </motion.div>
+                  <Alert severity="error" sx={{ mt: 3 }}>
+                    {error}
+                  </Alert>
                 )}
 
-                <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+                <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <TextField
-                    margin="normal"
                     required
                     fullWidth
                     id="username"
@@ -242,40 +138,8 @@ const Login = () => {
                     value={formData.username}
                     onChange={handleChange}
                     disabled={loading}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
-                        backgroundColor: '#f8fafc',
-                        '& fieldset': {
-                          borderColor: '#e2e8f0',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#10b981',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#10b981',
-                          borderWidth: 2,
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: '#ffffff',
-                        },
-                      },
-                      '& .MuiInputLabel-root.Mui-focused': {
-                        color: '#10b981',
-                      },
-                    }}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <PersonIcon sx={{ color: '#94a3b8' }} />
-                          </InputAdornment>
-                        ),
-                      },
-                    }}
                   />
                   <TextField
-                    margin="normal"
                     required
                     fullWidth
                     name="password"
@@ -286,129 +150,40 @@ const Login = () => {
                     value={formData.password}
                     onChange={handleChange}
                     disabled={loading}
-                    sx={{
-                      mt: 3,
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
-                        backgroundColor: '#f8fafc',
-                        '& fieldset': {
-                          borderColor: '#e2e8f0',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#10b981',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#10b981',
-                          borderWidth: 2,
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: '#ffffff',
-                        },
-                      },
-                      '& .MuiInputLabel-root.Mui-focused': {
-                        color: '#10b981',
-                      },
-                    }}
                     slotProps={{
                       input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <LockIcon sx={{ color: '#94a3b8' }} />
-                          </InputAdornment>
-                        ),
                         endAdornment: (
                           <InputAdornment position="end">
                             <IconButton
                               aria-label={t('common.togglePasswordVisibility')}
-                              onClick={handleTogglePasswordVisibility}
+                              onClick={() => setShowPassword((value) => !value)}
                               edge="end"
                               disabled={loading}
-                              sx={{ color: '#94a3b8' }}
+                              sx={{ width: 28, height: 28, mr: -0.5 }}
                             >
-                              {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                              {showPassword ? <VisibilityOffIcon sx={{ fontSize: 18 }} /> : <VisibilityIcon sx={{ fontSize: 18 }} />}
                             </IconButton>
                           </InputAdornment>
                         ),
                       },
                     }}
                   />
-
-                  <div><Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    disabled={loading}
-                    size="large"
-                    sx={{
-                      mt: 4,
-                      mb: 2,
-                      py: 1.75,
-                      fontWeight: 600,
-                      fontSize: '1rem',
-                      '&:disabled': {
-                        background: '#e2e8f0',
-                        color: '#94a3b8',
-                      },
-                    }}
-                    endIcon={!loading && <ArrowForwardIcon />}
-                  >
-                    {loading ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            mr: 2,
-                            border: '2px solid rgba(255,255,255,0.3)',
-                            borderTop: '2px solid #fff',
-                            borderRadius: '50%',
-                            animation: 'spin 1s linear infinite',
-                            '@keyframes spin': {
-                              '0%': { transform: 'rotate(0deg)' },
-                              '100%': { transform: 'rotate(360deg)' },
-                            },
-                          }}
-                        />
-                        {t('login.submitting')}
-                      </Box>
-                    ) : (
-                      t('login.submit')
-                    )}
-                  </Button></div>
+                  <Button type="submit" fullWidth variant="contained" size="large" disabled={loading} sx={{ mt: 1 }}>
+                    {loading ? t('login.submitting') : t('login.submit')}
+                  </Button>
                 </Box>
 
-                <Box sx={{ mt: 4, width: '100%', textAlign: 'center' }}>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    {t('login.noAccount')}
-                    <Link
-                      component="button"
-                      variant="body2"
-                      onClick={() => navigate('/register')}
-                      sx={{
-                        ml: 0.5,
-                        color: '#10b981',
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        '&:hover': {
-                          textDecoration: 'underline',
-                        },
-                      }}
-                    >
-                      {t('login.registerNow')}
-                    </Link>
-                  </Typography>
-                </Box>
-
-                <Box sx={{ mt: 3, width: '100%', textAlign: 'center' }}>
-                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                    {t('login.footer')}
-                  </Typography>
-                </Box>
+                <Typography variant="body2" sx={{ mt: 3, color: UI_COLORS.secondary }}>
+                  {t('login.noAccount')}{' '}
+                  <Link component="button" type="button" variant="body2" onClick={() => navigate('/register')} sx={{ fontWeight: 500 }}>
+                    {t('login.registerNow')}
+                  </Link>
+                </Typography>
               </Paper>
-            </motion.div>
+            </Grid>
           </Grid>
-        </Grid>
-      </Container>
+        </Container>
+      </Box>
     </Box>
   );
 };

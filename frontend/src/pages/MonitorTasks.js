@@ -1,12 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Grid,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -14,28 +21,14 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
-  Switch,
-  Chip,
-  IconButton,
-  Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Avatar,
   Tooltip,
+  Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
+  Edit as EditIcon,
   PlayArrow as TestIcon,
-  NotificationsActive as NotificationsIcon,
-  Schedule as ScheduleIcon,
-  CheckCircle as SuccessIcon,
-  Pause as PauseIcon,
-  Link as LinkIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -50,7 +43,9 @@ import PageHeader from '../components/PageHeader';
 import StatGrid from '../components/StatGrid';
 import SectionCard from '../components/SectionCard';
 import EmptyState from '../components/EmptyState';
-import { UI_COLORS, UI_SURFACE } from '../theme/tokens';
+import StatusBadge from '../components/StatusBadge';
+import { formatInterval } from '../utils/duration';
+import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
 const emptyForm = {
   name: '',
@@ -62,6 +57,41 @@ const emptyForm = {
   description: '',
   email_config_id: '',
 };
+
+// 次要信息：URL / XPath 用小号等宽字，安静地待在任务名下面。
+const monoQuiet = {
+  fontFamily: UI_FONTS.mono,
+  fontSize: 11,
+  color: UI_COLORS.muted,
+  letterSpacing: 0,
+  display: 'block',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
+// 读数：间隔秒数用等宽字并让数位对齐。
+const monoReading = {
+  fontFamily: UI_FONTS.mono,
+  fontVariantNumeric: 'tabular-nums',
+  fontSize: 13,
+  letterSpacing: 0,
+  color: UI_COLORS.text,
+};
+
+const SwitchRow = ({ checked, onChange, title, helper }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Switch checked={checked} onChange={onChange} />
+    <Box sx={{ minWidth: 0 }}>
+      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+        {title}
+      </Typography>
+      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+        {helper}
+      </Typography>
+    </Box>
+  </Box>
+);
 
 const MonitorTasks = () => {
   const { user } = useAuth();
@@ -268,10 +298,8 @@ const MonitorTasks = () => {
         action={
           <Button
             variant="contained"
-            disableElevation
-            startIcon={<AddIcon />}
+            startIcon={<AddIcon sx={{ fontSize: 18 }} />}
             onClick={() => handleOpen()}
-            sx={{ textTransform: 'none', borderRadius: 2 }}
           >
             {t('tasks.createTask')}
           </Button>
@@ -279,14 +307,31 @@ const MonitorTasks = () => {
       />
 
       {!user?.is_admin && (
-        <Alert severity="warning" sx={{ mb: 4 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+        <Box
+          sx={{
+            border: UI_SURFACE.border,
+            borderRadius: 2,
+            backgroundColor: UI_SURFACE.card,
+            px: 2.5,
+            py: 2,
+            mb: 3,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {t('tasks.blacklistTitle')}
           </Typography>
-          <Typography variant="body2">• {t('tasks.blacklistItem1')}</Typography>
-          <Typography variant="body2">• {t('tasks.blacklistItem2')}</Typography>
-          <Typography variant="body2">• {t('tasks.blacklistItem3')}</Typography>
-        </Alert>
+          <Stack spacing={0.5} sx={{ mt: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+              {t('tasks.blacklistItem1')}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+              {t('tasks.blacklistItem2')}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+              {t('tasks.blacklistItem3')}
+            </Typography>
+          </Stack>
+        </Box>
       )}
 
       <StatGrid
@@ -295,29 +340,21 @@ const MonitorTasks = () => {
             key: 'total',
             title: t('tasks.totalTasks'),
             value: tasks.length,
-            icon: <ScheduleIcon />,
-            color: UI_COLORS.primary,
           },
           {
             key: 'active',
             title: t('tasks.activeTasks'),
             value: tasks.filter((task) => task.is_active).length,
-            icon: <SuccessIcon />,
-            color: UI_COLORS.info,
           },
           {
             key: 'paused',
             title: t('tasks.pausedTasks'),
             value: tasks.filter((task) => !task.is_active).length,
-            icon: <PauseIcon />,
-            color: UI_COLORS.warning,
           },
           {
             key: 'email',
             title: t('tasks.emailNotifications'),
             value: tasks.filter((task) => task.email_config_id).length,
-            icon: <NotificationsIcon />,
-            color: UI_COLORS.accent,
           },
         ]}
       />
@@ -330,141 +367,80 @@ const MonitorTasks = () => {
             subtitle={t('tasks.noTasksSubtitle')}
             action={
               <Button
-                variant="contained"
-                disableElevation
-                startIcon={<AddIcon />}
+                startIcon={<AddIcon sx={{ fontSize: 18 }} />}
                 onClick={() => handleOpen()}
-                sx={{ textTransform: 'none', borderRadius: 2 }}
               >
                 {t('tasks.createFirstTask')}
               </Button>
             }
           />
         ) : (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 840 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.taskInfo')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.monitorConfig')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.interval')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.emailConfig')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.status')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('tasks.actions')}</TableCell>
+                <TableRow>
+                  <TableCell>{t('tasks.taskInfo')}</TableCell>
+                  <TableCell>{t('tasks.interval')}</TableCell>
+                  <TableCell>{t('tasks.emailConfig')}</TableCell>
+                  <TableCell>{t('tasks.status')}</TableCell>
+                  <TableCell align="right">{t('tasks.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {tasks.map((task) => (
-                  <TableRow
-                    key={task.id}
-                    sx={{
-                      '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.03)' },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            mr: 2,
-                            bgcolor: task.is_active ? UI_COLORS.primary : UI_COLORS.danger,
-                            fontSize: '1rem',
-                          }}
-                        >
-                          {task.name.charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {task.name}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                            <LinkIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
-                            <Typography
-                              variant="caption"
-                              sx={{maxWidth: 200,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                color: 'text.secondary',
-                              }}
-                            >
-                              {task.url}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {task.xpath ? `${task.xpath.substring(0, 50)}...` : t('tasks.notSet')}
+                  <TableRow key={task.id}>
+                    <TableCell sx={{ width: '40%', maxWidth: 360 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {task.name}
+                      </Typography>
+                      <Typography sx={{ ...monoQuiet, mt: 0.5 }}>{task.url}</Typography>
+                      <Typography sx={{ ...monoQuiet, mt: 0.5 }}>
+                        {task.xpath || t('tasks.notSet')}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <ScheduleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                        <Typography variant="body2">
-                          {task.interval}{t('tasks.seconds')}
-                        </Typography>
-                      </Box>
+                      <Typography sx={monoReading}>{formatInterval(task.interval, t)}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        label={getEmailConfigName(task)}
-                        color={task.email_config_id ? 'primary' : 'default'}
-                        variant={task.email_config_id ? 'filled' : 'outlined'}
-                      />
+                      <Typography variant="body2" sx={{ color: 'text.secondary', wordBreak: 'break-word' }}>
+                        {getEmailConfigName(task)}
+                      </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        icon={task.is_active ? <SuccessIcon /> : <PauseIcon />}
+                      <StatusBadge
+                        tone={task.is_active ? 'positive' : 'neutral'}
                         label={task.is_active ? t('tasks.running') : t('tasks.paused')}
-                        color={task.is_active ? 'success' : 'error'}
                       />
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title={t('tasks.testMonitor')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleTest(task.id)}
-                            disabled={testMutation.isPending}
-                            sx={{
-                              color: '#10b981',
-                              '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-                            }}
-                          >
-                            <TestIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('tasks.editTask')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpen(task)}
-                            sx={{
-                              color: '#2563eb',
-                              '&:hover': { backgroundColor: 'rgba(37, 99, 235, 0.1)' },
-                            }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('tasks.deleteTask')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDelete(task.id)}
-                            sx={{
-                              color: '#ef4444',
-                              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      <Tooltip title={t('tasks.testMonitor')}>
+                        <IconButton
+                          size="small"
+                          aria-label={t('tasks.testMonitor')}
+                          onClick={() => handleTest(task.id)}
+                          disabled={testMutation.isPending}
+                        >
+                          <TestIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={t('tasks.editTask')}>
+                        <IconButton
+                          size="small"
+                          aria-label={t('tasks.editTask')}
+                          onClick={() => handleOpen(task)}
+                        >
+                          <EditIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={t('tasks.deleteTask')}>
+                        <IconButton
+                          size="small"
+                          aria-label={t('tasks.deleteTask')}
+                          onClick={() => handleDelete(task.id)}
+                        >
+                          <DeleteIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -474,103 +450,46 @@ const MonitorTasks = () => {
         )}
       </SectionCard>
 
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        maxWidth="md"
-        fullWidth
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: UI_SURFACE.radius,
-              border: UI_SURFACE.border,
-            },
-          },
-        }}
-      >
-        <DialogTitle sx={{ py: 3 }}>
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+        <DialogTitle>
           {editingTask ? t('tasks.editDialogTitle') : t('tasks.createDialogTitle')}
         </DialogTitle>
         <form onSubmit={handleSubmit}>
-          <DialogContent sx={{ pt: 3 }}>
+          <DialogContent>
             {dialogAlert && (
-              <Alert
-                severity="error"
-                sx={{ mb: 3 }}
-                onClose={() => setDialogAlert(null)}
-              >
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDialogAlert(null)}>
                 {dialogAlert.title && (
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
                     {dialogAlert.title}
                   </Typography>
                 )}
                 {dialogAlert.message}
               </Alert>
             )}
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label={t('tasks.taskName')}
-                  fullWidth
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(16, 185, 129, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#10b981',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label={t('tasks.monitorUrl')}
-                  fullWidth
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(16, 185, 129, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#10b981',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label={t('tasks.xpathSelector')}
-                  fullWidth
-                  value={formData.xpath}
-                  onChange={(e) => setFormData({ ...formData, xpath: e.target.value })}
-                  helperText={t('tasks.xpathHelper')}
-                  required
-                  rows={1}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(16, 185, 129, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#10b981',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+            <Stack spacing={2}>
+              <TextField
+                label={t('tasks.taskName')}
+                fullWidth
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+              <TextField
+                label={t('tasks.monitorUrl')}
+                fullWidth
+                value={formData.url}
+                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                required
+              />
+              <TextField
+                label={t('tasks.xpathSelector')}
+                fullWidth
+                value={formData.xpath}
+                onChange={(e) => setFormData({ ...formData, xpath: e.target.value })}
+                helperText={t('tasks.xpathHelper')}
+                required
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <TextField
                   label={t('tasks.intervalSeconds')}
                   type="number"
@@ -583,20 +502,7 @@ const MonitorTasks = () => {
                     })
                   }
                   slotProps={{ htmlInput: { min: 10 } }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(16, 185, 129, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#10b981',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth>
                   <InputLabel id="email-config-label">{t('tasks.emailConfig')}</InputLabel>
                   <Select
@@ -608,123 +514,57 @@ const MonitorTasks = () => {
                       emailConfigTouched.current = true;
                       setFormData({ ...formData, email_config_id: e.target.value });
                     }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: 'rgba(16, 185, 129, 0.5)',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#10b981',
-                          borderWidth: 2,
-                        },
-                      },
-                    }}
                   >
-                    <MenuItem value="">
-                      <em>{t('tasks.emailConfigNone')}</em>
-                    </MenuItem>
+                    <MenuItem value="">{t('tasks.emailConfigNone')}</MenuItem>
                     {emailConfigs.map((config) => (
                       <MenuItem key={config.id} value={config.id}>
                         {config.name} ({config.smtp_user} → {config.receiver_email})
                       </MenuItem>
                     ))}
                   </Select>
-                  <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ mt: 0.5, display: 'block', color: 'text.secondary' }}
+                  >
                     {emailConfigs.length === 0
                       ? t('tasks.addEmailConfigHint')
                       : t('tasks.emailConfigHelper')}
                   </Typography>
                 </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label={t('tasks.taskDescription')}
-                  fullWidth
-                  multiline
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  helperText={t('tasks.taskDescriptionHelper')}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(16, 185, 129, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#10b981',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
-                  <Switch
+              </Stack>
+              <TextField
+                label={t('tasks.taskDescription')}
+                fullWidth
+                multiline
+                rows={3}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                helperText={t('tasks.taskDescriptionHelper')}
+              />
+              <Box sx={{ borderTop: UI_SURFACE.divider, pt: 2 }}>
+                <Stack spacing={1.5}>
+                  <SwitchRow
                     checked={formData.is_public}
                     onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-thumb': {
-                        backgroundColor: formData.is_public ? '#3b82f6' : 'default',
-                      },
-                      '& .MuiSwitch-track': {
-                        backgroundColor: formData.is_public ? 'rgba(59, 130, 246, 0.5)' : 'default',
-                      },
-                    }}
+                    title={t('tasks.publicTask')}
+                    helper={t('tasks.publicTaskHelper')}
                   />
-                  <Box sx={{ ml: 2 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {t('tasks.publicTask')}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {t('tasks.publicTaskHelper')}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
-                  <Switch
+                  <SwitchRow
                     checked={formData.is_active}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-thumb': {
-                        backgroundColor: formData.is_active ? '#10b981' : 'default',
-                      },
-                      '& .MuiSwitch-track': {
-                        backgroundColor: formData.is_active ? 'rgba(16, 185, 129, 0.5)' : 'default',
-                      },
-                    }}
+                    title={t('tasks.enableMonitoring')}
+                    helper={t('tasks.enableMonitoringHelper')}
                   />
-                  <Box sx={{ ml: 2 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {t('tasks.enableMonitoring')}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {t('tasks.enableMonitoringHelper')}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-            </Grid>
+                </Stack>
+              </Box>
+            </Stack>
           </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button
-              onClick={handleClose}
-              sx={{
-                px: 3,
-                borderRadius: 2,
-                '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-              }}
-            >
-              {t('common.cancel')}
-            </Button>
+          <DialogActions>
+            <Button onClick={handleClose}>{t('common.cancel')}</Button>
             <Button
               type="submit"
               variant="contained"
-              disableElevation
               disabled={createMutation.isPending || updateMutation.isPending}
-              sx={{ px: 4, textTransform: 'none', borderRadius: 2 }}
             >
               {editingTask ? t('tasks.updateTask') : t('tasks.submitCreateTask')}
             </Button>
@@ -753,7 +593,6 @@ const MonitorTasks = () => {
         severity={feedback.severity}
         onClose={closeFeedback}
       />
-
     </Box>
   );
 };

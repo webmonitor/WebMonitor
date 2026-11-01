@@ -1,40 +1,28 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
-  Chip,
   Alert,
-  Tooltip,
-  IconButton,
+  Box,
+  Button,
+  CircularProgress,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
-  Select,
   MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Avatar,
-  CircularProgress,
+  Tooltip,
+  IconButton,
+  Typography,
 } from '@mui/material';
-import {
-  Public as PublicIcon,
-  People as PeopleIcon,
-  Person as PersonIcon,
-  BookmarkBorder as SubscribeIcon,
-  BookmarkRemove as UnsubscribeIcon,
-  Info as InfoIcon,
-  Schedule as ScheduleIcon,
-  Link as LinkIcon,
-  CheckCircle as SuccessIcon,
-} from '@mui/icons-material';
+import { Info as InfoIcon, Public as PublicIcon } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -46,9 +34,11 @@ import EmptyState from '../components/EmptyState';
 import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
-import WebMonitorLogo from '../components/WebMonitorLogo';
-import { UI_COLORS } from '../theme/tokens';
+import { UI_FONTS } from '../theme/tokens';
 import { formatDateTime } from '../utils/date';
+import { formatInterval } from '../utils/duration';
+
+const mono = { fontFamily: UI_FONTS.mono, fontVariantNumeric: 'tabular-nums' };
 
 const PublicTasks = () => {
   const { user } = useAuth();
@@ -199,8 +189,6 @@ const PublicTasks = () => {
             key: 'publicTasks',
             title: t('publicTasks.publicTasks'),
             value: tasksQuery.isLoading || tasksQuery.isError ? null : tasks.length,
-            icon: <PublicIcon />,
-            color: UI_COLORS.primary,
           },
           {
             key: 'mySubscriptions',
@@ -209,16 +197,12 @@ const PublicTasks = () => {
               subscriptionInfoQuery.isLoading || subscriptionInfoQuery.isError
                 ? null
                 : subscriptionInfo?.current_subscriptions,
-            icon: <PeopleIcon />,
-            color: UI_COLORS.info,
           },
           {
             key: 'remainingSlots',
             title: t('publicTasks.remainingSlots'),
             value:
               subscriptionInfoQuery.isLoading || subscriptionInfoQuery.isError ? null : remainingSlots,
-            icon: slotsExhausted ? <PeopleIcon /> : <SuccessIcon />,
-            color: slotsExhausted ? UI_COLORS.danger : UI_COLORS.info,
           },
           {
             key: 'totalSubscriptions',
@@ -227,15 +211,13 @@ const PublicTasks = () => {
               tasksQuery.isLoading || tasksQuery.isError
                 ? null
                 : tasks.reduce((sum, task) => sum + (task.subscription_count || 0), 0),
-            icon: <WebMonitorLogo size={28} />,
-            color: UI_COLORS.accent,
           },
         ]}
       />
 
-      <Alert severity="info" sx={{ mb: 3 }}>
+      <Typography variant="caption" sx={{ display: 'block', mb: 3, color: 'text.secondary' }}>
         {t('publicTasks.usageLine3')}
-      </Alert>
+      </Typography>
 
       <SectionCard title={t('publicTasks.taskList')} bareBody>
         {tasksQuery.isLoading ? (
@@ -249,100 +231,78 @@ const PublicTasks = () => {
             subtitle={t('publicTasks.noTasksSubtitle')}
           />
         ) : (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 880 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.taskInfo')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.creator')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.subscriptions')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.interval')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.createdAt')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('publicTasks.actions')}</TableCell>
+                <TableRow>
+                  <TableCell>{t('publicTasks.taskInfo')}</TableCell>
+                  <TableCell>{t('publicTasks.creator')}</TableCell>
+                  <TableCell align="right">{t('publicTasks.subscriptions')}</TableCell>
+                  <TableCell>{t('publicTasks.interval')}</TableCell>
+                  <TableCell>{t('publicTasks.createdAt')}</TableCell>
+                  <TableCell align="right">{t('publicTasks.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {tasks.map((task) => (
-                  <TableRow
-                    key={task.id}
-                    sx={{
-                      '&:hover': { backgroundColor: 'action.hover' },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
+                  <TableRow key={task.id}>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            mr: 2,
-                            bgcolor: UI_COLORS.info,
-                            color: 'white',
-                            fontSize: '1rem',
-                          }}
-                        >
-                          {task.name.charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {task.name}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                            <LinkIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
-                            <Typography
-                              variant="caption"
-                              sx={{maxWidth: 200,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                color: 'text.secondary',
-                              }}
-                            >
-                              {task.url}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <PersonIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2">{task.owner_username}</Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={task.subscription_count}
-                        color="primary"
-                        icon={<PeopleIcon />}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <ScheduleIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                        <Typography variant="body2">
-                          {task.interval}{t('publicTasks.seconds')}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {formatDateTime(task.created_at, i18n.language)}
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {task.name}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          ...mono,
+                          display: 'block',
+                          maxWidth: 260,
+                          fontSize: 12,
+                          color: 'text.secondary',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          mt: 0.5,
+                        }}
+                      >
+                        {task.url}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Tooltip title={task.user_subscribed ? t('publicTasks.unsubscribeTask') : t('publicTasks.subscribeTask')}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {task.owner_username}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography sx={{ ...mono, fontSize: 13 }}>
+                        {task.subscription_count ?? 0}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ ...mono, fontSize: 13 }}>
+                        {formatInterval(task.interval, t)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ ...mono, fontSize: 12, color: 'text.secondary' }}>
+                        {formatDateTime(task.created_at, i18n.language)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', justifyContent: 'flex-end' }}>
+                        <Tooltip
+                          title={
+                            task.user_subscribed
+                              ? t('publicTasks.unsubscribeTask')
+                              : t('publicTasks.subscribeTask')
+                          }
+                        >
                           <Button
                             size="small"
-                            variant={task.user_subscribed ? 'outlined' : 'contained'}
-                            color={task.user_subscribed ? 'secondary' : 'primary'}
-                            disableElevation
-                            startIcon={task.user_subscribed ? <UnsubscribeIcon /> : <SubscribeIcon />}
-                            sx={{ textTransform: 'none', borderRadius: 2 }}
+                            variant={task.user_subscribed ? 'text' : 'outlined'}
+                            aria-label={
+                              task.user_subscribed
+                                ? t('publicTasks.unsubscribeTask')
+                                : t('publicTasks.subscribeTask')
+                            }
                             onClick={() => {
                               if (task.user_subscribed) {
                                 handleToggleSubscription(task.id);
@@ -355,19 +315,18 @@ const PublicTasks = () => {
                               (!task.user_subscribed && slotsExhausted)
                             }
                           >
-                            {task.user_subscribed ? t('publicTasks.unsubscribe') : t('publicTasks.subscribe')}
+                            {task.user_subscribed
+                              ? t('publicTasks.unsubscribe')
+                              : t('publicTasks.subscribe')}
                           </Button>
                         </Tooltip>
                         <Tooltip title={t('publicTasks.viewDetails')}>
                           <IconButton
                             size="small"
+                            aria-label={t('publicTasks.viewDetails')}
                             onClick={() => handleViewDetails(task)}
-                            sx={{
-                              color: UI_COLORS.info,
-                              '&:hover': { backgroundColor: 'action.hover' },
-                            }}
                           >
-                            <InfoIcon />
+                            <InfoIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                       </Box>
@@ -381,13 +340,10 @@ const PublicTasks = () => {
       </SectionCard>
 
       <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ pb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <PublicIcon sx={{ fontSize: 24, color: 'primary.main' }} />
-            <Typography variant="h5" component="div">
-              {t('publicTasks.taskDetails')}
-            </Typography>
-          </Box>
+        <DialogTitle>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
+            {t('publicTasks.taskDetails')}
+          </Typography>
         </DialogTitle>
         <DialogContent>
           {selectedTask && typeof selectedTask === 'object' && (
@@ -395,25 +351,39 @@ const PublicTasks = () => {
               <Typography variant="h6" sx={{ mb: 1 }}>
                 {selectedTask.name}
               </Typography>
-              <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                {t('publicTasks.createdByLabel')}: {selectedTask.owner_username} | {t('publicTasks.createdAtLabel')}: {formatDateTime(selectedTask.created_at, i18n.language)}
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('publicTasks.createdByLabel')}: {selectedTask.owner_username}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('publicTasks.createdAtLabel')}:{' '}
+                  <Box component="span" sx={{ ...mono, fontSize: 12, color: 'text.primary' }}>
+                    {formatDateTime(selectedTask.created_at, i18n.language)}
+                  </Box>
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ mb: 2 }}>
                 {selectedTask.description || t('publicTasks.noDescription')}
               </Typography>
-              <Typography variant="body2" sx={{ wordBreak: 'break-all', color: 'text.secondary' }}>
-                {t('publicTasks.monitorUrl')}: {selectedTask.url}
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                {t('publicTasks.monitorUrl')}:
               </Typography>
-              <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                {t('publicTasks.subscriberCount')}: {selectedTask.subscription_count}
+              <Typography
+                sx={{ ...mono, fontSize: 12, color: 'text.secondary', wordBreak: 'break-all', mt: 0.5 }}
+              >
+                {selectedTask.url}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                {t('publicTasks.subscriberCount')}:{' '}
+                <Box component="span" sx={{ ...mono, fontSize: 13, color: 'text.primary' }}>
+                  {selectedTask.subscription_count ?? 0}
+                </Box>
               </Typography>
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setDetailDialogOpen(false)} color="inherit">
-            {t('publicTasks.close')}
-          </Button>
+        <DialogActions>
+          <Button onClick={() => setDetailDialogOpen(false)}>{t('publicTasks.close')}</Button>
           {selectedTask && typeof selectedTask === 'object' && (
             <Button
               onClick={() => {
@@ -425,15 +395,14 @@ const PublicTasks = () => {
                 setDetailDialogOpen(false);
               }}
               variant={selectedTask.user_subscribed ? 'outlined' : 'contained'}
-              color={selectedTask.user_subscribed ? 'secondary' : 'primary'}
-              disableElevation
-              sx={{ textTransform: 'none', borderRadius: 2 }}
               disabled={
                 toggleMutation.isPending ||
                 (!selectedTask.user_subscribed && slotsExhausted)
               }
             >
-              {selectedTask.user_subscribed ? t('publicTasks.unsubscribeTask') : t('publicTasks.subscribeTask')}
+              {selectedTask.user_subscribed
+                ? t('publicTasks.unsubscribeTask')
+                : t('publicTasks.subscribeTask')}
             </Button>
           )}
         </DialogActions>
@@ -446,17 +415,17 @@ const PublicTasks = () => {
         fullWidth
       >
         <DialogTitle>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
             {t('publicTasks.chooseEmailConfig')}
           </Typography>
-          <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
             {t('publicTasks.chooseEmailConfigSubtitle')}
           </Typography>
         </DialogTitle>
         <DialogContent>
           {emailConfigsQuery.isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress size={28} />
+              <CircularProgress />
             </Box>
           ) : emailConfigsQuery.error ? (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -487,7 +456,6 @@ const PublicTasks = () => {
         <DialogActions>
           <Button
             onClick={handleCloseEmailConfigDialog}
-            color="inherit"
             disabled={subscribeWithEmailMutation.isPending}
           >
             {t('publicTasks.cancel')}
@@ -496,8 +464,6 @@ const PublicTasks = () => {
             <Button
               onClick={handleConfirmSubscribe}
               variant="contained"
-              disableElevation
-              sx={{ textTransform: 'none', borderRadius: 2 }}
               disabled={!selectedEmailConfig || subscribeWithEmailMutation.isPending}
             >
               {t('publicTasks.confirmSubscribe')}

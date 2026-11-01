@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
-  Chip,
   Alert,
-  Tooltip,
-  IconButton,
+  Box,
+  Button,
+  CircularProgress,
   FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   FormControlLabel,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Switch,
   Table,
   TableBody,
@@ -19,18 +17,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Avatar,
-  CircularProgress,
+  Tooltip,
+  Typography,
 } from '@mui/material';
 import {
   Subscriptions as SubscriptionsIcon,
-  Email as EmailIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Notifications as NotificationsActiveIcon,
-  NotificationsOff as NotificationsOffIcon,
-  Settings as SettingsIcon,
-  Link as LinkIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -45,9 +38,17 @@ import FormDialog from '../components/FormDialog';
 import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
-import WebMonitorLogo from '../components/WebMonitorLogo';
-import { UI_COLORS } from '../theme/tokens';
+import { UI_FONTS } from '../theme/tokens';
 import { formatDateTime } from '../utils/date';
+
+// 读数与时间统一等宽、等宽数字：切换时有节奏的数字不会左右跳。
+const monoReading = {
+  fontFamily: UI_FONTS.mono,
+  fontVariantNumeric: 'tabular-nums',
+  fontSize: 12,
+  color: 'text.secondary',
+  letterSpacing: 0,
+};
 
 const MySubscriptions = () => {
   const { user } = useAuth();
@@ -161,6 +162,16 @@ const MySubscriptions = () => {
     });
   };
 
+  const handleToggleActive = (subscription) => {
+    updateMutation.mutate({
+      id: subscription.id,
+      body: {
+        is_active: !subscription.is_active,
+        email_config_id: subscription.email_config_id || null,
+      },
+    });
+  };
+
   const handleRequestDelete = (subscription) => {
     setConfirmTarget(subscription);
   };
@@ -200,8 +211,6 @@ const MySubscriptions = () => {
             key: 'totalSubscriptions',
             title: t('subscriptions.totalSubscriptions'),
             value: subscriptionsQuery.isLoading || subscriptionsQuery.isError ? null : subscriptions.length,
-            icon: <SubscriptionsIcon />,
-            color: UI_COLORS.primary,
           },
           {
             key: 'notificationsEnabled',
@@ -210,8 +219,6 @@ const MySubscriptions = () => {
               subscriptionsQuery.isLoading || subscriptionsQuery.isError
                 ? null
                 : subscriptions.filter((subscription) => subscription.is_active).length,
-            icon: <NotificationsActiveIcon />,
-            color: UI_COLORS.info,
           },
           {
             key: 'notificationsDisabled',
@@ -220,28 +227,30 @@ const MySubscriptions = () => {
               subscriptionsQuery.isLoading || subscriptionsQuery.isError
                 ? null
                 : subscriptions.filter((subscription) => !subscription.is_active).length,
-            icon: <NotificationsOffIcon />,
-            color: UI_COLORS.danger,
           },
           {
             key: 'emailConfigs',
             title: t('subscriptions.emailConfigs'),
             value: emailConfigsQuery.isLoading || emailConfigsQuery.isError ? null : emailConfigs.length,
-            icon: <WebMonitorLogo size={28} />,
-            color: UI_COLORS.accent,
           },
         ]}
       />
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <Typography variant="body2">• {t('subscriptions.guideLine1')}</Typography>
-        <Typography variant="body2">• {t('subscriptions.guideLine2')}</Typography>
-        <Typography variant="body2">• {t('subscriptions.guideLine3')}</Typography>
-      </Alert>
+      <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        {[
+          t('subscriptions.guideLine1'),
+          t('subscriptions.guideLine2'),
+          t('subscriptions.guideLine3'),
+        ].map((line) => (
+          <Typography key={line} variant="caption" sx={{ color: 'text.secondary' }}>
+            · {line}
+          </Typography>
+        ))}
+      </Box>
 
       <SectionCard title={t('subscriptions.listTitle')} bareBody>
         {subscriptionsQuery.isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>
         ) : subscriptions.length === 0 ? (
@@ -250,134 +259,128 @@ const MySubscriptions = () => {
             title={t('subscriptions.noSubscriptions')}
             subtitle={t('subscriptions.noSubscriptionsSubtitle')}
             action={
-              <Button
-                variant="contained"
-                disableElevation
-                href="/public-tasks"
-                sx={{ textTransform: 'none', borderRadius: 2 }}
-              >
+              <Button variant="contained" href="/public-tasks">
                 {t('subscriptions.browsePublicTasks')}
               </Button>
             }
           />
         ) : (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 840 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.taskInfo')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.taskUrl')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.notificationStatus')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.emailConfig')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.subscribedAt')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('subscriptions.actions')}</TableCell>
+                <TableRow>
+                  <TableCell>{t('subscriptions.taskInfo')}</TableCell>
+                  <TableCell>{t('subscriptions.taskUrl')}</TableCell>
+                  <TableCell>{t('subscriptions.emailConfig')}</TableCell>
+                  <TableCell>{t('subscriptions.subscribedAt')}</TableCell>
+                  <TableCell align="right">{t('subscriptions.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {subscriptions.map((subscription) => (
-                  <TableRow
-                    key={subscription.id}
-                    sx={{
-                      '&:hover': { backgroundColor: 'action.hover' },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
+                {subscriptions.map((subscription) => {
+                  const emailConfig = emailConfigs.find(
+                    (config) => config.id === subscription.email_config_id,
+                  );
+                  const emailConfigName = subscription.email_config_id
+                    ? emailConfig?.name || t('subscriptions.unknownConfig')
+                    : t('subscriptions.defaultConfig');
+
+                  return (
+                    <TableRow key={subscription.id}>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {subscription.task_available ? subscription.task_name : emptyValue}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
+                        >
+                          {subscription.task_available
+                            ? `${t('subscriptions.owner')}: ${subscription.task_owner || emptyValue}`
+                            : t('subscriptions.taskUnavailable')}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {subscription.task_url ? (
+                          <Tooltip title={subscription.task_url}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                ...monoReading,
+                                maxWidth: 220,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {subscription.task_url}
+                            </Typography>
+                          </Tooltip>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                            {emptyValue}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          {emailConfigName}
+                        </Typography>
+                        {emailConfig?.smtp_user && (
+                          <Typography
+                            variant="caption"
+                            sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
+                          >
+                            {emailConfig.smtp_user}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={monoReading}>
+                          {formatDateTime(subscription.created_at, i18n.language)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box
                           sx={{
-                            width: 40,
-                            height: 40,
-                            mr: 2,
-                            bgcolor: subscription.is_active ? UI_COLORS.primary : UI_COLORS.danger,
-                            color: 'white',
-                            fontSize: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: 0.5,
                           }}
                         >
-                          {(subscription.task_name || '?').charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {subscription.task_available ? subscription.task_name : t('subscriptions.taskUnavailable')}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {t('subscriptions.owner')}: {subscription.task_owner || emptyValue}
-                          </Typography>
+                          <Switch
+                            size="small"
+                            checked={subscription.is_active}
+                            onChange={() => handleToggleActive(subscription)}
+                            disabled={updateMutation.isPending}
+                            slotProps={{
+                              input: { 'aria-label': t('subscriptions.enableEmailNotifications') },
+                            }}
+                          />
+                          <Tooltip title={t('subscriptions.editSubscription')}>
+                            <IconButton
+                              size="small"
+                              aria-label={t('subscriptions.editSubscription')}
+                              onClick={() => handleOpenEditDialog(subscription)}
+                            >
+                              <EditIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title={t('subscriptions.deleteSubscription')}>
+                            <IconButton
+                              size="small"
+                              aria-label={t('subscriptions.deleteSubscription')}
+                              onClick={() => handleRequestDelete(subscription)}
+                            >
+                              <DeleteIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
                         </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <LinkIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
-                        <Tooltip title={subscription.task_url || ''} arrow>
-                          <Typography
-                            variant="body2"
-                            sx={{maxWidth: 200,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              color: 'text.secondary',
-                            }}
-                          >
-                            {subscription.task_url || emptyValue}
-                          </Typography>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={!subscription.task_available ? t('subscriptions.taskUnavailable') : subscription.is_active ? t('subscriptions.enabled') : t('subscriptions.disabled')}
-                        color={subscription.task_available && subscription.is_active ? 'success' : 'default'}
-                        icon={subscription.task_available && subscription.is_active ? <NotificationsActiveIcon /> : <NotificationsOffIcon />}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <EmailIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {subscription.email_config_id
-                            ? emailConfigs.find((config) => config.id === subscription.email_config_id)?.name || t('subscriptions.unknownConfig')
-                            : t('subscriptions.defaultConfig')}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {formatDateTime(subscription.created_at, i18n.language)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title={t('subscriptions.editSubscription')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenEditDialog(subscription)}
-                            sx={{
-                              color: UI_COLORS.info,
-                              '&:hover': { backgroundColor: 'action.hover' },
-                            }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('subscriptions.deleteSubscription')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleRequestDelete(subscription)}
-                            sx={{
-                              color: UI_COLORS.danger,
-                              '&:hover': { backgroundColor: 'action.hover' },
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -387,7 +390,6 @@ const MySubscriptions = () => {
       <FormDialog
         open={editDialogOpen}
         title={t('subscriptions.editDialogTitle')}
-        icon={<SettingsIcon sx={{ fontSize: 24, color: 'primary.main' }} />}
         submitLabel={t('subscriptions.saveSettings')}
         cancelLabel={t('subscriptions.cancel')}
         onSubmit={handleUpdateSubscription}
@@ -396,7 +398,7 @@ const MySubscriptions = () => {
       >
         {editingSubscription && (
           <Box>
-            <Typography variant="body1" sx={{ mb: 2, fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 2 }}>
               {t('subscriptions.taskLabel')}: {editingSubscription.task_name}
             </Typography>
 
@@ -405,7 +407,11 @@ const MySubscriptions = () => {
                 <Switch
                   checked={formData.is_active}
                   onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })}
-                  color="primary"
+                  slotProps={{
+                    input: {
+                      'aria-label': t('subscriptions.enableEmailNotifications'),
+                    },
+                  }}
                 />
               }
               label={t('subscriptions.enableEmailNotifications')}

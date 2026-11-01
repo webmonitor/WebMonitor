@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Grid,
+  IconButton,
+  InputAdornment,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -14,28 +19,16 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
-  IconButton,
-  Alert,
-  Chip,
-  Switch,
-  Avatar,
   Tooltip,
-  InputAdornment,
+  Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Person as PersonIcon,
-  AdminPanelSettings as AdminIcon,
-  Security as SecurityIcon,
   People as PeopleIcon,
-  CheckCircle as SuccessIcon,
-  Error as ErrorIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  Email as EmailIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +42,17 @@ import FeedbackSnackbar from '../components/FeedbackSnackbar';
 import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
-import { UI_COLORS } from '../theme/tokens';
+import StatusBadge from '../components/StatusBadge';
+import { UI_FONTS } from '../theme/tokens';
+
+// 配额是读数：等宽 + 等宽数字，和仪表盘上的指标同一套排版。
+const monoReading = {
+  fontFamily: UI_FONTS.mono,
+  fontVariantNumeric: 'tabular-nums',
+  fontSize: 13,
+  color: 'text.primary',
+  letterSpacing: 0,
+};
 
 const UserManagement = () => {
   const [open, setOpen] = useState(false);
@@ -222,13 +225,7 @@ const UserManagement = () => {
         title={t('users.title')}
         subtitle={t('users.subtitle')}
         action={
-          <Button
-            variant="contained"
-            disableElevation
-            startIcon={<AddIcon />}
-            onClick={() => handleOpen()}
-            sx={{ textTransform: 'none', borderRadius: 2 }}
-          >
+          <Button variant="contained" startIcon={<AddIcon sx={{ fontSize: 18 }} />} onClick={() => handleOpen()}>
             {t('users.createUser')}
           </Button>
         }
@@ -240,36 +237,30 @@ const UserManagement = () => {
             key: 'total',
             title: t('users.totalUsers'),
             value: users.length,
-            icon: <PeopleIcon />,
-            color: UI_COLORS.primary,
           },
           {
             key: 'active',
             title: t('users.activeUsers'),
             value: users.filter((user) => user.is_active).length,
-            icon: <SuccessIcon />,
-            color: UI_COLORS.info,
           },
           {
             key: 'admins',
             title: t('users.admins'),
             value: users.filter((user) => user.is_admin).length,
-            icon: <AdminIcon />,
-            color: UI_COLORS.warning,
           },
           {
             key: 'inactive',
             title: t('users.disabledUsers'),
             value: users.filter((user) => !user.is_active).length,
-            icon: <SecurityIcon />,
-            color: UI_COLORS.accent,
           },
         ]}
       />
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        {t('users.guideText')}
-      </Alert>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {t('users.guideText')}
+        </Typography>
+      </Box>
 
       <SectionCard title={t('users.listTitle')} bareBody>
         {users.length === 0 ? (
@@ -277,107 +268,83 @@ const UserManagement = () => {
             icon={<PeopleIcon />}
             title={t('users.noUsers')}
             subtitle={t('users.noUsersSubtitle')}
-            action={
-              <Button
-                variant="contained"
-                disableElevation
-                startIcon={<AddIcon />}
-                onClick={() => handleOpen()}
-                sx={{ textTransform: 'none', borderRadius: 2 }}
-              >
-                {t('users.createFirstUser')}
-              </Button>
-            }
+            action={<Button onClick={() => handleOpen()}>{t('users.createFirstUser')}</Button>}
           />
         ) : (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 920 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'rgba(167, 139, 250, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('users.userInfo')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('users.emailAddress')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('users.rolePermission')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('users.subscriptionLimit')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('users.accountStatus')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('users.actions')}</TableCell>
+                <TableRow>
+                  <TableCell>{t('users.userInfo')}</TableCell>
+                  <TableCell>{t('users.emailAddress')}</TableCell>
+                  <TableCell>{t('users.rolePermission')}</TableCell>
+                  <TableCell>{t('users.subscriptionLimit')}</TableCell>
+                  <TableCell>{t('users.accountStatus')}</TableCell>
+                  <TableCell align="right">{t('users.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {users.map((user) => (
-                  <TableRow
-                    key={user.id}
-                    sx={{
-                      '&:hover': { backgroundColor: 'rgba(167, 139, 250, 0.03)' },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
+                  <TableRow key={user.id}>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            mr: 2,
-                            bgcolor: user.is_admin ? UI_COLORS.warning : UI_COLORS.accent,
-                            fontSize: '1rem',
-                          }}
-                        >
-                          {user.is_admin ? <AdminIcon /> : <PersonIcon />}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {user.username}
-                          </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {user.username}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
+                      >
+                        {user.full_name || t('users.fullNameNotSet')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {user.email}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: user.is_admin ? 500 : 400,
+                          color: user.is_admin ? 'text.primary' : 'text.secondary',
+                        }}
+                      >
+                        {user.is_admin ? t('users.admin') : t('users.regularUser')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <Typography sx={monoReading}>{user.max_subscriptions || 10}</Typography>
+                        {t('users.subscriptionUnit') && (
                           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {user.full_name || t('users.fullNameNotSet')}
+                            {t('users.subscriptionUnit')}
                           </Typography>
-                        </Box>
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <EmailIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                        <Typography variant="body2">
-                          {user.email}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        icon={user.is_admin ? <AdminIcon /> : <PersonIcon />}
-                        label={user.is_admin ? t('users.admin') : t('users.regularUser')}
-                        color={user.is_admin ? 'warning' : 'primary'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={`${user.max_subscriptions || 10} ${t('users.subscriptionUnit')}`.trim()}
-                        color="info"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        icon={user.is_active ? <SuccessIcon /> : <ErrorIcon />}
+                      <StatusBadge
+                        tone={user.is_active ? 'positive' : 'neutral'}
                         label={user.is_active ? t('users.enabled') : t('users.disabled')}
-                        color={user.is_active ? 'success' : 'error'}
                       />
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TableCell align="right">
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          gap: 0.5,
+                        }}
+                      >
                         <Tooltip title={t('users.editUser')}>
                           <IconButton
                             size="small"
+                            aria-label={t('users.editUser')}
                             onClick={() => handleOpen(user)}
-                            sx={{
-                              color: '#a78bfa',
-                              '&:hover': { backgroundColor: 'rgba(167, 139, 250, 0.1)' },
-                            }}
                           >
-                            <EditIcon />
+                            <EditIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                         <Tooltip
@@ -390,15 +357,11 @@ const UserManagement = () => {
                           <span>
                             <IconButton
                               size="small"
+                              aria-label={t('users.deleteUser')}
                               onClick={() => handleDelete(user)}
                               disabled={currentUser?.id === user.id}
-                              sx={{
-                                color: '#ef4444',
-                                '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-                                '&:disabled': { color: 'rgba(0, 0, 0, 0.3)' },
-                              }}
                             >
-                              <DeleteIcon />
+                              <DeleteIcon sx={{ fontSize: 18 }} />
                             </IconButton>
                           </span>
                         </Tooltip>
@@ -419,16 +382,13 @@ const UserManagement = () => {
         fullWidth
         disableEnforceFocus
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          {editingUser ? <EditIcon color="primary" /> : <AddIcon color="primary" />}
-          <Box>
-            <Typography variant="h6" component="div">
-              {editingUser ? t('users.editDialogTitle') : t('users.createDialogTitle')}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {editingUser ? t('users.editDialogSubtitle') : t('users.createDialogSubtitle')}
-            </Typography>
-          </Box>
+        <DialogTitle sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography component="span" variant="h6">
+            {editingUser ? t('users.editDialogTitle') : t('users.createDialogTitle')}
+          </Typography>
+          <Typography component="span" variant="body2" sx={{ color: 'text.secondary' }}>
+            {editingUser ? t('users.editDialogSubtitle') : t('users.createDialogSubtitle')}
+          </Typography>
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent sx={{ pt: 3 }}>
@@ -441,26 +401,6 @@ const UserManagement = () => {
                   onChange={(event) => setFormData({ ...formData, username: event.target.value })}
                   required
                   disabled={!!editingUser}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PersonIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(167, 139, 250, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#a78bfa',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -469,26 +409,6 @@ const UserManagement = () => {
                   fullWidth
                   value={formData.full_name}
                   onChange={(event) => setFormData({ ...formData, full_name: event.target.value })}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PeopleIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(167, 139, 250, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#a78bfa',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -499,26 +419,6 @@ const UserManagement = () => {
                   value={formData.email}
                   onChange={(event) => setFormData({ ...formData, email: event.target.value })}
                   required
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EmailIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(167, 139, 250, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#a78bfa',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -532,34 +432,21 @@ const UserManagement = () => {
                   helperText={editingUser ? t('users.passwordHelperEdit') : t('users.passwordHelperCreate')}
                   slotProps={{
                     input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SecurityIcon sx={{ color: 'rgba(0, 0, 0, 0.6)' }} />
-                        </InputAdornment>
-                      ),
                       endAdornment: (
                         <InputAdornment position="end">
                           <IconButton
                             aria-label={t('common.togglePasswordVisibility')}
                             onClick={() => setShowPassword(!showPassword)}
                             edge="end"
-                            sx={{ color: 'rgba(0, 0, 0, 0.6)' }}
                           >
-                            {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            {showPassword ? (
+                              <VisibilityOffIcon sx={{ fontSize: 18 }} />
+                            ) : (
+                              <VisibilityIcon sx={{ fontSize: 18 }} />
+                            )}
                           </IconButton>
                         </InputAdornment>
                       ),
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(167, 139, 250, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#a78bfa',
-                        borderWidth: 2,
-                      },
                     },
                   }}
                 />
@@ -570,89 +457,72 @@ const UserManagement = () => {
                   type="number"
                   fullWidth
                   value={formData.max_subscriptions}
-                  onChange={(event) => setFormData({ ...formData, max_subscriptions: parseInt(event.target.value, 10) || 10 })}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      max_subscriptions: parseInt(event.target.value, 10) || 10,
+                    })
+                  }
                   slotProps={{ htmlInput: { min: 1, max: 100 } }}
                   helperText={t('users.maxSubscriptionsHelper')}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(167, 139, 250, 0.5)',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#a78bfa',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(245, 158, 11, 0.05)' }}>
-                  <Switch
-                    checked={formData.is_admin}
-                    onChange={(event) => setFormData({ ...formData, is_admin: event.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-thumb': {
-                        backgroundColor: formData.is_admin ? '#f59e0b' : 'default',
-                      },
-                      '& .MuiSwitch-track': {
-                        backgroundColor: formData.is_admin ? 'rgba(245, 158, 11, 0.5)' : 'default',
-                      },
-                    }}
-                  />
-                  <Box sx={{ ml: 2 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {t('users.adminPermission')}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {t('users.adminPermissionHelper')}
-                    </Typography>
-                  </Box>
-                </Box>
+                <FormControlLabel
+                  sx={{ alignItems: 'flex-start', m: 0, minHeight: 36 }}
+                  control={
+                    <Switch
+                      checked={formData.is_admin}
+                      onChange={(event) =>
+                        setFormData({ ...formData, is_admin: event.target.checked })
+                      }
+                      slotProps={{ input: { 'aria-label': t('users.adminPermission') } }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ ml: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {t('users.adminPermission')}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        {t('users.adminPermissionHelper')}
+                      </Typography>
+                    </Box>
+                  }
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 2, backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
-                  <Switch
-                    checked={formData.is_active}
-                    onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-thumb': {
-                        backgroundColor: formData.is_active ? '#10b981' : 'default',
-                      },
-                      '& .MuiSwitch-track': {
-                        backgroundColor: formData.is_active ? 'rgba(16, 185, 129, 0.5)' : 'default',
-                      },
-                    }}
-                  />
-                  <Box sx={{ ml: 2 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {t('users.activeAccount')}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {t('users.activeAccountHelper')}
-                    </Typography>
-                  </Box>
-                </Box>
+                <FormControlLabel
+                  sx={{ alignItems: 'flex-start', m: 0, minHeight: 36 }}
+                  control={
+                    <Switch
+                      checked={formData.is_active}
+                      onChange={(event) =>
+                        setFormData({ ...formData, is_active: event.target.checked })
+                      }
+                      slotProps={{ input: { 'aria-label': t('users.activeAccount') } }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ ml: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {t('users.activeAccount')}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        {t('users.activeAccountHelper')}
+                      </Typography>
+                    </Box>
+                  }
+                />
               </Grid>
             </Grid>
           </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button
-              onClick={handleClose}
-              sx={{
-                px: 3,
-                borderRadius: 2,
-                '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-              }}
-            >
-              {t('common.cancel')}
-            </Button>
+          <DialogActions>
+            <Button onClick={handleClose}>{t('common.cancel')}</Button>
             <Button
               type="submit"
               variant="contained"
-              disableElevation
               disabled={createMutation.isPending || updateMutation.isPending}
-              sx={{ textTransform: 'none', borderRadius: 2 }}
             >
               {editingUser ? t('users.updateUser') : t('users.createUserAction')}
             </Button>
@@ -677,7 +547,6 @@ const UserManagement = () => {
         severity={feedback.severity}
         onClose={closeFeedback}
       />
-
     </Box>
   );
 };

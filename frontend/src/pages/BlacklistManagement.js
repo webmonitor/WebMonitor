@@ -1,31 +1,26 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  IconButton,
-  Chip,
   Alert,
+  Box,
+  Button,
   FormControlLabel,
+  IconButton,
   Switch,
-  Tooltip,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Avatar,
+  TextField,
+  Tooltip,
+  Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Security as SecurityIcon,
-  Block as BlockIcon,
-  NotInterested as BlockOffIcon,
-  Language as LanguageIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -41,7 +36,25 @@ import FormDialog from '../components/FormDialog';
 import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
-import { UI_COLORS } from '../theme/tokens';
+import StatusBadge from '../components/StatusBadge';
+import { UI_FONTS } from '../theme/tokens';
+
+// 域名是机器值：等宽显示，通配符和子域名的差别一眼能看出来。
+const monoDomain = {
+  fontFamily: UI_FONTS.mono,
+  fontSize: 13,
+  color: 'text.primary',
+  letterSpacing: 0,
+  wordBreak: 'break-all',
+};
+
+const monoReading = {
+  fontFamily: UI_FONTS.mono,
+  fontVariantNumeric: 'tabular-nums',
+  fontSize: 12,
+  color: 'text.secondary',
+  letterSpacing: 0,
+};
 
 const BlacklistManagement = () => {
   const { t, i18n } = useTranslation();
@@ -176,13 +189,7 @@ const BlacklistManagement = () => {
         title={t('blacklist.title')}
         subtitle={t('blacklist.subtitle')}
         action={
-          <Button
-            variant="contained"
-            disableElevation
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-            sx={{ textTransform: 'none', borderRadius: 2 }}
-          >
+          <Button variant="contained" startIcon={<AddIcon sx={{ fontSize: 18 }} />} onClick={() => handleOpenDialog()}>
             {t('blacklist.addDomain')}
           </Button>
         }
@@ -193,43 +200,51 @@ const BlacklistManagement = () => {
           {
             key: 'total',
             title: t('blacklist.totalDomains'),
-            value: domains.length,
-            icon: <SecurityIcon />,
-            color: UI_COLORS.primary,
+            value: loadError ? null : domains.length,
           },
           {
             key: 'exact',
             title: t('blacklist.exactDomains'),
-            value: domains.filter((domain) => !domain.domain.startsWith('*') && domain.domain.includes('.')).length,
-            icon: <BlockIcon />,
-            color: UI_COLORS.info,
+            value: loadError
+              ? null
+              : domains.filter(
+                  (domain) => !domain.domain.startsWith('*') && domain.domain.includes('.'),
+                ).length,
           },
           {
             key: 'partial',
             title: t('blacklist.partialDomains'),
-            value: domains.filter((domain) => !domain.domain.startsWith('*') && !domain.domain.includes('.')).length,
-            icon: <BlockOffIcon />,
-            color: UI_COLORS.warning,
+            value: loadError
+              ? null
+              : domains.filter(
+                  (domain) => !domain.domain.startsWith('*') && !domain.domain.includes('.'),
+                ).length,
           },
           {
             key: 'wildcard',
             title: t('blacklist.wildcardDomains'),
-            value: domains.filter((domain) => domain.domain.startsWith('*')).length,
-            icon: <LanguageIcon />,
-            color: UI_COLORS.accent,
+            value: loadError ? null : domains.filter((domain) => domain.domain.startsWith('*')).length,
           },
         ]}
       />
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
           {t('blacklist.guideTitle')}
         </Typography>
-        <Typography variant="body2">• {t('blacklist.guideLine1')}</Typography>
-        <Typography variant="body2">• {t('blacklist.guideLine2')}</Typography>
-        <Typography variant="body2">• {t('blacklist.guideLine3')}</Typography>
-        <Typography variant="body2">• {t('blacklist.guideLine4')}</Typography>
-      </Alert>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          {[
+            t('blacklist.guideLine1'),
+            t('blacklist.guideLine2'),
+            t('blacklist.guideLine3'),
+            t('blacklist.guideLine4'),
+          ].map((line) => (
+            <Typography key={line} variant="caption" sx={{ color: 'text.secondary' }}>
+              · {line}
+            </Typography>
+          ))}
+        </Box>
+      </Box>
 
       {loadError && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -244,62 +259,34 @@ const BlacklistManagement = () => {
             title={t('blacklist.noDomains')}
             subtitle={t('blacklist.noDomainsSubtitle')}
             action={
-              <Button
-                variant="contained"
-                disableElevation
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenDialog()}
-                sx={{ textTransform: 'none', borderRadius: 2 }}
-              >
-                {t('blacklist.addFirstDomain')}
-              </Button>
+              <Button onClick={() => handleOpenDialog()}>{t('blacklist.addFirstDomain')}</Button>
             }
           />
         ) : (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 720 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.05)' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.domain')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.description')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.status')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.createdAt')}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{t('blacklist.actions')}</TableCell>
+                <TableRow>
+                  <TableCell>{t('blacklist.domain')}</TableCell>
+                  <TableCell>{t('blacklist.description')}</TableCell>
+                  <TableCell>{t('blacklist.status')}</TableCell>
+                  <TableCell>{t('blacklist.createdAt')}</TableCell>
+                  <TableCell align="right">{t('blacklist.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {domains.map((domain) => (
-                  <TableRow
-                    key={domain.id}
-                    sx={{
-                      '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.03)' },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
+                  <TableRow key={domain.id}>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            mr: 2,
-                            bgcolor: domain.is_active ? UI_COLORS.danger : 'grey.500',
-                            fontSize: '1rem',
-                          }}
+                      <Typography sx={monoDomain}>{domain.domain}</Typography>
+                      {domain.domain.startsWith('*') && (
+                        <Typography
+                          variant="caption"
+                          sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
                         >
-                          <LanguageIcon fontSize="small" />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {domain.domain}
-                          </Typography>
-                          {domain.domain.startsWith('*') && (
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              {t('blacklist.wildcard')}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
+                          {t('blacklist.wildcard')}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -307,43 +294,41 @@ const BlacklistManagement = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
+                      <StatusBadge
+                        tone={domain.is_active ? 'danger' : 'neutral'}
                         label={domain.is_active ? t('blacklist.enabled') : t('blacklist.disabledLabel')}
-                        color={domain.is_active ? 'error' : 'default'}
-                        icon={domain.is_active ? <BlockIcon /> : null}
-                        variant="outlined"
                       />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      <Typography sx={monoReading}>
                         {formatDateTime(domain.created_at, i18n.language)}
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TableCell align="right">
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          gap: 0.5,
+                        }}
+                      >
                         <Tooltip title={t('blacklist.edit')}>
                           <IconButton
                             size="small"
+                            aria-label={t('blacklist.edit')}
                             onClick={() => handleOpenDialog(domain)}
-                            sx={{
-                              color: '#1976d2',
-                              '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' },
-                            }}
                           >
-                            <EditIcon />
+                            <EditIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title={t('blacklist.delete')}>
                           <IconButton
                             size="small"
+                            aria-label={t('blacklist.delete')}
                             onClick={() => handleDelete(domain)}
-                            sx={{
-                              color: '#ef4444',
-                              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-                            }}
                           >
-                            <DeleteIcon />
+                            <DeleteIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                       </Box>
@@ -359,7 +344,6 @@ const BlacklistManagement = () => {
       <FormDialog
         open={dialogOpen}
         title={editingDomain ? t('blacklist.editDialogTitle') : t('blacklist.createDialogTitle')}
-        icon={<SecurityIcon sx={{ fontSize: 24, color: 'primary.main' }} />}
         submitLabel={editingDomain ? t('blacklist.update') : t('blacklist.create')}
         cancelLabel={t('common.cancel')}
         onSubmit={handleSubmit}
@@ -369,17 +353,15 @@ const BlacklistManagement = () => {
       >
         <TextField
           autoFocus
-          margin="dense"
           label={t('blacklist.domain')}
           fullWidth
           variant="outlined"
           value={formData.domain}
           onChange={(event) => setFormData({ ...formData, domain: event.target.value })}
-          sx={{ mb: 2 }}
           placeholder={t('blacklist.domainPlaceholder')}
+          sx={{ mb: 2 }}
         />
         <TextField
-          margin="dense"
           label={t('blacklist.description')}
           fullWidth
           variant="outlined"
@@ -387,15 +369,15 @@ const BlacklistManagement = () => {
           rows={3}
           value={formData.description}
           onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-          sx={{ mb: 2 }}
           placeholder={t('blacklist.descriptionPlaceholder')}
+          sx={{ mb: 2 }}
         />
         <FormControlLabel
           control={
             <Switch
               checked={formData.is_active}
               onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })}
-              color="primary"
+              slotProps={{ input: { 'aria-label': t('blacklist.enabledStatus') } }}
             />
           }
           label={t('blacklist.enabledStatus')}

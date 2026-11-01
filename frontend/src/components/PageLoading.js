@@ -15,13 +15,13 @@ const PageLoading = () => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 2,
+        gap: 1.5,
         minHeight: '60vh',
         width: '100%',
       }}
     >
-      <CircularProgress sx={{ color: '#10b981' }} />
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+      <CircularProgress />
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         {t('common.loading')}
       </Typography>
     </Box>
