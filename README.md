@@ -256,14 +256,14 @@ docker compose restart
 
 ### Update or roll back
 
-Back up the database and record the current image version, then set `WEBMONITOR_IMAGE` in `.env` to the new tag and run:
+Record the current image version, then set `WEBMONITOR_IMAGE` in `.env` to the new tag and run:
 
 ```sh
 docker compose pull
 docker compose up -d --wait
 ```
 
-The default database is stored inside the container, so recreating it loses that file unless storage is mounted separately. Follow the backup and storage instructions before updating. To roll back, set `WEBMONITOR_IMAGE` to the previous tag and repeat the commands with data matching that version. Database migration and downgrade are not automatic.
+The default database is stored inside the container, so recreating it loses that file unless storage is mounted separately. To roll back, set `WEBMONITOR_IMAGE` to the previous tag and repeat the commands.
 
 ### Keep data across container recreation
 

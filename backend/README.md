@@ -119,15 +119,15 @@ python main.py
 
 没有部署级 SMTP 回退。环境变量不是收件人的来源，通知只会发送到用户自己在“邮件配置”页面填写的收件地址。任务的 `email_config_id` 是可选的；没有绑定配置的任务照常采集和记录日志，只是不发送邮件。支持 SMTP_SSL 或 starttls，发送失败只记录不含凭据和异常 repr 的原因。
 
-## 数据与升级
+## 数据与备份
 
-数据层是同步 SQLAlchemy 2.0，`SessionLocal` + `get_db()` 依赖。表结构在启动时由 `create_all` 创建，缺失的表会补上，**已有表不会修改**，项目没有 Alembic 或其他迁移工具。
+数据层是同步 SQLAlchemy 2.0，`SessionLocal` + `get_db()` 依赖。表结构在启动时由 `create_all` 创建；结构变更通过重建数据库生效。
 
 默认数据库是 SQLite：
 
 - 本地从 `backend/` 启动时，数据库文件在 `backend/data/webmonitor.db`（相对当前工作目录）。
 - 容器内工作目录是 `/app`，数据库文件在 `/app/data/webmonitor.db`。
-- 提供的 Compose 文件没有数据卷；容器被重建后数据库为空。更新前备份需要保留的数据，并核对目标版本的数据结构，详见根目录 README 的“数据与备份”。
+- 提供的 Compose 文件没有数据卷；容器被重建后数据库为空。详见根目录 README 的“数据、备份与更新”。
 - 发布镜像默认使用 `latest`；需要固定版本时在 `.env` 设置 `WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:1.0.3`。`compose.yaml` 使用 `pull_policy: always`，更新 `latest` 后启动也可能重建容器。
 
 ## API 文档
