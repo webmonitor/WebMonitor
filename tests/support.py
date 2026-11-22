@@ -206,12 +206,14 @@ class DatabaseTestCase(unittest.TestCase):
             EmailConfig,
             MonitorLog,
             MonitorTask,
+            NotificationOutbox,
             TaskSubscription,
             User,
         )
 
         db = self.session()
         try:
+            db.query(NotificationOutbox).delete()
             db.query(TaskSubscription).delete()
             db.query(MonitorLog).delete()
             db.query(MonitorTask).delete()

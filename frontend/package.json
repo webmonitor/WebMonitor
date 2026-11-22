@@ -45,6 +45,7 @@
     ]
   },
   "devDependencies": {
+    "eslint-config-react-app": "7.0.1",
     "eslint-plugin-jest": "25.7.0",
     "typescript": "4.9.5"
   },

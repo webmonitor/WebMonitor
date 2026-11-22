@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
-  Container,
   Drawer,
   IconButton,
   List,
@@ -12,11 +11,11 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { Menu as MenuIcon, ContentCopy as CopyIcon, Check as CheckIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, Close as CloseIcon, ContentCopy as CopyIcon, Check as CheckIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { BrandLockup } from '../components/WebMonitorLogo';
+import PublicHeader from '../components/PublicHeader';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import docsEn from '../locales/docs/en';
 import docsZhCN from '../locales/docs/zh-CN';
@@ -26,14 +25,47 @@ import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
 const mono = { fontFamily: UI_FONTS.mono, letterSpacing: 0 };
 
-const CodeBlock = ({ children }) => {
-  const [copied, setCopied] = useState(false);
+const scrollToElement = (id) => {
+  const element = document.getElementById(id);
+  if (element) {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    element.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+};
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(children);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+const CodeBlock = ({ children }) => {
+  const { t } = useTranslation();
+  const [copyStatus, setCopyStatus] = useState('idle');
+  const resetTimer = React.useRef(null);
+
+  useEffect(
+    () => () => {
+      clearTimeout(resetTimer.current);
+    },
+    [],
+  );
+
+  const handleCopy = async () => {
+    clearTimeout(resetTimer.current);
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard unavailable');
+      }
+      await navigator.clipboard.writeText(children);
+      setCopyStatus('copied');
+    } catch {
+      setCopyStatus('error');
+    }
+    resetTimer.current = setTimeout(() => setCopyStatus('idle'), 2000);
   };
+
+  const copyLabel = t(
+    copyStatus === 'copied'
+      ? 'documentation.copied'
+      : copyStatus === 'error'
+        ? 'documentation.copyFailed'
+        : 'documentation.copyCode',
+  );
 
   return (
     <Box
@@ -50,17 +82,25 @@ const CodeBlock = ({ children }) => {
       <IconButton
         onClick={handleCopy}
         size="small"
-        aria-label="Copy"
+        aria-label={copyLabel}
+        title={copyLabel}
         sx={{
           position: 'absolute',
-          top: 6,
-          right: 6,
+          top: 8,
+          right: 8,
           color: UI_COLORS.codeMuted,
           '&:hover': { color: UI_COLORS.codeText, backgroundColor: UI_COLORS.codeBorder },
         }}
       >
-        {copied ? <CheckIcon sx={{ fontSize: 16 }} /> : <CopyIcon sx={{ fontSize: 16 }} />}
+        {copyStatus === 'copied' ? <CheckIcon sx={{ fontSize: 16 }} /> : <CopyIcon sx={{ fontSize: 16 }} />}
       </IconButton>
+      <Typography
+        component="span"
+        role="status"
+        sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}
+      >
+        {copyStatus === 'idle' ? '' : copyLabel}
+      </Typography>
       <Typography
         component="pre"
         sx={{
@@ -173,6 +213,31 @@ const renderBlock = (block) => {
 
 const sidebarWidth = 248;
 
+const SidebarContent = ({ sections, activeSection, onSelect }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box sx={{ p: 1.5 }}>
+      <Typography sx={{ ...mono, fontSize: 11, color: UI_COLORS.muted, px: 1.5, mb: 0.5 }}>
+        {t('documentation.contents')}
+      </Typography>
+      <List sx={{ pt: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        {sections.map((section) => (
+          <ListItemButton
+            key={section.id}
+            selected={activeSection === section.id}
+            aria-current={activeSection === section.id ? 'location' : undefined}
+            onClick={() => onSelect(section.id)}
+            sx={{ minHeight: 32, height: 32, px: 1.5 }}
+          >
+            <ListItemText primary={section.title} slotProps={{ primary: { sx: { fontSize: 13 } } }} />
+          </ListItemButton>
+        ))}
+      </List>
+    </Box>
+  );
+};
+
 const Documentation = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -181,7 +246,7 @@ const Documentation = () => {
   const [activeSection, setActiveSection] = useState('quick-start');
 
   const content = normalizeLanguage(i18n.language) === 'zh-CN' ? docsZhCN : docsEn;
-  const sections = useMemo(() => content.sections, [content.sections]);
+  const sections = content.sections;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -196,105 +261,52 @@ const Documentation = () => {
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [sections]);
 
   useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.replace('#', '');
-      const element = document.getElementById(id);
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-      }
+    if (!location.hash) {
+      return undefined;
     }
-  }, [location]);
+
+    const frame = window.requestAnimationFrame(() => {
+      scrollToElement(location.hash.slice(1));
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash, sections]);
 
   const scrollToSection = (id) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+    if (location.hash === `#${id}`) {
+      scrollToElement(id);
+    } else {
+      navigate({ pathname: location.pathname, hash: id }, { replace: true });
     }
     setMobileOpen(false);
   };
 
-  const SidebarContent = () => (
-    <Box sx={{ p: 1.5 }}>
-      <Typography sx={{ ...mono, fontSize: 11, color: UI_COLORS.muted, px: 1.5, mb: 0.5 }}>
-        {t('documentation.contents')}
-      </Typography>
-      <List sx={{ pt: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-        {sections.map((section) => (
-          <ListItemButton
-            key={section.id}
-            selected={activeSection === section.id}
-            onClick={() => scrollToSection(section.id)}
-            sx={{ minHeight: 32, height: 32, px: 1.5 }}
-          >
-            <ListItemText primary={section.title} slotProps={{ primary: { sx: { fontSize: 13 } } }} />
-          </ListItemButton>
-        ))}
-      </List>
-    </Box>
-  );
-
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: UI_COLORS.surface }}>
-      <Box
-        component="header"
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1100,
-          height: 64,
-          backgroundColor: UI_COLORS.surface,
-          borderBottom: UI_SURFACE.divider,
-        }}
-      >
-        <Container maxWidth={false} sx={{ px: { xs: 2, md: 3 } }}>
-          <Box sx={{ height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <IconButton
-                aria-label={t('documentation.openNavigation')}
-                onClick={() => setMobileOpen(true)}
-                sx={{ display: { md: 'none' }, width: 32, height: 32 }}
-              >
-                <MenuIcon sx={{ fontSize: 20 }} />
-              </IconButton>
-              <Box
-                onClick={() => navigate('/')}
-                sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1.5 }}
-              >
-                <BrandLockup size={20} />
-              </Box>
-              <Typography variant="caption" sx={{ color: UI_COLORS.muted, ml: 0.5, display: { xs: 'none', sm: 'block' } }}>
-                {t('documentation.badge')}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <LanguageSwitcher sx={{ display: { xs: 'none', sm: 'inline-flex' } }} />
-              <Button
-                onClick={() => navigate('/login')}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' }, color: 'text.secondary' }}
-              >
-                {t('common.login')}
-              </Button>
-              <Button
-                variant="contained"
-                onClick={() => navigate('/register')}
-                sx={{ px: { xs: 1.5, sm: 2 }, whiteSpace: 'nowrap' }}
-              >
-                {t('common.register')}
-              </Button>
-            </Box>
-          </Box>
-        </Container>
-      </Box>
+      <PublicHeader
+        position="fixed"
+        fluid
+        leading={
+          <IconButton
+            aria-label={t('documentation.openNavigation')}
+            onClick={() => setMobileOpen(true)}
+            sx={{ display: { md: 'none' }, width: 32, height: 32 }}
+          >
+            <MenuIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        }
+        brandAccessory={
+          <Typography variant="caption" sx={{ color: UI_COLORS.muted, ml: 0.5, display: { xs: 'none', sm: 'block' } }}>
+            {t('documentation.badge')}
+          </Typography>
+        }
+      />
 
       <Drawer
         variant="temporary"
@@ -303,11 +315,14 @@ const Documentation = () => {
         ModalProps={{ keepMounted: true }}
         sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: sidebarWidth } }}
       >
-        <Box sx={{ pt: 8 }}>
-          <Box sx={{ px: 2, display: 'flex', justifyContent: 'center' }}>
-            <LanguageSwitcher sx={{ width: 'fit-content' }} />
+        <Box sx={{ pt: 2 }}>
+          <Box sx={{ px: 2, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <LanguageSwitcher />
+            <IconButton aria-label={t('common.close')} onClick={() => setMobileOpen(false)}>
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </IconButton>
           </Box>
-          <SidebarContent />
+          <SidebarContent sections={sections} activeSection={activeSection} onSelect={scrollToSection} />
         </Box>
       </Drawer>
 
@@ -325,7 +340,7 @@ const Documentation = () => {
           zIndex: 1000,
         }}
       >
-        <SidebarContent />
+        <SidebarContent sections={sections} activeSection={activeSection} onSelect={scrollToSection} />
       </Box>
 
       <Box sx={{ pt: '64px', pl: { xs: 0, md: `${sidebarWidth}px` }, minHeight: '100vh' }}>

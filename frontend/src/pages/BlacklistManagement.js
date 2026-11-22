@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   Box,
   Button,
   FormControlLabel,
   IconButton,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -37,6 +30,7 @@ import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
 import StatusBadge from '../components/StatusBadge';
+import RecordTable from '../components/RecordTable';
 import { UI_FONTS } from '../theme/tokens';
 
 // 域名是机器值：等宽显示，通配符和子域名的差别一眼能看出来。
@@ -82,7 +76,7 @@ const BlacklistManagement = () => {
     setFeedback((previous) => ({ ...previous, open: false }));
   };
 
-  const { data: domains = [], error: loadError } = useQuery({
+  const { data: domains = [], error: loadError, isLoading, refetch } = useQuery({
     queryKey: keys.blacklist(user?.id),
     queryFn: ({ signal }) =>
       api.get('/api/blacklist-domains', { signal }).then((response) => response.data),
@@ -200,7 +194,7 @@ const BlacklistManagement = () => {
           {
             key: 'total',
             title: t('blacklist.totalDomains'),
-            value: loadError ? null : domains.length,
+            value: isLoading || loadError ? null : domains.length,
           },
           {
             key: 'exact',
@@ -223,7 +217,7 @@ const BlacklistManagement = () => {
           {
             key: 'wildcard',
             title: t('blacklist.wildcardDomains'),
-            value: loadError ? null : domains.filter((domain) => domain.domain.startsWith('*')).length,
+            value: isLoading || loadError ? null : domains.filter((domain) => domain.domain.startsWith('*')).length,
           },
         ]}
       />
@@ -246,99 +240,86 @@ const BlacklistManagement = () => {
         </Box>
       </Box>
 
-      {loadError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {t('blacklist.fetchFailed')}: {getApiErrorMessage(loadError, t('common.unknownError'))}
-        </Alert>
-      )}
-
       <SectionCard title={t('blacklist.listTitle')} bareBody>
-        {domains.length === 0 ? (
-          <EmptyState
-            icon={<SecurityIcon />}
-            title={t('blacklist.noDomains')}
-            subtitle={t('blacklist.noDomainsSubtitle')}
-            action={
-              <Button onClick={() => handleOpenDialog()}>{t('blacklist.addFirstDomain')}</Button>
-            }
-          />
-        ) : (
-          <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: 720 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('blacklist.domain')}</TableCell>
-                  <TableCell>{t('blacklist.description')}</TableCell>
-                  <TableCell>{t('blacklist.status')}</TableCell>
-                  <TableCell>{t('blacklist.createdAt')}</TableCell>
-                  <TableCell align="right">{t('blacklist.actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {domains.map((domain) => (
-                  <TableRow key={domain.id}>
-                    <TableCell>
-                      <Typography sx={monoDomain}>{domain.domain}</Typography>
-                      {domain.domain.startsWith('*') && (
-                        <Typography
-                          variant="caption"
-                          sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
-                        >
-                          {t('blacklist.wildcard')}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {domain.description || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        tone={domain.is_active ? 'danger' : 'neutral'}
-                        label={domain.is_active ? t('blacklist.enabled') : t('blacklist.disabledLabel')}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography sx={monoReading}>
-                        {formatDateTime(domain.created_at, i18n.language)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          gap: 0.5,
-                        }}
-                      >
-                        <Tooltip title={t('blacklist.edit')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('blacklist.edit')}
-                            onClick={() => handleOpenDialog(domain)}
-                          >
-                            <EditIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('blacklist.delete')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('blacklist.delete')}
-                            onClick={() => handleDelete(domain)}
-                          >
-                            <DeleteIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <RecordTable
+          rows={domains}
+          rowKey={(domain) => domain.id}
+          minWidth={720}
+          loading={isLoading}
+          error={loadError}
+          errorMessage={`${t('blacklist.fetchFailed')}: ${getApiErrorMessage(loadError, t('common.unknownError'))}`}
+          onRetry={refetch}
+          ariaLabel={t('blacklist.listTitle')}
+          emptyState={
+            <EmptyState
+              icon={<SecurityIcon />}
+              title={t('blacklist.noDomains')}
+              subtitle={t('blacklist.noDomainsSubtitle')}
+              action={<Button onClick={() => handleOpenDialog()}>{t('blacklist.addFirstDomain')}</Button>}
+            />
+          }
+          columns={[
+            {
+              id: 'domain',
+              label: t('blacklist.domain'),
+              primary: true,
+              render: (domain) => (
+                <>
+                  <Typography sx={monoDomain}>{domain.domain}</Typography>
+                  {domain.domain.startsWith('*') && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                      {t('blacklist.wildcard')}
+                    </Typography>
+                  )}
+                </>
+              ),
+            },
+            {
+              id: 'description',
+              label: t('blacklist.description'),
+              render: (domain) => (
+                <Typography variant="body2" sx={{ color: 'text.secondary', overflowWrap: 'anywhere' }}>
+                  {domain.description || t('common.emptyValue')}
+                </Typography>
+              ),
+            },
+            {
+              id: 'status',
+              label: t('blacklist.status'),
+              render: (domain) => (
+                <StatusBadge
+                  tone={domain.is_active ? 'danger' : 'neutral'}
+                  label={domain.is_active ? t('blacklist.enabled') : t('blacklist.disabledLabel')}
+                />
+              ),
+            },
+            {
+              id: 'created',
+              label: t('blacklist.createdAt'),
+              render: (domain) => <Typography sx={monoReading}>{formatDateTime(domain.created_at, i18n.language)}</Typography>,
+            },
+            {
+              id: 'actions',
+              label: t('blacklist.actions'),
+              align: 'right',
+              actions: true,
+              render: (domain) => (
+                <>
+                  <Tooltip title={t('blacklist.edit')}>
+                    <IconButton size="small" aria-label={t('blacklist.edit')} onClick={() => handleOpenDialog(domain)}>
+                      <EditIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('blacklist.delete')}>
+                    <IconButton size="small" aria-label={t('blacklist.delete')} onClick={() => handleDelete(domain)}>
+                      <DeleteIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
 
       <FormDialog

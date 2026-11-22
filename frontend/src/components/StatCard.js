@@ -17,8 +17,6 @@ const StatCard = ({ title, value, subtitle }) => {
       sx={{
         height: '100%',
         background: UI_SURFACE.card,
-        border: UI_SURFACE.border,
-        borderRadius: 3,
         px: 2.5,
         py: 2,
       }}

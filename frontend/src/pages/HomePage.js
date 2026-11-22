@@ -1,11 +1,11 @@
 import React from 'react';
-import { Box, Button, Container, Divider, IconButton, Stack, Typography } from '@mui/material';
-import { GitHub as GitHubIcon } from '@mui/icons-material';
+import { Box, Button, Container, Divider, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { BrandLockup } from '../components/WebMonitorLogo';
-import LanguageSwitcher from '../components/LanguageSwitcher';
+import PublicHeader from '../components/PublicHeader';
+import ChangeDiff from '../components/ChangeDiff';
 import { PROJECT_AUTHOR_URL, PROJECT_REPO_URL } from '../utils/links';
 import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
@@ -29,49 +29,7 @@ const HomePage = () => {
 
   return (
     <Box sx={{ backgroundColor: UI_COLORS.surface }}>
-      <Box
-        component="header"
-        sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          backgroundColor: UI_COLORS.surface,
-          borderBottom: UI_SURFACE.divider,
-        }}
-      >
-        <Container maxWidth="lg">
-          <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-            <BrandLockup size={22} />
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Button
-                onClick={() => navigate('/documentation')}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' }, color: 'text.secondary' }}
-              >
-                {t('home.navDocs')}
-              </Button>
-              <LanguageSwitcher />
-              <Button
-                onClick={() => navigate('/login')}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' }, color: 'text.secondary' }}
-              >
-                {t('home.navLogin')}
-              </Button>
-              <Button variant="contained" onClick={() => navigate('/register')} sx={{ px: 2 }}>
-                {t('home.navRegister')}
-              </Button>
-              <IconButton
-                aria-label="GitHub"
-                href={PROJECT_REPO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-              >
-                <GitHubIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Stack>
-          </Box>
-        </Container>
-      </Box>
+      <PublicHeader />
 
       <Container maxWidth="lg">
         <Box
@@ -129,7 +87,7 @@ const HomePage = () => {
               overflow: 'hidden',
             }}
           >
-            <Box sx={{ px: 2.5, py: 1.75, borderBottom: UI_SURFACE.divider }}>
+            <Box sx={{ px: 2.5, py: 1.5, borderBottom: UI_SURFACE.divider }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: UI_COLORS.success }} />
@@ -158,24 +116,10 @@ const HomePage = () => {
                   {t('home.preview.changeTime')}
                 </Typography>
               </Box>
-              <Box
-                sx={{
-                  borderLeft: `2px solid ${UI_COLORS.warning}`,
-                  backgroundColor: UI_COLORS.background,
-                  borderRadius: '0 8px 8px 0',
-                  px: 1.5,
-                  py: 1.25,
-                }}
-              >
-                <Typography sx={{ ...mono, fontSize: 12, color: UI_COLORS.muted }}>
-                  {'- '}
-                  {t('home.preview.lineOld')}
-                </Typography>
-                <Typography sx={{ ...mono, fontSize: 12, color: UI_COLORS.text, mt: 0.5 }}>
-                  {'+ '}
-                  {t('home.preview.lineNew')}
-                </Typography>
-              </Box>
+              <ChangeDiff
+                oldContent={t('home.preview.lineOld')}
+                newContent={t('home.preview.lineNew')}
+              />
             </Box>
 
             <Box

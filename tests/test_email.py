@@ -198,6 +198,7 @@ class MonitorServiceNotificationTestCase(unittest.TestCase):
 
         self.patches = [
             mock.patch("app.services.monitor_service.SessionLocal", self.Session),
+            mock.patch("app.services.outbox_service.SessionLocal", self.Session),
             mock.patch("app.services.email_service.SessionLocal", self.Session),
         ]
         for patch in self.patches:

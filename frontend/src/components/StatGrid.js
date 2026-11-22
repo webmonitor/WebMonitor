@@ -1,24 +1,33 @@
 import React from 'react';
-import { Grid } from '@mui/material';
+import { Box } from '@mui/material';
 
 import StatCard from './StatCard';
+import { UI_COLORS } from '../theme/tokens';
 
-/**
- * 统计卡条：每页顶部的指标只通过这里渲染。
- *
- * items: [{ key, title, value, subtitle }]
- * — `value` 为 null/undefined 时 StatCard 会显示 "—"，不伪造 0。
- */
-const mdSize = (count) => (count >= 4 ? 3 : Math.floor(12 / Math.max(count, 1)));
-
+/** 一页一条值班读数带；细分隔线代替彼此竞争的独立卡片。 */
 const StatGrid = ({ items, sx }) => (
-  <Grid container spacing={2} sx={{ mb: 4, ...sx }}>
-    {items.map((item) => (
-      <Grid key={item.key} size={{ xs: items.length === 3 ? 12 : 6, md: mdSize(items.length) }}>
+  <Box
+    sx={{
+      mb: 4,
+      p: '1px',
+      display: 'grid',
+      gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: `repeat(${items.length}, minmax(0, 1fr))` },
+      gap: '1px',
+      borderRadius: 3,
+      backgroundColor: UI_COLORS.hairline,
+      overflow: 'hidden',
+      ...sx,
+    }}
+  >
+    {items.map((item, index) => (
+      <Box
+        key={item.key}
+        sx={{ gridColumn: items.length === 3 && index === 2 ? { xs: '1 / -1', md: 'auto' } : 'auto' }}
+      >
         <StatCard title={item.title} value={item.value} subtitle={item.subtitle} />
-      </Grid>
+      </Box>
     ))}
-  </Grid>
+  </Box>
 );
 
 export default StatGrid;

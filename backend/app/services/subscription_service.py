@@ -50,9 +50,11 @@ def require_public_task(db: Session, task_id: int) -> MonitorTask:
     return task
 
 
-def require_email_config(db: Session, config_id: int | None, user_id: int) -> None:
-    """邮件配置必须是本人的；None 表示沿用默认配置。"""
+def require_email_config(db: Session, config_id: int | None, user_id: int, *, required: bool = False) -> None:
+    """启用订阅时 None 必须能解析为本人默认配置；停用订阅允许 None。"""
     if config_id is None:
+        if required and get_user_default_email_config(db, user_id) is None:
+            raise ServiceError(400, NO_EMAIL_CONFIG)
         return
     if get_email_config(db, config_id) is None or not validate_email_config_ownership(db, config_id, user_id):
         raise ServiceError(400, EMAIL_CONFIG_MISSING)
@@ -91,7 +93,7 @@ def subscribe(
             # 只有新建或重新激活才要求任务仍公开/启用
             require_public_task(db, task_id)
 
-        require_email_config(db, email_config_id, user.id)
+        require_email_config(db, email_config_id, user.id, required=is_active)
 
         if activating:
             _ensure_slot_available(db, user)
@@ -185,8 +187,13 @@ def update_subscription(
         if existing is None:
             raise ServiceError(404, SUBSCRIPTION_MISSING)
 
-        if data.email_config_id is not None:
-            require_email_config(db, data.email_config_id, user.id)
+        resulting_active = existing.is_active if data.is_active is None else data.is_active
+        resulting_config = (
+            data.email_config_id
+            if "email_config_id" in data.model_fields_set
+            else existing.email_config_id
+        )
+        require_email_config(db, resulting_config, user.id, required=resulting_active)
 
         if data.is_active is True and not existing.is_active:
             require_public_task(db, existing.task_id)

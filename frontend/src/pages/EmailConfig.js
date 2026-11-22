@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -12,12 +11,6 @@ import {
   IconButton,
   InputAdornment,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -43,6 +36,7 @@ import FeedbackSnackbar from '../components/FeedbackSnackbar';
 import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
+import RecordTable from '../components/RecordTable';
 import { UI_FONTS } from '../theme/tokens';
 
 const EmailConfig = () => {
@@ -76,15 +70,13 @@ const EmailConfig = () => {
     data: emailConfigs = [],
     error: emailConfigsError,
     isLoading: emailConfigsLoading,
+    refetch: refetchEmailConfigs,
   } = useQuery({
     queryKey: keys.emailConfigs(user?.id, EMAIL_CONFIG_FULL),
     queryFn: ({ signal }) =>
       api.get('/api/email-configs', { signal }).then((response) => response.data),
     enabled: !!user,
   });
-
-  const showEmptyState = !emailConfigsLoading && !emailConfigsError && emailConfigs.length === 0;
-  const showTable = !emailConfigsLoading && !emailConfigsError && emailConfigs.length > 0;
 
   const createConfigMutation = useMutation({
     mutationFn: (configData) =>
@@ -146,6 +138,8 @@ const EmailConfig = () => {
       showFeedback(getApiErrorMessage(error, t('emailConfig.testFailed')), 'error');
     },
   });
+
+  const saving = createConfigMutation.isPending || updateConfigMutation.isPending;
 
   const resetForm = () => {
     setFormData({
@@ -262,125 +256,106 @@ const EmailConfig = () => {
       </Alert>
 
       <SectionCard title={t('emailConfig.sectionTitle')} bareBody>
-        {emailConfigsLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {showEmptyState && (
-          <EmptyState
-            icon={<MailIcon />}
-            title={t('emailConfig.noConfigs')}
-            subtitle={t('emailConfig.noConfigsSubtitle')}
-            action={
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon sx={{ fontSize: 18 }} />}
-                onClick={() => handleOpenDialog()}
-              >
-                {t('emailConfig.createFirstConfig')}
-              </Button>
-            }
-          />
-        )}
-
-        {showTable && (
-          <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: 720 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('emailConfig.configDetails')}</TableCell>
-                  <TableCell>{t('emailConfig.senderEmail')}</TableCell>
-                  <TableCell>{t('emailConfig.receiverEmail')}</TableCell>
-                  <TableCell align="right">{t('emailConfig.actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {emailConfigs.map((config) => (
-                  <TableRow key={config.id}>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {config.name}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                        <Typography
-                          sx={{
-                            fontFamily: UI_FONTS.mono,
-                            fontVariantNumeric: 'tabular-nums',
-                            fontSize: 12,
-                            color: 'text.secondary',
-                          }}
-                        >
-                          {config.smtp_server}:{config.smtp_port}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {config.is_ssl ? 'SSL' : '—'}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{config.smtp_user}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {t('emailConfig.smtpSenderAccount')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{config.receiver_email}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {t('emailConfig.notificationReceiver')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                        <Tooltip title={t('emailConfig.testConnection')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('emailConfig.testConnection')}
-                            onClick={() => handleTestConfig(config.id)}
-                            disabled={testConfigMutation.isPending}
-                          >
-                            <TestIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('emailConfig.editConfig')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('emailConfig.editConfig')}
-                            onClick={() => handleOpenDialog(config)}
-                          >
-                            <EditIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('emailConfig.deleteConfig')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('emailConfig.deleteConfig')}
-                            onClick={() => setConfirmTarget(config)}
-                            disabled={deleteConfigMutation.isPending}
-                          >
-                            <DeleteIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-
-        {emailConfigsError && (
-          <Box sx={{ p: 2.5 }}>
-            <Alert severity="error">
-              {getApiErrorMessage(emailConfigsError, t('emailConfig.loadFailed'))}
-            </Alert>
-          </Box>
-        )}
+        <RecordTable
+          rows={emailConfigs}
+          rowKey={(config) => config.id}
+          minWidth={720}
+          loading={emailConfigsLoading}
+          error={emailConfigsError}
+          errorMessage={getApiErrorMessage(emailConfigsError, t('emailConfig.loadFailed'))}
+          onRetry={refetchEmailConfigs}
+          ariaLabel={t('emailConfig.sectionTitle')}
+          emptyState={
+            <EmptyState
+              icon={<MailIcon />}
+              title={t('emailConfig.noConfigs')}
+              subtitle={t('emailConfig.noConfigsSubtitle')}
+              action={
+                <Button variant="outlined" startIcon={<AddIcon sx={{ fontSize: 18 }} />} onClick={() => handleOpenDialog()}>
+                  {t('emailConfig.createFirstConfig')}
+                </Button>
+              }
+            />
+          }
+          columns={[
+            {
+              id: 'config',
+              label: t('emailConfig.configDetails'),
+              primary: true,
+              render: (config) => (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{config.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                    <Typography sx={{ fontFamily: UI_FONTS.mono, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'text.secondary' }}>
+                      {config.smtp_server}:{config.smtp_port}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {config.is_ssl ? 'SSL' : 'STARTTLS'}
+                    </Typography>
+                  </Box>
+                </>
+              ),
+            },
+            {
+              id: 'sender',
+              label: t('emailConfig.senderEmail'),
+              render: (config) => (
+                <>
+                  <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{config.smtp_user}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('emailConfig.smtpSenderAccount')}</Typography>
+                </>
+              ),
+            },
+            {
+              id: 'receiver',
+              label: t('emailConfig.receiverEmail'),
+              render: (config) => (
+                <>
+                  <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{config.receiver_email}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('emailConfig.notificationReceiver')}</Typography>
+                </>
+              ),
+            },
+            {
+              id: 'actions',
+              label: t('emailConfig.actions'),
+              align: 'right',
+              actions: true,
+              render: (config) => (
+                <>
+                  <Tooltip title={t('emailConfig.testConnection')}>
+                    <IconButton
+                      size="small"
+                      aria-label={t('emailConfig.testConnection')}
+                      onClick={() => handleTestConfig(config.id)}
+                      disabled={testConfigMutation.isPending}
+                    >
+                      <TestIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('emailConfig.editConfig')}>
+                    <IconButton size="small" aria-label={t('emailConfig.editConfig')} onClick={() => handleOpenDialog(config)}>
+                      <EditIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('emailConfig.deleteConfig')}>
+                    <IconButton
+                      size="small"
+                      aria-label={t('emailConfig.deleteConfig')}
+                      onClick={() => setConfirmTarget(config)}
+                      disabled={deleteConfigMutation.isPending}
+                    >
+                      <DeleteIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <Dialog open={openDialog} onClose={saving ? undefined : handleCloseDialog} disableEscapeKeyDown={saving} maxWidth="md" fullWidth>
         <DialogTitle>
           <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
             {editingConfig ? t('emailConfig.editDialogTitle') : t('emailConfig.createDialogTitle')}
@@ -495,11 +470,11 @@ const EmailConfig = () => {
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDialog}>{t('emailConfig.cancel')}</Button>
+            <Button onClick={handleCloseDialog} disabled={saving}>{t('emailConfig.cancel')}</Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={createConfigMutation.isPending || updateConfigMutation.isPending}
+              disabled={saving}
             >
               {editingConfig ? t('emailConfig.updateConfig') : t('emailConfig.createConfig')}
             </Button>

@@ -31,6 +31,8 @@ class SchedulerTestCase(unittest.TestCase):
 
         self.session_patch = mock.patch("app.services.scheduler.SessionLocal", self.Session)
         self.session_patch.start()
+        self.outbox_session_patch = mock.patch("app.services.outbox_service.SessionLocal", self.Session)
+        self.outbox_session_patch.start()
 
         self.scheduler = MonitorScheduler()
         self.scheduler.scheduler.start(paused=True)
@@ -50,6 +52,7 @@ class SchedulerTestCase(unittest.TestCase):
 
     def tearDown(self):
         self.scheduler.scheduler.shutdown(wait=False)
+        self.outbox_session_patch.stop()
         self.session_patch.stop()
         self.db.close()
         self.engine.dispose()
@@ -219,6 +222,17 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(scan_job.max_instances, 1)
         self.assertTrue(scan_job.coalesce)
 
+    def test_outbox_job_is_bounded_and_startup_recovers(self):
+        outbox_job = self.scheduler.scheduler.get_job("deliver_notification_outbox")
+        self.assertEqual(outbox_job.func, self.scheduler._run_outbox)
+        self.assertEqual(outbox_job.max_instances, 1)
+        self.assertTrue(outbox_job.coalesce)
+
+        self.scheduler.stop()
+        with mock.patch.object(self.scheduler.outbox_service, "deliver_pending") as recover:
+            self.scheduler.start()
+        recover.assert_called_once_with()
+
 
 class SchedulerErrorHandlingTestCase(unittest.TestCase):
     def test_task_exception_does_not_escape(self):
@@ -230,6 +244,19 @@ class SchedulerErrorHandlingTestCase(unittest.TestCase):
         ):
             # 采集抛错必须在调度线程里收口
             scheduler._run_task(1)
+
+    def test_outbox_failure_does_not_stop_later_task_dispatch(self):
+        scheduler = MonitorScheduler()
+        with mock.patch.object(
+            scheduler.outbox_service,
+            "deliver_pending",
+            side_effect=RuntimeError("blackhole"),
+        ):
+            scheduler._run_outbox()
+
+        with mock.patch.object(scheduler.monitor_service, "check_single_task") as check:
+            scheduler._run_task(42)
+        check.assert_called_once_with(42)
 
 
 if __name__ == "__main__":

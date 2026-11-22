@@ -16,12 +16,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 1. `configure_logging()`：日志输出到 stdout，级别由 `LOG_LEVEL` 决定；这是整个后端唯一一次 `basicConfig`。
 2. `lifespan` 调用 `bootstrap()`：先用 `Base.metadata.create_all` 建表，再在没有管理员时按环境变量创建引导管理员。
-3. 启动模块级 `monitor_scheduler`（APScheduler `BackgroundScheduler`）。
+3. 启动模块级 `monitor_scheduler`（APScheduler `BackgroundScheduler`），同步任务并立即恢复、投递持久化 outbox。
 4. 关闭时在 `finally` 中停止调度器。
 
 路由注册顺序是 `/api` → `/static` → `/` → `/{full_path:path}`。最后的兜底路由返回 `index.html`，让前端客户端路由在刷新后仍能打开；未知的 `/api/*` 会先返回 404 JSON，不会落到 SPA。
 
-**只运行一个 Uvicorn 进程。** 调度器和订阅写入都依赖进程内的锁，也没有独立的 worker、scheduler 或 mailer 容器。用多个 worker 启动会让每个进程各自调度任务。
+**只运行一个 Uvicorn 进程。** 调度器、订阅写入和 outbox drain 都依赖进程内的锁，也没有独立的 worker、scheduler 或 mailer 容器。用多个 worker 启动会让每个进程各自调度任务和投递 outbox。
 
 ## 目录结构
 
@@ -37,7 +37,7 @@ backend/
 │   │   └── passwords.py   # 密码策略：至少 6 字符、UTF-8 不超过 72 字节
 │   ├── db/
 │   │   ├── database.py    # engine / SessionLocal / get_db
-│   │   ├── models.py      # User, MonitorTask, MonitorLog, EmailConfig, BlacklistDomain, TaskSubscription
+│   │   ├── models.py      # 用户、任务、日志、SMTP 配置、订阅、NotificationOutbox 等
 │   │   └── crud.py        # 持久化函数，不含权限判定
 │   ├── schemas/
 │   │   └── schemas.py     # 全部 Pydantic v2 模型
@@ -45,9 +45,10 @@ backend/
 │       ├── task_service.py          # 任务归属、黑名单、提交后触发调度同步
 │       ├── subscription_service.py  # 订阅的唯一写入实现
 │       ├── user_service.py          # 用户唯一性冲突与删除
-│       ├── monitor_service.py       # Selenium 采集 + 变化判定 + 通知
-│       ├── scheduler.py             # APScheduler 作业同步
-│       ├── email_service.py         # 按用户解析 SMTP 配置并发送
+│       ├── monitor_service.py       # 版本围栏采集 + baseline/日志/outbox 单事务
+│       ├── scheduler.py             # APScheduler 作业同步与 outbox 恢复调度
+│       ├── outbox_service.py        # 提交后投递、崩溃恢复、有限重试
+│       ├── email_service.py         # 按用户解析 SMTP 配置并限时发送/关闭连接
 │       ├── auth_service.py          # 密码哈希、JWT、依赖注入
 │       ├── bootstrap.py             # 建表 + 首次管理员
 │       └── errors.py                # ServiceError → {"detail": ...}
@@ -88,8 +89,11 @@ python main.py
 | `ADMIN_EMAIL` | 引导管理员邮箱 | `admin@example.com` |
 | `ADMIN_PASSWORD` | 引导管理员密码，**首次启动必填**；已有管理员时不会重置 | — |
 | `DATABASE_URL` | SQLAlchemy 连接串；当前支持 SQLite。Compose 部署时该值直接写在 `compose.yaml` 中，不会读取 `.env` 的同名变量 | `sqlite:///./data/webmonitor.db` |
-| `DEBUG` | 调试模式；同时开启 SQL echo | `False` |
+| `DEBUG` | 调试模式；可开启 SQL echo，但 `hide_parameters=True` 始终隐藏所有绑定值 | `False` |
 | `LOG_LEVEL` | 输出到 stdout 的日志级别 | `INFO` |
+| `SMTP_TIMEOUT_SECONDS` | SMTP 连接、读取和写入的单次 socket 超时，必须大于 0 且不超过 300 | `15.0` |
+| `OUTBOX_MAX_ATTEMPTS` | 每封通知的最大投递尝试次数（含首次），范围 1–10 | `3` |
+| `OUTBOX_RETRY_SECONDS` | 失败后的基础重试间隔，按已尝试次数线性增加，范围 1–3600 | `60` |
 | `ALGORITHM` | JWT 算法 | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 访问令牌有效期（分钟） | `30` |
 | `FRONTEND_DIST` | 前端构建产物目录 | `web` |
@@ -106,8 +110,11 @@ python main.py
 - 同步时先读取所有启用任务，再为每个任务维护 `monitor_task_{id}` 作业。作业参数只传整数 `task_id`，不捕获 ORM 对象或循环变量。
 - 只有间隔变化时才 `reschedule_job`；改名使用 `modify_job`；已不在启用集合中的 `monitor_task_*` 作业会被移除，兜底扫描作业本身不会被移除。
 - 整个“读数据库 → 修改作业表”的过程在同一把 `threading.RLock` 内完成。任务作业以 `max_instances=1, coalesce=True` 运行。
+- `deliver_notification_outbox` 每 60 秒恢复中断记录并投递到期通知，启动时也会立即执行一次；模块级锁避免采集线程与恢复作业同时 drain。
 
-每个任务到点后调用 `MonitorService.check_single_task`：用一次新的无头 Chromium 打开页面，等待 XPath 元素，提取文字和页面标题，与任务保存的上次内容比较；结果写入 `MonitorLog`，变化时更新 `last_content` 并调用邮件服务。浏览器在 `finally` 中退出。
+每个任务到点后调用 `MonitorService.check_single_task`：先读取任务及 `config_version` 快照并关闭会话，再用一次新的无头 Chromium 打开页面。抓取后的条件更新同时要求任务仍存在、启用，且版本、URL、XPath 均未变化；任何编辑都会递增版本，过期结果直接丢弃，不写日志或 outbox。浏览器在 `finally` 中退出。
+
+通过版本围栏后，`last_content`（baseline）、`last_check`、`MonitorLog` 和所有通知 outbox 在同一个 SQLAlchemy 事务中只提交一次。采集失败时 `last_check` 与错误日志同样原子写入，但不改变 baseline、不创建通知。事务提交前不调用 SMTP；提交后由 outbox 投递。
 
 ## 邮件通知
 
@@ -117,7 +124,11 @@ python main.py
 2. 未指定配置：使用该用户 id 最小的配置。
 3. 该用户没有任何配置：不发送，只记录一条告警。
 
-没有部署级 SMTP 回退。环境变量不是收件人的来源，通知只会发送到用户自己在“邮件配置”页面填写的收件地址。任务的 `email_config_id` 是可选的；没有绑定配置的任务照常采集和记录日志，只是不发送邮件。支持 SMTP_SSL 或 starttls，发送失败只记录不含凭据和异常 repr 的原因。
+没有部署级 SMTP 回退。环境变量不是收件人的来源，通知只会发送到用户自己在“邮件配置”页面填写的收件地址。任务的 `email_config_id` 是可选的；没有绑定配置的任务照常采集和记录日志，只是不发送所有者邮件。启用订阅若使用 `email_config_id=None`，则本人至少一条默认配置必须存在；停用订阅允许 None。创建 outbox 时会把订阅默认配置解析并冻结为具体配置 ID，待投递记录会阻止该配置被删除。
+
+通知先写入 `notification_outbox`，再由 `OutboxService` 在数据库事务外发送。每条记录有 `pending/sending/delivered/failed` 状态、尝试次数和下次投递时间；默认最多尝试 3 次，失败按线性间隔重试，终态记录保留用于排查。启动和周期恢复会重新处理中断的 `sending`。如果 SMTP 已接受邮件但进程在写入 `delivered` 前崩溃，恢复后会重发，所以通知保证采用 **at-least-once**，可能重复，不声称 exactly-once。
+
+SMTP_SSL 和 starttls 均使用有限 socket timeout，并在 `finally` 中 `quit`/`close`；黑洞或认证失败只影响该投递，不会终止调度。发送失败日志只包含错误类型，不记录凭据、异常 repr 或 SQL 绑定值。删除用户时，其明文 `EmailConfig` 和 outbox 记录与用户、任务在同一事务中清理。
 
 ## 数据与备份
 

@@ -24,7 +24,7 @@ const Mark = ({ size = 24, color = 'currentColor', sx }) => (
 );
 
 export const BrandLockup = ({ size = 22, sx, titleSx }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, ...sx }}>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ...sx }}>
     <Mark size={size} color={UI_COLORS.primary} />
     <Typography
       component="span"

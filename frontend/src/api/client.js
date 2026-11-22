@@ -20,6 +20,8 @@ export const setAccessToken = (token) => {
   accessToken = token || null;
 };
 
+export const getAccessToken = () => accessToken;
+
 /**
  * 注册 401 回调，返回注销函数。
  *

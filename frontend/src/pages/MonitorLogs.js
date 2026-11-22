@@ -2,16 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
-  CircularProgress,
   MenuItem,
   Pagination,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  TextField,
   Typography,
 } from '@mui/material';
 import { ListAlt as ListAltIcon } from '@mui/icons-material';
@@ -27,6 +20,8 @@ import StatGrid from '../components/StatGrid';
 import SectionCard from '../components/SectionCard';
 import EmptyState from '../components/EmptyState';
 import StatusBadge from '../components/StatusBadge';
+import RecordTable from '../components/RecordTable';
+import ChangeDiff from '../components/ChangeDiff';
 import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
 // 时间戳与内容块：等宽、数位对齐，和正文区分开。
@@ -92,7 +87,7 @@ const MonitorLogs = () => {
   const logsLoading = !!selectedTaskId && (logsQuery.isLoading || (!logsResult && logsQuery.isFetching));
 
   const truncateContent = (value, maxLength = 100) => {
-    if (!value) return '-';
+    if (!value) return t('common.emptyValue');
     return value.length > maxLength ? `${value.substring(0, maxLength)}…` : value;
   };
 
@@ -126,44 +121,49 @@ const MonitorLogs = () => {
         title={t('logs.title')}
         subtitle={t('logs.subtitle')}
         action={
-          <Select
+          <TextField
+            select
             size="small"
             value={selectedTaskId}
             onChange={handleTaskChange}
-            displayEmpty
             disabled={!hasTasks}
-            inputProps={{ 'aria-label': t('logs.selectTask') }}
-            renderValue={(value) => {
-              if (!value) {
-                return (
-                  <Typography component="span" variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('logs.selectTask')}
-                  </Typography>
-                );
-              }
-              const task = tasks.find((item) => item.id === value);
-              return task ? task.name : t('logs.selectTask');
+            slotProps={{
+              htmlInput: { 'aria-label': t('logs.selectTask') },
+              select: {
+                displayEmpty: true,
+                renderValue: (value) => {
+                  if (!value) {
+                    return (
+                      <Typography component="span" variant="body2" sx={{ color: 'text.secondary' }}>
+                        {t('logs.selectTask')}
+                      </Typography>
+                    );
+                  }
+                  const task = tasks.find((item) => item.id === value);
+                  return task ? task.name : t('logs.selectTask');
+                },
+              },
             }}
-            sx={{ minWidth: 240 }}
+            sx={{ minWidth: { xs: '100%', sm: 240 } }}
           >
             {tasks.map((task) => (
               <MenuItem key={task.id} value={task.id}>
                 {task.name}
               </MenuItem>
             ))}
-          </Select>
+          </TextField>
         }
       />
 
-      {!hasTasks && !tasksQuery.isLoading && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          {t('logs.noTasks')}
+      {tasksQuery.error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {t('tasks.loadTasksError')}: {getApiErrorMessage(tasksQuery.error, t('common.unknownError'))}
         </Alert>
       )}
 
-      {logsError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {t('logs.loadError')}: {getApiErrorMessage(logsError, t('common.unknownError'))}
+      {!hasTasks && !tasksQuery.isLoading && !tasksQuery.error && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          {t('logs.noTasks')}
         </Alert>
       )}
 
@@ -174,113 +174,100 @@ const MonitorLogs = () => {
               {
                 key: 'total',
                 title: t('logs.totalLogs'),
-                value: logsError ? null : totalCount,
+                value: logsLoading || logsError ? null : totalCount,
               },
               {
                 key: 'unchanged',
                 title: t('logs.unchanged'),
-                value: logsError
+                value: logsLoading || logsError
                   ? null
                   : logs.filter((log) => !log.error_message && !log.is_changed).length,
               },
               {
                 key: 'changed',
                 title: t('logs.changed'),
-                value: logsError
+                value: logsLoading || logsError
                   ? null
                   : logs.filter((log) => log.is_changed && !log.error_message).length,
               },
               {
                 key: 'error',
                 title: t('logs.error'),
-                value: logsError ? null : logs.filter((log) => log.error_message).length,
+                value: logsLoading || logsError ? null : logs.filter((log) => log.error_message).length,
               },
             ]}
           />
 
           <SectionCard title={t('logs.tableTitle')} bareBody>
-            <TableContainer sx={{ overflowX: 'auto' }}>
-              <Table sx={{ minWidth: 760 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t('logs.checkTime')}</TableCell>
-                    <TableCell>{t('logs.status')}</TableCell>
-                    <TableCell>{t('logs.newContent')}</TableCell>
-                    <TableCell>{t('logs.errorInfo')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {logsLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={4} sx={{ textAlign: 'center', py: 8 }}>
-                        <CircularProgress size={24} />
-                        <Typography variant="body2" sx={{ mt: 1.5, color: 'text.secondary' }}>
-                          {t('common.loading')}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    logs.map((log) => {
-                      const status = log.error_message
-                        ? { tone: 'danger', label: t('logs.error') }
-                        : log.is_changed
-                          ? { tone: 'warning', label: t('logs.changed') }
-                          : { tone: 'positive', label: t('logs.unchanged') };
-
-                      return (
-                        <TableRow key={log.id}>
-                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                            <Typography sx={{ ...mono, fontSize: 12, color: 'text.secondary' }}>
-                              {formatDateTime(log.check_time, i18n.language)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge tone={status.tone} label={status.label} />
-                          </TableCell>
-                          <TableCell>
-                            <Typography
-                              sx={{
-                                ...mono,
-                                ...truncateCell,
-                                fontSize: 12,
-                                maxWidth: 320,
-                                whiteSpace: 'pre-line',
-                                color: log.new_content ? 'text.primary' : 'text.secondary',
-                              }}
-                            >
-                              {truncateContent(log.new_content)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                ...truncateCell,
-                                maxWidth: 280,
-                                color: log.error_message ? 'error.main' : 'text.secondary',
-                              }}
-                            >
-                              {truncateContent(log.error_message)}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                  {!logsLoading && !logsError && logs.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4}>
-                        <EmptyState
-                          icon={<ListAltIcon />}
-                          title={t('logs.noLogs')}
-                          subtitle={t('logs.noLogsSubtitle')}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <RecordTable
+              rows={logs}
+              rowKey={(log) => log.id}
+              minWidth={900}
+              loading={logsLoading}
+              error={logsError}
+              errorMessage={`${t('logs.loadError')}: ${getApiErrorMessage(logsError, t('common.unknownError'))}`}
+              onRetry={logsQuery.refetch}
+              ariaLabel={t('logs.tableTitle')}
+              emptyState={
+                <EmptyState icon={<ListAltIcon />} title={t('logs.noLogs')} subtitle={t('logs.noLogsSubtitle')} />
+              }
+              columns={[
+                {
+                  id: 'time',
+                  label: t('logs.checkTime'),
+                  primary: true,
+                  cellSx: { whiteSpace: 'nowrap' },
+                  render: (log) => (
+                    <Typography sx={{ ...mono, fontSize: 12, color: 'text.secondary' }}>
+                      {formatDateTime(log.check_time, i18n.language)}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'status',
+                  label: t('logs.status'),
+                  render: (log) => (
+                    <StatusBadge
+                      tone={log.error_message ? 'danger' : log.is_changed ? 'warning' : 'positive'}
+                      label={log.error_message ? t('logs.error') : log.is_changed ? t('logs.changed') : t('logs.unchanged')}
+                    />
+                  ),
+                },
+                {
+                  id: 'content',
+                  label: t('logs.contentComparison'),
+                  render: (log) =>
+                    log.is_changed && !log.error_message ? (
+                      <ChangeDiff oldContent={log.old_content} newContent={log.new_content} oldLines={2} newLines={3} />
+                    ) : (
+                      <Typography
+                        sx={{
+                          ...mono,
+                          ...truncateCell,
+                          fontSize: 12,
+                          maxWidth: 360,
+                          whiteSpace: 'pre-line',
+                          color: log.new_content ? 'text.primary' : 'text.secondary',
+                        }}
+                      >
+                        {truncateContent(log.new_content)}
+                      </Typography>
+                    ),
+                },
+                {
+                  id: 'error',
+                  label: t('logs.errorInfo'),
+                  render: (log) => (
+                    <Typography
+                      variant="body2"
+                      sx={{ ...truncateCell, maxWidth: 280, color: log.error_message ? 'error.main' : 'text.secondary' }}
+                    >
+                      {truncateContent(log.error_message)}
+                    </Typography>
+                  ),
+                },
+              ]}
+            />
 
             <Box
               sx={{
@@ -297,31 +284,34 @@ const MonitorLogs = () => {
               <Typography sx={{ ...mono, fontSize: 12, color: UI_COLORS.muted }}>
                 {paginationSummary}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 2, width: { xs: '100%', sm: 'auto' } }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {t('logs.rowsPerPage')}
                 </Typography>
-                <Select
+                <TextField
+                  select
                   size="small"
                   value={rowsPerPage}
                   onChange={handleChangeRowsPerPage}
-                  inputProps={{ 'aria-label': t('logs.rowsPerPage') }}
+                  disabled={logsLoading || !!logsError || totalCount === 0}
+                  slotProps={{ htmlInput: { 'aria-label': t('logs.rowsPerPage') } }}
                   sx={{ minWidth: 80 }}
                 >
                   <MenuItem value={10}>10</MenuItem>
                   <MenuItem value={20}>20</MenuItem>
                   <MenuItem value={50}>50</MenuItem>
                   <MenuItem value={100}>100</MenuItem>
-                </Select>
+                </TextField>
                 <Pagination
                   count={totalPages}
                   page={Math.min(page, totalPages)}
+                  disabled={logsLoading || !!logsError || totalCount === 0}
                   onChange={handleChangePage}
                   showFirstButton
                   showLastButton
                   shape="rounded"
                   size="small"
-                  siblingCount={2}
+                  siblingCount={1}
                   boundaryCount={1}
                 />
               </Box>

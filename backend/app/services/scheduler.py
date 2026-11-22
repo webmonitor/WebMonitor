@@ -20,12 +20,15 @@ from apscheduler.triggers.interval import IntervalTrigger
 from ..db.crud import get_active_monitor_tasks
 from ..db.database import SessionLocal
 from .monitor_service import MonitorService
+from .outbox_service import OutboxService
 
 logger = logging.getLogger(__name__)
 
 SCAN_JOB_ID = "check_active_tasks"
+OUTBOX_JOB_ID = "deliver_notification_outbox"
 TASK_JOB_PREFIX = "monitor_task_"
 SCAN_INTERVAL_MINUTES = 5
+OUTBOX_INTERVAL_SECONDS = 60
 
 
 class MonitorScheduler:
@@ -34,6 +37,7 @@ class MonitorScheduler:
     def __init__(self):
         self.scheduler = BackgroundScheduler()
         self.monitor_service = MonitorService()
+        self.outbox_service = OutboxService()
         self._lock = threading.RLock()
         self._setup_jobs()
 
@@ -52,6 +56,15 @@ class MonitorScheduler:
             max_instances=1,
             coalesce=True,
         )
+        self.scheduler.add_job(
+            func=self._run_outbox,
+            trigger=IntervalTrigger(seconds=OUTBOX_INTERVAL_SECONDS),
+            id=OUTBOX_JOB_ID,
+            name="投递并恢复通知 outbox",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
 
     def _run_task(self, task_id: int) -> None:
         """执行单个任务的采集；异常在这里收口，不能打断调度线程。"""
@@ -59,6 +72,13 @@ class MonitorScheduler:
             self.monitor_service.check_single_task(task_id)
         except Exception as exc:
             logger.error("执行任务 %s 时发生错误: %s", task_id, exc)
+
+    def _run_outbox(self) -> None:
+        """SMTP 失败只在 outbox 内记录，绝不影响其他调度作业。"""
+        try:
+            self.outbox_service.deliver_pending()
+        except Exception as exc:
+            logger.error("执行 outbox 投递时发生错误: %s", type(exc).__name__)
 
     def sync_tasks(self) -> None:
         """把数据库里的活跃任务同步成作业表。"""
@@ -138,6 +158,8 @@ class MonitorScheduler:
 
         self.scheduler.start()
         self.sync_tasks()
+        # 启动即恢复 sending/pending；SMTP 接受后崩溃的窗口按 at-least-once 重发。
+        self.outbox_service.deliver_pending()
         logger.info("监控调度器启动成功")
 
     def stop(self) -> None:

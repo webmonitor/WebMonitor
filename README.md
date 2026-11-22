@@ -75,6 +75,9 @@ ADMIN_PASSWORD=CHANGE_ME_STRONG_PASSWORD
 # Optional.
 DEBUG=false
 LOG_LEVEL=INFO
+SMTP_TIMEOUT_SECONDS=15
+OUTBOX_MAX_ATTEMPTS=3
+OUTBOX_RETRY_SECONDS=60
 ```
 
 Replace both `CHANGE_ME` values before starting.
@@ -86,8 +89,11 @@ Replace both `CHANGE_ME` values before starting.
 | `ADMIN_USERNAME` | The initial administrator username |
 | `ADMIN_EMAIL` | The administrator's email address |
 | `ADMIN_PASSWORD` | The initial administrator password: at least 6 characters, at most 72 UTF-8 bytes |
-| `DEBUG` | Optional. Leave `false` |
+| `DEBUG` | Optional. Leave `false`. Debug SQL logs always hide bind values, including SMTP passwords |
 | `LOG_LEVEL` | Optional. Leave `INFO` unless you are diagnosing a problem |
+| `SMTP_TIMEOUT_SECONDS` | Optional. Finite timeout for each SMTP socket operation; default `15`, maximum `300` |
+| `OUTBOX_MAX_ATTEMPTS` | Optional. Total delivery attempts per notification, including the first; default `3` |
+| `OUTBOX_RETRY_SECONDS` | Optional. Base retry delay; default `60`, multiplied by the attempt number |
 | `TARGET_ALLOWED_ORIGINS` | Optional. Empty by default: collection permits public HTTP(S) destinations only. For an explicitly authorized internal target, list exact origins such as `http://site:9000`, separated by commas. Scheme and port must match; do not include paths or management origins |
 
 The administrator values are read only when the database has no administrator. Changing them later does not change an existing login.
@@ -186,6 +192,14 @@ Open **Edit task**, choose the configuration in **Email config**, and click **Up
 
 Configurations belong to the account that created them. A public task's subscribers choose their own configuration when they subscribe, so notifications never go through the task owner's mailbox.
 
+### Delivery, retries, and crash recovery
+
+A successful scheduled check commits its baseline, check time, monitor log, and notification outbox in one database transaction. SMTP starts only after that commit. An edit increments the task's configuration version; if the URL, XPath, version, or active state changes while a page is being collected, the stale result is discarded without a log or notification.
+
+Pending notifications are stored in the same SQLite database and recovered after a restart or an interrupted send. Delivery is attempted up to `OUTBOX_MAX_ATTEMPTS` times, with a delay based on `OUTBOX_RETRY_SECONDS`. Every SMTP connection has a finite timeout and is closed after success or failure.
+
+Delivery is **at least once**, not exactly once. If the SMTP server accepts a message and the process stops before recording delivery, recovery sends it again, so recipients can see a duplicate. A permanently failed delivery remains recorded as failed. Deleting a user also deletes that user's saved SMTP configurations and outbox records in the same transaction.
+
 ## Public tasks and subscriptions
 
 Turn on **Public task** in a task's create or edit dialog to let other users on the instance find it. It appears on the **Public tasks** page while it is public and running.
@@ -197,7 +211,7 @@ To follow someone else's public task:
 3. In **Choose email configuration**, pick one of your own configurations.
 4. Click **Confirm subscription**.
 
-You need at least one email configuration before subscribing; the dialog tells you when none exists. Changes are mailed to the **Receiver email** of the configuration you choose.
+You need at least one email configuration before subscribing; the dialog tells you when none exists. Changes are mailed to the **Receiver email** of the configuration you choose. Enabling or reactivating a subscription with no explicit configuration requires a default configuration; a disabled subscription may keep none.
 
 **My subscriptions** lists every subscription. You can turn notifications on or off, switch the email configuration, or cancel the subscription. A disabled subscription keeps its record but stops email, and you can still cancel it after the owner pauses the task or makes it private.
 
@@ -221,13 +235,13 @@ Each account may hold 10 enabled subscriptions by default; **Public tasks** show
 | No log entry after creating a task | The first check has not run yet | Wait one interval; a task that is **Paused** never checks |
 | Status **Error** | A scheduled check failed | Read **Error message** in **Monitor logs**; a timeout points to the page or network, a selector error points to the XPath |
 | **Test email failed** | SMTP connection, login, or the SSL/port pair was rejected | Check server, port, **Use SSL encryption**, sender account, and app password |
-| Log shows **Changed**, but no email | The task uses **No notifications**, a subscription has notifications disabled, or the receiver is different | Attach a configuration to the task, enable subscription notifications, and check the **Receiver email** and spam folder |
+| Log shows **Changed**, but no email | The task uses **No notifications**, a subscription has notifications disabled, delivery is waiting for retry, or the receiver is different | Attach a configuration, enable subscription notifications, check the **Receiver email** and spam folder, and allow the bounded retries to run |
 | **Subscribe** is refused | Your account has no free subscription slot | Disable or cancel subscriptions in **My subscriptions**, or ask an administrator to raise **Max subscriptions** |
 | **Create task** is refused | The domain is on the blacklist, the URL lacks a scheme, or a field is invalid | Use the full `http://` or `https://` URL and pick an allowed domain, or ask an administrator about **Blacklist management** |
 
 ## Data, backup, and updates
 
-The supplied `compose.yaml` defines no volume. The database lives at `/app/data/webmonitor.db` inside the container, and it is the only place accounts, tasks, email configurations, subscriptions, and logs are stored.
+The supplied `compose.yaml` defines no volume. The database lives at `/app/data/webmonitor.db` inside the container, and it is the only place accounts, tasks, email configurations, subscriptions, logs, and notification delivery records are stored.
 
 Recreating the container starts with an empty database. That happens after an image tag change, `docker compose down`, `--force-recreate`, or an update of `latest`, because the service always pulls before starting. `docker compose restart` keeps the existing container and its data.
 

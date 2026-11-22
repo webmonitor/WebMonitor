@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   Box,
   Button,
   Dialog,
@@ -12,12 +11,6 @@ import {
   IconButton,
   InputAdornment,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -43,6 +36,7 @@ import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
 import StatusBadge from '../components/StatusBadge';
+import RecordTable from '../components/RecordTable';
 import { UI_FONTS } from '../theme/tokens';
 
 // 配额是读数：等宽 + 等宽数字，和仪表盘上的指标同一套排版。
@@ -81,7 +75,7 @@ const UserManagement = () => {
     setFeedback((previous) => ({ ...previous, open: false }));
   };
 
-  const { data: users = [], error } = useQuery({
+  const { data: users = [], error, isLoading, refetch } = useQuery({
     queryKey: keys.users(currentUser?.id),
     queryFn: ({ signal }) => api.get('/api/auth/users', { signal }).then((response) => response.data),
     enabled: !!currentUser,
@@ -89,9 +83,8 @@ const UserManagement = () => {
 
   const handleClose = () => {
     setOpen(false);
-    setTimeout(() => {
-      setEditingUser(null);
-    }, 100);
+    setEditingUser(null);
+    setShowPassword(false);
   };
 
   const createMutation = useMutation({
@@ -139,6 +132,8 @@ const UserManagement = () => {
       showFeedback(getApiErrorMessage(mutationError, t('common.unknownError')), 'error');
     },
   });
+
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   const handleOpen = (user = null) => {
     if (user) {
@@ -211,14 +206,6 @@ const UserManagement = () => {
     deleteMutation.mutate(confirmTarget.id);
   };
 
-  if (error) {
-    return (
-      <Alert severity="error">
-        {t('users.loadFailed')}: {getApiErrorMessage(error, t('common.unknownError'))}
-      </Alert>
-    );
-  }
-
   return (
     <Box>
       <PageHeader
@@ -236,22 +223,22 @@ const UserManagement = () => {
           {
             key: 'total',
             title: t('users.totalUsers'),
-            value: users.length,
+            value: isLoading || error ? null : users.length,
           },
           {
             key: 'active',
             title: t('users.activeUsers'),
-            value: users.filter((user) => user.is_active).length,
+            value: isLoading || error ? null : users.filter((account) => account.is_active).length,
           },
           {
             key: 'admins',
             title: t('users.admins'),
-            value: users.filter((user) => user.is_admin).length,
+            value: isLoading || error ? null : users.filter((account) => account.is_admin).length,
           },
           {
             key: 'inactive',
             title: t('users.disabledUsers'),
-            value: users.filter((user) => !user.is_active).length,
+            value: isLoading || error ? null : users.filter((account) => !account.is_active).length,
           },
         ]}
       />
@@ -263,124 +250,109 @@ const UserManagement = () => {
       </Box>
 
       <SectionCard title={t('users.listTitle')} bareBody>
-        {users.length === 0 ? (
-          <EmptyState
-            icon={<PeopleIcon />}
-            title={t('users.noUsers')}
-            subtitle={t('users.noUsersSubtitle')}
-            action={<Button onClick={() => handleOpen()}>{t('users.createFirstUser')}</Button>}
-          />
-        ) : (
-          <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: 920 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('users.userInfo')}</TableCell>
-                  <TableCell>{t('users.emailAddress')}</TableCell>
-                  <TableCell>{t('users.rolePermission')}</TableCell>
-                  <TableCell>{t('users.subscriptionLimit')}</TableCell>
-                  <TableCell>{t('users.accountStatus')}</TableCell>
-                  <TableCell align="right">{t('users.actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {user.username}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
+        <RecordTable
+          rows={users}
+          rowKey={(account) => account.id}
+          minWidth={920}
+          loading={isLoading}
+          error={error}
+          errorMessage={`${t('users.loadFailed')}: ${getApiErrorMessage(error, t('common.unknownError'))}`}
+          onRetry={refetch}
+          ariaLabel={t('users.listTitle')}
+          emptyState={
+            <EmptyState
+              icon={<PeopleIcon />}
+              title={t('users.noUsers')}
+              subtitle={t('users.noUsersSubtitle')}
+              action={<Button onClick={() => handleOpen()}>{t('users.createFirstUser')}</Button>}
+            />
+          }
+          columns={[
+            {
+              id: 'user',
+              label: t('users.userInfo'),
+              primary: true,
+              render: (account) => (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{account.username}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                    {account.full_name || t('users.fullNameNotSet')}
+                  </Typography>
+                </>
+              ),
+            },
+            {
+              id: 'email',
+              label: t('users.emailAddress'),
+              render: (account) => (
+                <Typography variant="body2" sx={{ color: 'text.secondary', overflowWrap: 'anywhere' }}>{account.email}</Typography>
+              ),
+            },
+            {
+              id: 'role',
+              label: t('users.rolePermission'),
+              render: (account) => (
+                <Typography variant="body2" sx={{ fontWeight: account.is_admin ? 500 : 400, color: account.is_admin ? 'text.primary' : 'text.secondary' }}>
+                  {account.is_admin ? t('users.admin') : t('users.regularUser')}
+                </Typography>
+              ),
+            },
+            {
+              id: 'limit',
+              label: t('users.subscriptionLimit'),
+              render: (account) => (
+                <Box sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 0.5 }}>
+                  <Typography sx={monoReading}>{account.max_subscriptions || 10}</Typography>
+                  {t('users.subscriptionUnit') && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('users.subscriptionUnit')}</Typography>
+                  )}
+                </Box>
+              ),
+            },
+            {
+              id: 'status',
+              label: t('users.accountStatus'),
+              render: (account) => (
+                <StatusBadge tone={account.is_active ? 'positive' : 'neutral'} label={account.is_active ? t('users.enabled') : t('users.disabled')} />
+              ),
+            },
+            {
+              id: 'actions',
+              label: t('users.actions'),
+              align: 'right',
+              actions: true,
+              render: (account) => (
+                <>
+                  <Tooltip title={t('users.editUser')}>
+                    <IconButton size="small" aria-label={t('users.editUser')} onClick={() => handleOpen(account)}>
+                      <EditIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={currentUser?.id === account.id ? t('users.cannotDeleteSelf') : t('users.deleteUser')}>
+                    <span>
+                      <IconButton
+                        size="small"
+                        aria-label={t('users.deleteUser')}
+                        onClick={() => handleDelete(account)}
+                        disabled={currentUser?.id === account.id}
                       >
-                        {user.full_name || t('users.fullNameNotSet')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {user.email}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: user.is_admin ? 500 : 400,
-                          color: user.is_admin ? 'text.primary' : 'text.secondary',
-                        }}
-                      >
-                        {user.is_admin ? t('users.admin') : t('users.regularUser')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-                        <Typography sx={monoReading}>{user.max_subscriptions || 10}</Typography>
-                        {t('users.subscriptionUnit') && (
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {t('users.subscriptionUnit')}
-                          </Typography>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        tone={user.is_active ? 'positive' : 'neutral'}
-                        label={user.is_active ? t('users.enabled') : t('users.disabled')}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          gap: 0.5,
-                        }}
-                      >
-                        <Tooltip title={t('users.editUser')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('users.editUser')}
-                            onClick={() => handleOpen(user)}
-                          >
-                            <EditIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip
-                          title={
-                            currentUser?.id === user.id
-                              ? t('users.cannotDeleteSelf')
-                              : t('users.deleteUser')
-                          }
-                        >
-                          <span>
-                            <IconButton
-                              size="small"
-                              aria-label={t('users.deleteUser')}
-                              onClick={() => handleDelete(user)}
-                              disabled={currentUser?.id === user.id}
-                            >
-                              <DeleteIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+                        <DeleteIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
 
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={saving ? undefined : handleClose}
+        disableEscapeKeyDown={saving}
         maxWidth="md"
         fullWidth
-        disableEnforceFocus
       >
         <DialogTitle sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <Typography component="span" variant="h6">
@@ -518,11 +490,11 @@ const UserManagement = () => {
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleClose}>{t('common.cancel')}</Button>
+            <Button onClick={handleClose} disabled={saving}>{t('common.cancel')}</Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={saving}
             >
               {editingUser ? t('users.updateUser') : t('users.createUserAction')}
             </Button>

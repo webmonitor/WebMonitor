@@ -6,7 +6,7 @@ SECRET_KEY 必填且必须有足够长度：没有开发默认值，避免默认
 """
 from typing import Optional
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 旧版本随代码发布的示例密钥，明确拒绝。
@@ -41,6 +41,10 @@ class Settings(BaseSettings):
 
     # 日志设置
     LOG_LEVEL: str = "INFO"
+    # SMTP 和事务 outbox 均有有限等待/重试，避免黑洞连接拖死调度。
+    SMTP_TIMEOUT_SECONDS: float = Field(default=15.0, gt=0, le=300)
+    OUTBOX_MAX_ATTEMPTS: int = Field(default=3, ge=1, le=10)
+    OUTBOX_RETRY_SECONDS: int = Field(default=60, ge=1, le=3600)
     # 本地验收或明确授权的内网站点例外；逗号分隔的精确 HTTP(S) origin。
     TARGET_ALLOWED_ORIGINS: str = ""
 

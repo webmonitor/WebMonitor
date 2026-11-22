@@ -16,7 +16,7 @@ support.bootstrap_environment()
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
-from app.db.models import Base, EmailConfig, MonitorLog, MonitorTask, TaskSubscription, User  # noqa: E402
+from app.db.models import Base, EmailConfig, MonitorLog, MonitorTask, NotificationOutbox, TaskSubscription, User  # noqa: E402
 from app.schemas.schemas import TaskSubscriptionUpdate  # noqa: E402
 from app.services import subscription_service  # noqa: E402
 from app.services.errors import ServiceError  # noqa: E402
@@ -216,6 +216,42 @@ class SubscriptionServiceTestCase(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 400)
         self.assertEqual(self.db.query(TaskSubscription).count(), 0)
 
+    def test_every_enabled_null_config_path_requires_a_default(self):
+        no_config_user = self._user("defaultless", "defaultless@example.com")
+
+        with self.assertRaises(ServiceError) as ctx:
+            subscription_service.subscribe(self.db, self.task.id, no_config_user, None)
+        self.assertEqual(ctx.exception.detail, subscription_service.NO_EMAIL_CONFIG)
+
+        disabled = subscription_service.subscribe(
+            self.db,
+            self.task.id,
+            no_config_user,
+            None,
+            is_active=False,
+        )
+        self.assertFalse(disabled.is_active)
+        self.assertIsNone(disabled.email_config_id)
+
+        with self.assertRaises(ServiceError):
+            subscription_service.subscribe(self.db, self.task.id, no_config_user, None)
+        with self.assertRaises(ServiceError):
+            subscription_service.update_subscription(
+                self.db,
+                disabled.id,
+                TaskSubscriptionUpdate(is_active=True),
+                no_config_user,
+            )
+
+        # 显式 null 在停用状态下仍然合法。
+        unchanged = subscription_service.update_subscription(
+            self.db,
+            disabled.id,
+            TaskSubscriptionUpdate(is_active=False, email_config_id=None),
+            no_config_user,
+        )
+        self.assertIsNone(unchanged.email_config_id)
+
     def test_null_config_uses_default_semantics(self):
         created = subscription_service.subscribe(self.db, self.task.id, self.reader, None)
         self.assertIsNone(created.email_config_id)
@@ -281,7 +317,6 @@ class SubscriptionServiceTestCase(unittest.TestCase):
         self.assertEqual(self.db.query(TaskSubscription).count(), 0)
 
     def test_notification_reaches_subscribers_after_multiple_page_boundaries(self):
-        from datetime import datetime
         from app.services.monitor_service import MonitorService
 
         receivers = set()
@@ -298,22 +333,40 @@ class SubscriptionServiceTestCase(unittest.TestCase):
                 email_config_id=config.id, is_active=index != 100))
             if index != 100:
                 receivers.add(user.email)
+        self.task.last_content = "old-value"
         self.db.commit()
         service = MonitorService()
         messages = []
+
         def transport(subject, body, server, port, username, password, receiver, ssl):
             messages.append((receiver, body))
             return True
+
         with mock.patch("app.services.monitor_service.SessionLocal", self.Session), \
+                mock.patch("app.services.outbox_service.SessionLocal", self.Session), \
+                mock.patch.object(service, "get_content_with_selenium", return_value=("new-value", None, "Changed")), \
                 mock.patch.object(service.email_service, "_send_email", side_effect=transport):
-            service._notify_subscribers(self.task, "Changed", "new-value", "old-value", datetime(2026, 1, 1))
+            self.assertTrue(service.check_single_task(self.task.id))
         self.assertEqual({receiver for receiver, _ in messages}, receivers)
         self.assertEqual(len(messages), len(receivers))
         self.assertTrue(all("new-value" in body and "old-value" in body for _, body in messages))
 
-    def test_deleting_task_cascades_subscriptions_and_logs(self):
+    def test_deleting_task_cascades_subscriptions_logs_and_outbox(self):
         subscription_service.subscribe(self.db, self.task.id, self.reader, self.reader_config.id)
         self.db.add(MonitorLog(task_id=self.task.id, new_content="x", is_changed=True))
+        self.db.add(
+            NotificationOutbox(
+                task_id=self.task.id,
+                user_id=self.reader.id,
+                email_config_id=self.reader_config.id,
+                task_name=self.task.name,
+                url=self.task.url,
+                title="title",
+                new_content="x",
+                check_time=self.task.created_at,
+                next_attempt_at=self.task.created_at,
+            )
+        )
         self.db.commit()
 
         self.db.delete(self.task)
@@ -321,6 +374,7 @@ class SubscriptionServiceTestCase(unittest.TestCase):
 
         self.assertEqual(self.db.query(TaskSubscription).count(), 0)
         self.assertEqual(self.db.query(MonitorLog).count(), 0)
+        self.assertEqual(self.db.query(NotificationOutbox).count(), 0)
 
     def test_remaining_slots_never_negative(self):
         from app.db.crud import get_user_subscription_info

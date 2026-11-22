@@ -13,8 +13,9 @@ const FeedbackSnackbar = ({ open, message, severity = 'success', onClose }) => (
     autoHideDuration={6000}
     onClose={onClose}
     anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+    sx={{ width: { xs: 'calc(100% - 32px)', sm: 'auto' }, maxWidth: 560 }}
   >
-    <Alert onClose={onClose} severity={severity} sx={{ width: '100%' }}>
+    <Alert onClose={onClose} severity={severity} sx={{ width: '100%', overflowWrap: 'anywhere' }}>
       {message}
     </Alert>
   </Snackbar>

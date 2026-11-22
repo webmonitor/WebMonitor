@@ -18,12 +18,26 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
 
+from ..core.config import settings
 from ..db.crud import get_email_config as get_email_config_row
 from ..db.crud import get_user_default_email_config
 from ..db.database import SessionLocal
 from ..db.models import EmailConfig
 
 logger = logging.getLogger(__name__)
+
+
+def _close_smtp(server: smtplib.SMTP) -> None:
+    """无论认证、发送还是接收服务器响应是否失败，都释放连接。"""
+    try:
+        server.quit()
+    except Exception:
+        # 已经断开的连接会在下面的 close 中强制释放。
+        pass
+    try:
+        server.close()
+    except Exception:
+        pass
 
 
 class EmailService:
@@ -164,6 +178,7 @@ class EmailService:
             logger.warning("邮件配置不完整，无法发送")
             return False
 
+        server = None
         try:
             msg = MIMEMultipart()
             msg["From"] = smtp_user
@@ -172,20 +187,32 @@ class EmailService:
             msg.attach(MIMEText(content, "plain", "utf-8"))
 
             if is_ssl:
-                server = smtplib.SMTP_SSL(smtp_server, smtp_port, local_hostname="localhost")
+                server = smtplib.SMTP_SSL(
+                    smtp_server,
+                    smtp_port,
+                    local_hostname="localhost",
+                    timeout=settings.SMTP_TIMEOUT_SECONDS,
+                )
             else:
-                server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost")
+                server = smtplib.SMTP(
+                    smtp_server,
+                    smtp_port,
+                    local_hostname="localhost",
+                    timeout=settings.SMTP_TIMEOUT_SECONDS,
+                )
                 server.starttls()
 
             server.set_debuglevel(0)
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, receiver_email, msg.as_string())
-            server.quit()
             return True
 
         except (smtplib.SMTPException, UnicodeEncodeError, OSError) as exc:
-            logger.error("邮件发送失败 (%s): %s", type(exc).__name__, exc)
+            logger.error("邮件发送失败 (%s)", type(exc).__name__)
             return False
+        finally:
+            if server is not None:
+                _close_smtp(server)
 
     def test_email_connection_with_config(self, config: EmailConfig) -> dict:
         """使用指定配置测试 SMTP 连接"""
@@ -246,17 +273,30 @@ SMTP服务器: {config.smtp_server}:{config.smtp_port}
         if not all([smtp_server, smtp_user, smtp_password]):
             return {"success": False, "error": "邮件配置不完整"}
 
+        server = None
         try:
             if is_ssl:
-                server = smtplib.SMTP_SSL(smtp_server, smtp_port, local_hostname="localhost")
+                server = smtplib.SMTP_SSL(
+                    smtp_server,
+                    smtp_port,
+                    local_hostname="localhost",
+                    timeout=settings.SMTP_TIMEOUT_SECONDS,
+                )
             else:
-                server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost")
+                server = smtplib.SMTP(
+                    smtp_server,
+                    smtp_port,
+                    local_hostname="localhost",
+                    timeout=settings.SMTP_TIMEOUT_SECONDS,
+                )
                 server.starttls()
 
             server.login(smtp_user, smtp_password)
-            server.quit()
             return {"success": True, "message": "邮件连接测试成功"}
 
         except (smtplib.SMTPException, OSError) as exc:
-            logger.error("邮件连接测试失败 (%s): %s", type(exc).__name__, exc)
+            logger.error("邮件连接测试失败 (%s)", type(exc).__name__)
             return {"success": False, "error": "邮件连接测试失败"}
+        finally:
+            if server is not None:
+                _close_smtp(server)

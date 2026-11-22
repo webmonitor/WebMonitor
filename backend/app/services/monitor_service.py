@@ -5,9 +5,12 @@
 的工作线程直接调用，FastAPI 侧通过线程池调用，不再用 `asyncio.run` 包一层。
 """
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Tuple
 
+from sqlalchemy import update
+from sqlalchemy.orm import Session
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -15,14 +18,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from ..core.config import settings
-from ..db.crud import (
-    create_monitor_log,
-    get_monitor_task,
-    get_task_subscriptions,
-    update_monitor_task_content,
-)
+from ..db.crud import get_monitor_task, get_task_subscriptions
 from ..db.database import SessionLocal
+from ..db.models import EmailConfig, MonitorLog, MonitorTask, NotificationOutbox
 from .email_service import EmailService
+from .outbox_service import OutboxService
 from .target_access import CollectorProxy, TargetForbidden, resolve_target
 
 logger = logging.getLogger(__name__)
@@ -31,11 +31,25 @@ PAGE_LOAD_TIMEOUT_SECONDS = 30
 ELEMENT_WAIT_TIMEOUT_SECONDS = 20
 
 
+@dataclass(frozen=True)
+class TaskSnapshot:
+    id: int
+    name: str
+    url: str
+    xpath: str
+    owner_id: int
+    email_config_id: Optional[int]
+    is_public: bool
+    last_content: Optional[str]
+    config_version: int
+
+
 class MonitorService:
     """监控服务"""
 
     def __init__(self):
         self.email_service = EmailService()
+        self.outbox_service = OutboxService(self.email_service)
 
     def get_content_with_selenium(self, url: str, xpath: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """通过受限代理采集公开 HTTP(S) 页面；每个连接重新校验目标。"""
@@ -70,94 +84,107 @@ class MonitorService:
             return None, "网页采集失败", None
 
     def check_single_task(self, task_id: int) -> bool:
-        """检查单个监控任务。
-
-        Returns:
-            bool: 检查是否成功
-        """
+        """版本围栏采集；baseline、last_check、日志和 outbox 只提交一次。"""
         db = SessionLocal()
         try:
             task = get_monitor_task(db, task_id)
-
-            if not task or not task.is_active:
+            if task is None or not task.is_active:
                 logger.info("任务 %s 不存在或未启用，跳过检查", task_id)
                 return False
+            snapshot = TaskSnapshot(
+                id=task.id,
+                name=task.name,
+                url=task.url,
+                xpath=task.xpath,
+                owner_id=task.owner_id,
+                email_config_id=task.email_config_id,
+                is_public=task.is_public,
+                last_content=task.last_content,
+                config_version=task.config_version,
+            )
+        finally:
+            db.close()
 
-            logger.info("开始检查任务: %s (ID: %s)", task.name, task_id)
+        logger.info("开始检查任务: %s (ID: %s)", snapshot.name, task_id)
+        current_content, error_message, title = self.get_content_with_selenium(snapshot.url, snapshot.xpath)
+        if current_content is None and error_message is None:
+            error_message = "网页采集失败"
+        check_time = datetime.now()
+        old_content = snapshot.last_content
+        is_changed = error_message is None and old_content != current_content
 
-            current_content, error_message, title = self.get_content_with_selenium(task.url, task.xpath)
+        db = SessionLocal()
+        try:
+            # 任一配置编辑都会递增版本；条件更新失败时整次采集直接丢弃。
+            result = db.execute(
+                update(MonitorTask)
+                .where(
+                    MonitorTask.id == snapshot.id,
+                    MonitorTask.config_version == snapshot.config_version,
+                    MonitorTask.is_active == True,  # noqa: E712
+                    MonitorTask.url == snapshot.url,
+                    MonitorTask.xpath == snapshot.xpath,
+                )
+                .values(
+                    last_content=current_content if error_message is None else MonitorTask.last_content,
+                    last_check=check_time,
+                )
+            )
+            if result.rowcount != 1:
+                db.rollback()
+                logger.info("任务 %s 在采集期间已修改、停用或删除，丢弃过期结果", task_id)
+                return False
 
-            check_time = datetime.now()
-
-            if error_message:
-                create_monitor_log(
-                    db=db,
+            db.add(
+                MonitorLog(
                     task_id=task_id,
+                    old_content=old_content if error_message is None else None,
+                    new_content=current_content if error_message is None else None,
+                    is_changed=is_changed,
                     error_message=error_message,
                     check_time=check_time,
                 )
-                logger.error("任务 %s 检查失败: %s", task.name, error_message)
-                return False
-
-            old_content = task.last_content
-            is_changed = old_content != current_content
-
-            if is_changed:
-                logger.info("任务 %s 检测到内容变化", task.name)
-
-                # 任务可以完全没有邮件配置：那样只采集与记录，不发通知。
-                if task.email_config_id is None:
-                    logger.info("任务 %s 未配置邮件通知，跳过所有者通知", task.name)
-                else:
-                    try:
-                        self.email_service.send_change_notification(
-                            task_name=task.name,
-                            url=task.url,
-                            title=title or "未知标题",
-                            old_content=old_content or "无历史内容",
-                            new_content=current_content,
-                            check_time=check_time,
-                            email_config_id=task.email_config_id,
-                            user_id=task.owner_id,
-                        )
-                    except Exception as exc:
-                        logger.error("发送任务所有者邮件通知失败: %s", exc)
-
-                if task.is_public:
-                    self._notify_subscribers(task, title, current_content, old_content, check_time)
-
-            update_monitor_task_content(db, task_id, current_content, check_time)
-
-            create_monitor_log(
-                db=db,
-                task_id=task_id,
-                old_content=old_content,
-                new_content=current_content,
-                is_changed=is_changed,
-                check_time=check_time,
             )
 
-            logger.info("任务 %s 检查完成，变化: %s", task.name, is_changed)
-            return True
+            if is_changed:
+                if snapshot.email_config_id is None:
+                    logger.info("任务 %s 未配置邮件通知，跳过所有者通知", task.name)
+                else:
+                    self._enqueue_outbox(
+                        db,
+                        snapshot=snapshot,
+                        user_id=snapshot.owner_id,
+                        email_config_id=snapshot.email_config_id,
+                        task_name=snapshot.name,
+                        title=title or "未知标题",
+                        new_content=current_content,
+                        check_time=check_time,
+                    )
+                if snapshot.is_public:
+                    self._enqueue_subscriber_outbox(
+                        db,
+                        snapshot=snapshot,
+                        title=title or "未知标题",
+                        new_content=current_content,
+                        check_time=check_time,
+                    )
 
+            # 唯一提交点：此后才允许任何 SMTP 调用。
+            db.commit()
         except Exception as exc:
-            error_msg = f"检查任务 {task_id} 时发生错误: {exc}"
-            logger.error(error_msg)
-
-            try:
-                create_monitor_log(
-                    db=db,
-                    task_id=task_id,
-                    error_message=error_msg,
-                    check_time=datetime.now(),
-                )
-            except Exception as log_error:
-                logger.error("记录错误日志失败: %s", log_error)
-
+            db.rollback()
+            logger.error(
+                "任务 %s 的采集事务失败 (%s)，baseline、日志和 outbox 均已回滚",
+                task_id,
+                type(exc).__name__,
+            )
             return False
-
         finally:
             db.close()
+
+        self.outbox_service.deliver_pending()
+        logger.info("任务 %s 检查完成，变化: %s", task.name, is_changed)
+        return error_message is None
 
     def test_task(self, task_id: int) -> dict:
         """测试监控任务：只抓取，不写 baseline、last_check 或日志。"""
@@ -191,39 +218,93 @@ class MonitorService:
         finally:
             db.close()
 
-    def _notify_subscribers(
-        self,
-        task,
-        title: Optional[str],
+    @staticmethod
+    def _enqueue_outbox(
+        db: Session,
+        *,
+        snapshot: TaskSnapshot,
+        user_id: int,
+        email_config_id: int,
+        task_name: str,
+        title: str,
         new_content: str,
-        old_content: Optional[str],
         check_time: datetime,
     ) -> None:
-        """向公开任务的订阅者发送变更通知。"""
-        db = SessionLocal()
-        try:
-            cursor = 0
-            while True:
-                db.expire_all()
-                live = get_monitor_task(db, task.id)
-                if live is None or not live.is_public or not live.is_active:
-                    return
-                subscriptions = get_task_subscriptions(db=db, task_id=task.id,
-                                                       after_id=cursor, limit=100)
-                if not subscriptions:
-                    break
-                for subscription in subscriptions:
-                    cursor = subscription.id
-                    try:
-                        self.email_service.send_change_notification(
-                            task_name=f"[订阅] {live.name}", url=live.url,
-                            title=title or "未知标题", old_content=old_content or "无历史内容",
-                            new_content=new_content, check_time=check_time,
-                            email_config_id=subscription.email_config_id, user_id=subscription.user_id)
-                    except Exception:
-                        logger.warning("订阅邮件发送失败，继续处理其他订阅")
+        """只持久化同一采集快照；此函数不得调用 SMTP 或 commit。"""
+        db.add(
+            NotificationOutbox(
+                task_id=snapshot.id,
+                user_id=user_id,
+                email_config_id=email_config_id,
+                task_name=task_name,
+                url=snapshot.url,
+                title=title,
+                old_content=snapshot.last_content or "无历史内容",
+                new_content=new_content,
+                check_time=check_time,
+                status="pending",
+                attempts=0,
+                next_attempt_at=check_time,
+            )
+        )
 
-        except Exception as exc:
-            logger.error("获取订阅者列表失败: %s", exc)
-        finally:
-            db.close()
+    def _enqueue_subscriber_outbox(
+        self,
+        db: Session,
+        *,
+        snapshot: TaskSnapshot,
+        title: str,
+        new_content: str,
+        check_time: datetime,
+    ) -> None:
+        """分批读取全部启用订阅，并在同一事务中冻结各自默认配置。"""
+        cursor = 0
+        while True:
+            subscriptions = get_task_subscriptions(
+                db=db,
+                task_id=snapshot.id,
+                after_id=cursor,
+                limit=100,
+            )
+            if not subscriptions:
+                return
+            cursor = subscriptions[-1].id
+
+            explicit_ids = {row.email_config_id for row in subscriptions if row.email_config_id is not None}
+            configs = (
+                db.query(EmailConfig).filter(EmailConfig.id.in_(explicit_ids)).all()
+                if explicit_ids
+                else []
+            )
+            by_id = {config.id: config for config in configs}
+            default_rows = (
+                db.query(EmailConfig)
+                .filter(EmailConfig.user_id.in_({row.user_id for row in subscriptions}))
+                .order_by(EmailConfig.user_id, EmailConfig.id)
+                .all()
+            )
+            defaults = {}
+            for config in default_rows:
+                defaults.setdefault(config.user_id, config)
+
+            for subscription in subscriptions:
+                if subscription.email_config_id is None:
+                    config = defaults.get(subscription.user_id)
+                else:
+                    config = by_id.get(subscription.email_config_id)
+                if config is None or config.user_id != subscription.user_id:
+                    logger.warning(
+                        "订阅 %s 的邮件配置不可用，跳过创建 outbox",
+                        subscription.id,
+                    )
+                    continue
+                self._enqueue_outbox(
+                    db,
+                    snapshot=snapshot,
+                    user_id=subscription.user_id,
+                    email_config_id=config.id,
+                    task_name=f"[订阅] {snapshot.name}",
+                    title=title,
+                    new_content=new_content,
+                    check_time=check_time,
+                )

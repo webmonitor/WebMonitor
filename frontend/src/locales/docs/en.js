@@ -62,7 +62,7 @@ const docsEn = {
           type: 'subsection',
           title: '4. Check the first result',
           paragraphs: [
-            'Find the task in the list and click Test monitor. A message shows Test succeeded! Content: followed by the beginning of the captured text, or Test failed. A test loads the page once: it sends no email, writes no log entry, and does not change the stored result. If the content is right, open Edit task, turn on Enable monitoring, and click Update task.',
+            'Find the task in the list and click Test monitor. A message shows Test succeeded Content: followed by the beginning of the captured text, or Test failed. A test loads the page once: it sends no email, writes no log entry, and does not change the stored result. If the content is right, open Edit task, turn on Enable monitoring, and click Update task.',
             'The first scheduled check runs about one interval after the task is saved or enabled. Nothing was stored before it, so that entry is recorded as Changed and can send one initial email. Later entries are Unchanged unless the text changes or a check fails. Dashboard shows the overview; Monitor logs holds every check.',
           ],
         },
@@ -201,7 +201,7 @@ const docsEn = {
           type: 'subsection',
           title: 'Browse public tasks',
           paragraphs: [
-            'Public tasks lists tasks that their owners have published and left running. Each card shows:',
+            'Public tasks lists tasks that their owners have published and left running. Each record shows:',
           ],
           list: {
             type: 'ul',
@@ -284,7 +284,7 @@ const docsEn = {
               'Select monitor task: the task whose history you want to see',
               'Checked at: when that run happened',
               'Status: Unchanged, Changed, or Error',
-              'New content: the text captured on that run',
+              'Content comparison: Before and After lines for changed text, or the captured text for an unchanged run',
               'Error message: why a run failed',
               'Rows per page: how many records are listed',
             ],

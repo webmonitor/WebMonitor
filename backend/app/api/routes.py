@@ -247,11 +247,11 @@ def delete_email_config_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """删除邮件配置；仍被任务或订阅引用时拒绝。"""
+    """删除邮件配置；仍被任务、订阅或待投递 outbox 引用时拒绝。"""
     _require_owned_config(db, config_id, current_user.id)
 
     if count_email_config_references(db, config_id) > 0:
-        raise ServiceError(409, "邮件配置仍被任务或订阅引用，请先更换配置")
+        raise ServiceError(409, "邮件配置仍被任务、订阅或待投递通知引用，请先更换配置或等待投递结束")
 
     if not delete_email_config(db=db, config_id=config_id):
         raise ServiceError(404, "邮件配置不存在")

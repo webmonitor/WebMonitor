@@ -23,7 +23,7 @@ const SectionCard = ({ title, action, children, sx, contentSx, bareBody = false,
       <Box
         sx={{
           px: 2.5,
-          py: 1.75,
+          py: 1.5,
           minHeight: 52,
           display: 'flex',
           alignItems: 'center',

@@ -55,6 +55,7 @@ coverage/
 node_modules/
 frontend/node_modules/
 **/node_modules/
+**/.pnpm-store
 __pycache__/
 *.py[cod]
 *$py.class

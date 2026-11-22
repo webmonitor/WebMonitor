@@ -14,12 +14,6 @@ import {
   Select,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -44,6 +38,7 @@ import StatGrid from '../components/StatGrid';
 import SectionCard from '../components/SectionCard';
 import EmptyState from '../components/EmptyState';
 import StatusBadge from '../components/StatusBadge';
+import RecordTable from '../components/RecordTable';
 import { formatInterval } from '../utils/duration';
 import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
@@ -112,13 +107,13 @@ const MonitorTasks = () => {
 
   const queryClient = useQueryClient();
 
-  const { data: tasks = [], error } = useQuery({
+  const { data: tasks = [], error, isLoading, refetch } = useQuery({
     queryKey: keys.tasks(user?.id),
     queryFn: ({ signal }) => api.get('/api/monitor-tasks', { signal }).then((response) => response.data),
     enabled: !!user,
   });
 
-  const { data: emailConfigs = [] } = useQuery({
+  const { data: emailConfigs = [], error: emailConfigsError } = useQuery({
     queryKey: keys.emailConfigs(user?.id, EMAIL_CONFIG_SIMPLE),
     queryFn: ({ signal }) =>
       api.get('/api/email-configs/simple-list', { signal }).then((response) => response.data),
@@ -152,13 +147,12 @@ const MonitorTasks = () => {
   };
 
   const blacklistDetail = (errorValue) => {
-    const detail = errorValue?.response?.data?.detail;
-
-    if (errorValue?.response?.status !== 403 || typeof detail !== 'string' || !detail.trim()) {
+    if (errorValue?.response?.status !== 403) {
       return null;
     }
 
-    return detail;
+    const detail = getApiErrorMessage(errorValue, '');
+    return detail.trim() ? detail : null;
   };
 
   const handleMutationError = (errorValue, failureKey) => {
@@ -223,6 +217,8 @@ const MonitorTasks = () => {
     },
   });
 
+  const saving = createMutation.isPending || updateMutation.isPending;
+
   const handleOpen = (task = null) => {
     setDialogAlert(null);
     emailConfigTouched.current = false;
@@ -282,14 +278,6 @@ const MonitorTasks = () => {
     testMutation.mutate(id);
   };
 
-  if (error) {
-    return (
-      <Alert severity="error">
-        {t('tasks.loadTasksError')}: {getApiErrorMessage(error, t('common.unknownError'))}
-      </Alert>
-    );
-  }
-
   return (
     <Box>
       <PageHeader
@@ -339,118 +327,122 @@ const MonitorTasks = () => {
           {
             key: 'total',
             title: t('tasks.totalTasks'),
-            value: tasks.length,
+            value: isLoading || error ? null : tasks.length,
           },
           {
             key: 'active',
             title: t('tasks.activeTasks'),
-            value: tasks.filter((task) => task.is_active).length,
+            value: isLoading || error ? null : tasks.filter((task) => task.is_active).length,
           },
           {
             key: 'paused',
             title: t('tasks.pausedTasks'),
-            value: tasks.filter((task) => !task.is_active).length,
+            value: isLoading || error ? null : tasks.filter((task) => !task.is_active).length,
           },
           {
             key: 'email',
             title: t('tasks.emailNotifications'),
-            value: tasks.filter((task) => task.email_config_id).length,
+            value: isLoading || error ? null : tasks.filter((task) => task.email_config_id).length,
           },
         ]}
       />
 
       <SectionCard title={t('tasks.taskList')} bareBody>
-        {tasks.length === 0 ? (
-          <EmptyState
-            icon={<WebMonitorLogo size={40} />}
-            title={t('tasks.noTasks')}
-            subtitle={t('tasks.noTasksSubtitle')}
-            action={
-              <Button
-                startIcon={<AddIcon sx={{ fontSize: 18 }} />}
-                onClick={() => handleOpen()}
-              >
-                {t('tasks.createFirstTask')}
-              </Button>
-            }
-          />
-        ) : (
-          <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: 840 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('tasks.taskInfo')}</TableCell>
-                  <TableCell>{t('tasks.interval')}</TableCell>
-                  <TableCell>{t('tasks.emailConfig')}</TableCell>
-                  <TableCell>{t('tasks.status')}</TableCell>
-                  <TableCell align="right">{t('tasks.actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {tasks.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell sx={{ width: '40%', maxWidth: 360 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {task.name}
-                      </Typography>
-                      <Typography sx={{ ...monoQuiet, mt: 0.5 }}>{task.url}</Typography>
-                      <Typography sx={{ ...monoQuiet, mt: 0.5 }}>
-                        {task.xpath || t('tasks.notSet')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography sx={monoReading}>{formatInterval(task.interval, t)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', wordBreak: 'break-word' }}>
-                        {getEmailConfigName(task)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        tone={task.is_active ? 'positive' : 'neutral'}
-                        label={task.is_active ? t('tasks.running') : t('tasks.paused')}
-                      />
-                    </TableCell>
-                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                      <Tooltip title={t('tasks.testMonitor')}>
-                        <IconButton
-                          size="small"
-                          aria-label={t('tasks.testMonitor')}
-                          onClick={() => handleTest(task.id)}
-                          disabled={testMutation.isPending}
-                        >
-                          <TestIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={t('tasks.editTask')}>
-                        <IconButton
-                          size="small"
-                          aria-label={t('tasks.editTask')}
-                          onClick={() => handleOpen(task)}
-                        >
-                          <EditIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={t('tasks.deleteTask')}>
-                        <IconButton
-                          size="small"
-                          aria-label={t('tasks.deleteTask')}
-                          onClick={() => handleDelete(task.id)}
-                        >
-                          <DeleteIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <RecordTable
+          rows={tasks}
+          rowKey={(task) => task.id}
+          minWidth={840}
+          loading={isLoading}
+          error={error}
+          errorMessage={`${t('tasks.loadTasksError')}: ${getApiErrorMessage(error, t('common.unknownError'))}`}
+          onRetry={refetch}
+          ariaLabel={t('tasks.taskList')}
+          emptyState={
+            <EmptyState
+              icon={<WebMonitorLogo size={40} />}
+              title={t('tasks.noTasks')}
+              subtitle={t('tasks.noTasksSubtitle')}
+              action={
+                <Button startIcon={<AddIcon sx={{ fontSize: 18 }} />} onClick={() => handleOpen()}>
+                  {t('tasks.createFirstTask')}
+                </Button>
+              }
+            />
+          }
+          columns={[
+            {
+              id: 'task',
+              label: t('tasks.taskInfo'),
+              primary: true,
+              cellSx: { width: '40%', maxWidth: 360 },
+              render: (task) => (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{task.name}</Typography>
+                  <Typography sx={{ ...monoQuiet, mt: 0.5 }}>{task.url}</Typography>
+                  <Typography sx={{ ...monoQuiet, mt: 0.5 }}>{task.xpath || t('tasks.notSet')}</Typography>
+                </>
+              ),
+            },
+            {
+              id: 'interval',
+              label: t('tasks.interval'),
+              render: (task) => <Typography sx={monoReading}>{formatInterval(task.interval, t)}</Typography>,
+            },
+            {
+              id: 'email',
+              label: t('tasks.emailConfig'),
+              render: (task) => (
+                <Typography variant="body2" sx={{ color: 'text.secondary', wordBreak: 'break-word' }}>
+                  {getEmailConfigName(task)}
+                </Typography>
+              ),
+            },
+            {
+              id: 'status',
+              label: t('tasks.status'),
+              render: (task) => (
+                <StatusBadge
+                  tone={task.is_active ? 'positive' : 'neutral'}
+                  label={task.is_active ? t('tasks.running') : t('tasks.paused')}
+                />
+              ),
+            },
+            {
+              id: 'actions',
+              label: t('tasks.actions'),
+              align: 'right',
+              actions: true,
+              cellSx: { whiteSpace: 'nowrap' },
+              render: (task) => (
+                <>
+                  <Tooltip title={t('tasks.testMonitor')}>
+                    <IconButton
+                      size="small"
+                      aria-label={t('tasks.testMonitor')}
+                      onClick={() => handleTest(task.id)}
+                      disabled={testMutation.isPending}
+                    >
+                      <TestIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('tasks.editTask')}>
+                    <IconButton size="small" aria-label={t('tasks.editTask')} onClick={() => handleOpen(task)}>
+                      <EditIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('tasks.deleteTask')}>
+                    <IconButton size="small" aria-label={t('tasks.deleteTask')} onClick={() => handleDelete(task.id)}>
+                      <DeleteIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={saving ? undefined : handleClose} disableEscapeKeyDown={saving} maxWidth="md" fullWidth>
         <DialogTitle>
           {editingTask ? t('tasks.editDialogTitle') : t('tasks.createDialogTitle')}
         </DialogTitle>
@@ -528,9 +520,11 @@ const MonitorTasks = () => {
                     variant="caption"
                     sx={{ mt: 0.5, display: 'block', color: 'text.secondary' }}
                   >
-                    {emailConfigs.length === 0
-                      ? t('tasks.addEmailConfigHint')
-                      : t('tasks.emailConfigHelper')}
+                    {emailConfigsError
+                      ? getApiErrorMessage(emailConfigsError, t('tasks.emailConfigLoadFailed'))
+                      : emailConfigs.length === 0
+                        ? t('tasks.addEmailConfigHint')
+                        : t('tasks.emailConfigHelper')}
                   </Typography>
                 </FormControl>
               </Stack>
@@ -562,11 +556,11 @@ const MonitorTasks = () => {
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleClose}>{t('common.cancel')}</Button>
+            <Button onClick={handleClose} disabled={saving}>{t('common.cancel')}</Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={saving}
             >
               {editingTask ? t('tasks.updateTask') : t('tasks.submitCreateTask')}
             </Button>

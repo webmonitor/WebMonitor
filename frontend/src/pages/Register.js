@@ -16,15 +16,13 @@ import {
 import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '../contexts/AuthContext';
 import api, { getApiErrorMessage } from '../api/client';
-import { BrandLockup } from '../components/WebMonitorLogo';
-import LanguageSwitcher from '../components/LanguageSwitcher';
+import PublicHeader from '../components/PublicHeader';
 import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 
 const mono = { fontFamily: UI_FONTS.mono, fontSize: 11, color: UI_COLORS.muted, letterSpacing: 0 };
@@ -51,6 +49,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const redirectTimer = React.useRef(null);
 
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -62,6 +61,13 @@ const Register = () => {
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  React.useEffect(
+    () => () => {
+      clearTimeout(redirectTimer.current);
+    },
+    [],
+  );
 
   const handleChange = (event) => {
     setFormData({ ...formData, [event.target.name]: event.target.value });
@@ -133,7 +139,7 @@ const Register = () => {
         password: formData.password,
       });
       setSuccess(t('register.validation.success'));
-      setTimeout(() => navigate('/login'), 2000);
+      redirectTimer.current = setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
       setError(getApiErrorMessage(err, t('register.validation.failed')));
     } finally {
@@ -143,19 +149,7 @@ const Register = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: UI_COLORS.background, display: 'flex', flexDirection: 'column' }}>
-      <Box component="header" sx={{ borderBottom: UI_SURFACE.divider, backgroundColor: UI_COLORS.surface }}>
-        <Container maxWidth="lg">
-          <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-            <BrandLockup size={22} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <IconButton aria-label={t('common.backHome')} onClick={() => navigate('/')} sx={{ width: 32, height: 32 }}>
-                <ArrowBackIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-              <LanguageSwitcher />
-            </Box>
-          </Box>
-        </Container>
-      </Box>
+      <PublicHeader />
 
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', py: { xs: 6, md: 8 } }}>
         <Container maxWidth="lg">

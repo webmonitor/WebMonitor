@@ -12,7 +12,7 @@ import support  # noqa: E402
 support.bootstrap_environment()
 
 import main  # noqa: E402
-from app.db.models import EmailConfig, MonitorLog, MonitorTask, TaskSubscription, User  # noqa: E402
+from app.db.models import EmailConfig, MonitorLog, MonitorTask, NotificationOutbox, TaskSubscription, User  # noqa: E402
 
 
 def _header(response, name):
@@ -40,6 +40,7 @@ class ApiTestCase(unittest.TestCase):
 
         db = SessionLocal()
         try:
+            db.query(NotificationOutbox).delete()
             db.query(TaskSubscription).delete()
             db.query(MonitorLog).delete()
             db.query(MonitorTask).delete()
@@ -512,6 +513,7 @@ class EmailConfigApiTestCase(unittest.TestCase):
 
         db = SessionLocal()
         try:
+            db.query(NotificationOutbox).delete()
             db.query(TaskSubscription).delete()
             db.query(MonitorLog).delete()
             db.query(MonitorTask).delete()

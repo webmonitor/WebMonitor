@@ -18,7 +18,6 @@ import {
 const FormDialog = ({
   open,
   title,
-  icon,
   children,
   submitLabel,
   cancelLabel,
@@ -30,7 +29,6 @@ const FormDialog = ({
   <Dialog open={open} onClose={pending ? undefined : onClose} maxWidth="sm" fullWidth>
     <form onSubmit={onSubmit} noValidate>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        {icon}
         <Typography component="span" variant="h6">
           {title}
         </Typography>

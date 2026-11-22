@@ -5,7 +5,6 @@
 调用方给的 `user_id`/`task_id` 精确过滤，不再提供"全库第一条"这类会串用户
 的入口。
 """
-from datetime import datetime
 from typing import List, Optional, Union
 from urllib.parse import urlparse
 
@@ -24,7 +23,7 @@ from ..schemas.schemas import (
     UserCreate,
     UserUpdate,
 )
-from .models import BlacklistDomain, EmailConfig, MonitorLog, MonitorTask, TaskSubscription, User
+from .models import BlacklistDomain, EmailConfig, MonitorLog, MonitorTask, NotificationOutbox, TaskSubscription, User
 
 DEFAULT_MAX_SUBSCRIPTIONS = 10
 
@@ -74,6 +73,8 @@ def update_monitor_task(db: Session, task_id: int, task: MonitorTaskUpdate) -> U
     update_data = task.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_task, field, value)
+    if update_data:
+        db_task.config_version += 1
 
     db.commit()
     db.refresh(db_task)
@@ -89,30 +90,6 @@ def delete_monitor_task(db: Session, task_id: int) -> bool:
     db.delete(db_task)
     db.commit()
     return True
-
-
-def create_monitor_log(
-    db: Session,
-    task_id: int,
-    old_content: str = None,
-    new_content: str = None,
-    is_changed: bool = False,
-    error_message: str = None,
-    check_time: datetime = None,
-) -> MonitorLog:
-    """创建监控日志"""
-    db_log = MonitorLog(
-        task_id=task_id,
-        old_content=old_content,
-        new_content=new_content,
-        is_changed=is_changed,
-        error_message=error_message,
-        check_time=check_time or datetime.now(),
-    )
-    db.add(db_log)
-    db.commit()
-    db.refresh(db_log)
-    return db_log
 
 
 def get_monitor_logs(db: Session, task_id: int, skip: int = 0, limit: int = 100) -> List[MonitorLog]:
@@ -142,18 +119,6 @@ def get_latest_monitor_logs(db: Session, user_id: int, limit: int = 10) -> List[
         .limit(limit)
         .all()
     )
-
-
-def update_monitor_task_content(db: Session, task_id: int, content: str, check_time: datetime) -> bool:
-    """更新监控任务内容和检查时间"""
-    db_task = db.query(MonitorTask).filter(MonitorTask.id == task_id).first()
-    if db_task is None:
-        return False
-
-    db_task.last_content = content
-    db_task.last_check = check_time
-    db.commit()
-    return True
 
 
 def get_active_monitor_tasks(db: Session) -> List[MonitorTask]:
@@ -223,10 +188,18 @@ def update_email_config(db: Session, config_id: int, config: EmailConfigUpdate) 
 
 
 def count_email_config_references(db: Session, config_id: int) -> int:
-    """统计仍引用该邮件配置的任务与订阅（含停用订阅）。"""
+    """统计任务、订阅及仍需使用该配置的 outbox 引用。"""
     task_refs = db.query(MonitorTask).filter(MonitorTask.email_config_id == config_id).count()
     subscription_refs = db.query(TaskSubscription).filter(TaskSubscription.email_config_id == config_id).count()
-    return task_refs + subscription_refs
+    outbox_refs = (
+        db.query(NotificationOutbox)
+        .filter(
+            NotificationOutbox.email_config_id == config_id,
+            NotificationOutbox.status.in_(("pending", "sending")),
+        )
+        .count()
+    )
+    return task_refs + subscription_refs + outbox_refs
 
 
 def delete_email_config(db: Session, config_id: int) -> bool:
@@ -308,6 +281,7 @@ def delete_user(db: Session, user_id: int) -> bool:
     if db_user is None:
         return False
 
+    # ORM 级联在同一事务中删除任务、订阅、outbox 和明文 SMTP 配置。
     db.delete(db_user)
     db.commit()
     return True

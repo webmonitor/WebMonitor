@@ -12,12 +12,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   IconButton,
   Typography,
@@ -34,6 +28,7 @@ import EmptyState from '../components/EmptyState';
 import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
+import RecordTable from '../components/RecordTable';
 import { UI_FONTS } from '../theme/tokens';
 import { formatDateTime } from '../utils/date';
 import { formatInterval } from '../utils/duration';
@@ -170,15 +165,12 @@ const PublicTasks = () => {
     <Box>
       <PageHeader title={t('publicTasks.title')} subtitle={t('publicTasks.subtitle')} />
 
-      {tasksQuery.error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {t('publicTasks.loadFailed')}:{' '}
-          {getApiErrorMessage(tasksQuery.error, t('common.unknownError'))}
-        </Alert>
-      )}
-
       {subscriptionInfoQuery.error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          action={<Button color="inherit" size="small" onClick={() => subscriptionInfoQuery.refetch()}>{t('common.retry')}</Button>}
+        >
           {getApiErrorMessage(subscriptionInfoQuery.error, t('common.unknownError'))}
         </Alert>
       )}
@@ -220,123 +212,91 @@ const PublicTasks = () => {
       </Typography>
 
       <SectionCard title={t('publicTasks.taskList')} bareBody>
-        {tasksQuery.isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
-            <CircularProgress />
-          </Box>
-        ) : tasks.length === 0 ? (
-          <EmptyState
-            icon={<PublicIcon />}
-            title={t('publicTasks.noTasks')}
-            subtitle={t('publicTasks.noTasksSubtitle')}
-          />
-        ) : (
-          <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: 880 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('publicTasks.taskInfo')}</TableCell>
-                  <TableCell>{t('publicTasks.creator')}</TableCell>
-                  <TableCell align="right">{t('publicTasks.subscriptions')}</TableCell>
-                  <TableCell>{t('publicTasks.interval')}</TableCell>
-                  <TableCell>{t('publicTasks.createdAt')}</TableCell>
-                  <TableCell align="right">{t('publicTasks.actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {tasks.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {task.name}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          ...mono,
-                          display: 'block',
-                          maxWidth: 260,
-                          fontSize: 12,
-                          color: 'text.secondary',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          mt: 0.5,
-                        }}
-                      >
-                        {task.url}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {task.owner_username}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography sx={{ ...mono, fontSize: 13 }}>
-                        {task.subscription_count ?? 0}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography sx={{ ...mono, fontSize: 13 }}>
-                        {formatInterval(task.interval, t)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography sx={{ ...mono, fontSize: 12, color: 'text.secondary' }}>
-                        {formatDateTime(task.created_at, i18n.language)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', justifyContent: 'flex-end' }}>
-                        <Tooltip
-                          title={
-                            task.user_subscribed
-                              ? t('publicTasks.unsubscribeTask')
-                              : t('publicTasks.subscribeTask')
-                          }
-                        >
-                          <Button
-                            size="small"
-                            variant={task.user_subscribed ? 'text' : 'outlined'}
-                            aria-label={
-                              task.user_subscribed
-                                ? t('publicTasks.unsubscribeTask')
-                                : t('publicTasks.subscribeTask')
-                            }
-                            onClick={() => {
-                              if (task.user_subscribed) {
-                                handleToggleSubscription(task.id);
-                              } else {
-                                handleSubscribe(task.id);
-                              }
-                            }}
-                            disabled={
-                              toggleMutation.isPending ||
-                              (!task.user_subscribed && slotsExhausted)
-                            }
-                          >
-                            {task.user_subscribed
-                              ? t('publicTasks.unsubscribe')
-                              : t('publicTasks.subscribe')}
-                          </Button>
-                        </Tooltip>
-                        <Tooltip title={t('publicTasks.viewDetails')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('publicTasks.viewDetails')}
-                            onClick={() => handleViewDetails(task)}
-                          >
-                            <InfoIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <RecordTable
+          rows={tasks}
+          rowKey={(task) => task.id}
+          minWidth={880}
+          loading={tasksQuery.isLoading}
+          error={tasksQuery.error}
+          errorMessage={`${t('publicTasks.loadFailed')}: ${getApiErrorMessage(tasksQuery.error, t('common.unknownError'))}`}
+          onRetry={tasksQuery.refetch}
+          ariaLabel={t('publicTasks.taskList')}
+          emptyState={
+            <EmptyState icon={<PublicIcon />} title={t('publicTasks.noTasks')} subtitle={t('publicTasks.noTasksSubtitle')} />
+          }
+          columns={[
+            {
+              id: 'task',
+              label: t('publicTasks.taskInfo'),
+              primary: true,
+              render: (task) => (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{task.name}</Typography>
+                  <Typography sx={{ ...mono, display: 'block', maxWidth: 360, fontSize: 12, color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mt: 0.5 }}>
+                    {task.url}
+                  </Typography>
+                </>
+              ),
+            },
+            {
+              id: 'creator',
+              label: t('publicTasks.creator'),
+              render: (task) => <Typography variant="body2" sx={{ color: 'text.secondary' }}>{task.owner_username}</Typography>,
+            },
+            {
+              id: 'subscriptions',
+              label: t('publicTasks.subscriptions'),
+              align: 'right',
+              render: (task) => <Typography sx={{ ...mono, fontSize: 13 }}>{task.subscription_count ?? 0}</Typography>,
+            },
+            {
+              id: 'interval',
+              label: t('publicTasks.interval'),
+              render: (task) => <Typography sx={{ ...mono, fontSize: 13 }}>{formatInterval(task.interval, t)}</Typography>,
+            },
+            {
+              id: 'created',
+              label: t('publicTasks.createdAt'),
+              render: (task) => (
+                <Typography sx={{ ...mono, fontSize: 12, color: 'text.secondary' }}>
+                  {formatDateTime(task.created_at, i18n.language)}
+                </Typography>
+              ),
+            },
+            {
+              id: 'actions',
+              label: t('publicTasks.actions'),
+              align: 'right',
+              actions: true,
+              render: (task) => (
+                <>
+                  <Tooltip title={task.user_subscribed ? t('publicTasks.unsubscribeTask') : t('publicTasks.subscribeTask')}>
+                    <Button
+                      size="small"
+                      variant={task.user_subscribed ? 'text' : 'outlined'}
+                      aria-label={task.user_subscribed ? t('publicTasks.unsubscribeTask') : t('publicTasks.subscribeTask')}
+                      onClick={() => {
+                        if (task.user_subscribed) {
+                          handleToggleSubscription(task.id);
+                        } else {
+                          handleSubscribe(task.id);
+                        }
+                      }}
+                      disabled={toggleMutation.isPending || (!task.user_subscribed && slotsExhausted)}
+                    >
+                      {task.user_subscribed ? t('publicTasks.unsubscribe') : t('publicTasks.subscribe')}
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title={t('publicTasks.viewDetails')}>
+                    <IconButton size="small" aria-label={t('publicTasks.viewDetails')} onClick={() => handleViewDetails(task)}>
+                      <InfoIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
 
       <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} maxWidth="md" fullWidth>

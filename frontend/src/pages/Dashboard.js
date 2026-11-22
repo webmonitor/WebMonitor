@@ -17,6 +17,7 @@ import PageHeader from '../components/PageHeader';
 import SectionCard from '../components/SectionCard';
 import StatGrid from '../components/StatGrid';
 import StatusBadge from '../components/StatusBadge';
+import ChangeDiff from '../components/ChangeDiff';
 import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 import { useAuth } from '../contexts/AuthContext';
 import api, { getApiErrorMessage } from '../api/client';
@@ -58,14 +59,14 @@ const LogRow = ({ log, taskName, language, t }) => {
     <Box
       sx={{
         px: 2.5,
-        py: 1.75,
+        py: 1.5,
         borderBottom: UI_SURFACE.divider,
         transition: 'background-color 140ms cubic-bezier(0.22, 1, 0.36, 1)',
         '&:hover': { backgroundColor: 'action.hover' },
         '&:last-of-type': { borderBottom: 0 },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, flexWrap: 'wrap' }}>
         <StatusBadge tone={tone} label={stateLabel} sx={{ flexShrink: 0 }} />
         <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 0 }}>
           {taskName || `${t('dashboard.taskLabel')} #${log.task_id}`}
@@ -80,23 +81,7 @@ const LogRow = ({ log, taskName, language, t }) => {
           {log.error_message}
         </Typography>
       ) : log.is_changed && log.new_content ? (
-        <Box sx={{ mt: 1, pl: 1.5, borderLeft: `2px solid ${UI_COLORS.warning}` }}>
-          {log.old_content && (
-            <Typography sx={{ ...mono, fontSize: 12, color: UI_COLORS.muted, display: 'block' }}>
-              {'- '}
-              {log.old_content.split('\n')[0].substring(0, 118)}
-            </Typography>
-          )}
-          {log.new_content.split('\n').slice(0, 2).map((line, index) => (
-            <Typography
-              key={`${line}-${index}`}
-              sx={{ ...mono, fontSize: 12, color: UI_COLORS.text, display: 'block', mt: index === 0 ? 0.5 : 0 }}
-            >
-              {'+ '}
-              {line.substring(0, 118)}
-            </Typography>
-          ))}
-        </Box>
+        <ChangeDiff oldContent={log.old_content} newContent={log.new_content} sx={{ mt: 1 }} />
       ) : null}
     </Box>
   );
@@ -169,7 +154,11 @@ const Dashboard = () => {
       />
 
       {tasksError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          action={<Button color="inherit" size="small" onClick={() => tasksQuery.refetch()}>{t('common.retry')}</Button>}
+        >
           {t('tasks.loadTasksError')}: {getApiErrorMessage(tasksError, t('common.unknownError'))}
         </Alert>
       )}
@@ -179,25 +168,25 @@ const Dashboard = () => {
           {
             key: 'totalTasks',
             title: t('dashboard.totalTasks'),
-            value: tasksError ? null : totalTasks,
+            value: tasksQuery.isLoading || tasksError ? null : totalTasks,
             subtitle: t('dashboard.allTasks'),
           },
           {
             key: 'activeTasks',
             title: t('dashboard.activeTasks'),
-            value: tasksError ? null : activeTasks,
+            value: tasksQuery.isLoading || tasksError ? null : activeTasks,
             subtitle: t('dashboard.runningTasks'),
           },
           {
             key: 'recentChanges',
             title: t('dashboard.recentChanges'),
-            value: logsError ? null : recentChanges,
+            value: logsQuery.isLoading || logsError ? null : recentChanges,
             subtitle: logs.length === 0 ? t('dashboard.noSamples') : t('dashboard.detectedChanges', { sample: logs.length }),
           },
           {
             key: 'successRate',
             title: t('dashboard.successRate'),
-            value: logsError ? null : successRate,
+            value: logsQuery.isLoading || logsError ? null : successRate,
             subtitle:
               logs.length === 0
                 ? t('dashboard.noSamples')
@@ -219,7 +208,10 @@ const Dashboard = () => {
           >
             {logsError ? (
               <Box sx={{ p: 2.5 }}>
-                <Alert severity="error">
+                <Alert
+                  severity="error"
+                  action={<Button color="inherit" size="small" onClick={() => logsQuery.refetch()}>{t('common.retry')}</Button>}
+                >
                   {t('logs.loadError')}: {getApiErrorMessage(logsError, t('common.unknownError'))}
                 </Alert>
               </Box>
@@ -290,6 +282,9 @@ const Dashboard = () => {
                   {t('dashboard.changeCount')}
                 </Typography>
               </Box>
+              {!logsQuery.isLoading && !logsError && taskChecks.length === 0 && (
+                <EmptyState compact title={t('dashboard.noSamples')} />
+              )}
               {taskChecks.map((entry) => (
                 <Box
                   key={entry.id}
@@ -335,7 +330,7 @@ const Dashboard = () => {
                       '&:last-of-type': { borderBottom: 0 },
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, flexWrap: 'wrap' }}>
                       <StatusBadge tone="danger" label={t('dashboard.errorPrefix')} sx={{ flexShrink: 0 }} />
                       <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 0 }}>
                         {taskNames[log.task_id] || `${t('dashboard.taskLabel')} #${log.task_id}`}

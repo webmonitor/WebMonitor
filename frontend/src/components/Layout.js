@@ -1,5 +1,5 @@
-import React, { Suspense, useMemo, useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import React, { Suspense, useState } from 'react';
+import { Link as RouterLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
+  Close as CloseIcon,
   Dashboard as DashboardIcon,
   Assignment as TaskIcon,
   History as LogIcon,
@@ -75,15 +76,22 @@ const NavRow = ({ item, active, onClick, t }) => {
 
   return (
     <ListItemButton
+      component={RouterLink}
+      to={item.path}
       selected={active}
+      aria-current={active ? 'page' : undefined}
       onClick={onClick}
       sx={{
         mx: 1,
         px: 1.5,
         minHeight: 36,
         height: 36,
-        gap: 1.25,
+        gap: 1,
+        position: 'relative',
         color: active ? 'text.primary' : 'text.secondary',
+        '&::before': active
+          ? { content: '""', position: 'absolute', left: 0, width: 2, height: 16, backgroundColor: UI_COLORS.primary }
+          : undefined,
         '& .MuiListItemIcon-root': { color: active ? UI_COLORS.primary : UI_COLORS.muted },
       }}
     >
@@ -103,23 +111,10 @@ const Layout = () => {
   const { user, logout, isAdmin } = useAuth();
   const { t, i18n } = useTranslation();
 
-  const groups = useMemo(() => {
-    const items = BASE_MENU_ITEMS.map((item) => ({
-      ...item,
-      text: t(`navigation.${item.key}`),
-    }));
-
-    const all = isAdmin()
-      ? [
-          ...items,
-          ...ADMIN_MENU_ITEMS.map((item) => ({ ...item, text: t(`navigation.${item.key}`) })),
-        ]
-      : items;
-
-    return ['monitor', 'settings', 'admin']
-      .map((group) => ({ group, items: all.filter((item) => GROUP_KEYS[item.key] === group) }))
-      .filter((entry) => entry.items.length > 0);
-  }, [isAdmin, t]);
+  const all = isAdmin() ? [...BASE_MENU_ITEMS, ...ADMIN_MENU_ITEMS] : BASE_MENU_ITEMS;
+  const groups = ['monitor', 'settings', 'admin']
+    .map((group) => ({ group, items: all.filter((item) => GROUP_KEYS[item.key] === group) }))
+    .filter((entry) => entry.items.length > 0);
 
   const latestLogQuery = useQuery({
     queryKey: keys.latestLogs(user?.id, 1),
@@ -130,11 +125,21 @@ const Layout = () => {
   });
 
   const latestLog = latestLogQuery.data?.[0];
-  const statusTone = latestLog?.error_message
-    ? UI_COLORS.danger
-    : latestLog?.is_changed
-      ? UI_COLORS.warning
-      : UI_COLORS.success;
+  const statusTone = latestLogQuery.isError
+    ? UI_COLORS.muted
+    : latestLog?.error_message
+      ? UI_COLORS.danger
+      : latestLog?.is_changed
+        ? UI_COLORS.warning
+        : UI_COLORS.success;
+
+  const checkStatus = latestLogQuery.isLoading
+    ? t('shell.checking')
+    : latestLogQuery.isError
+      ? t('shell.checkUnavailable')
+      : latestLog
+        ? t('shell.lastCheck', { time: formatRelativeTime(latestLog.check_time, i18n.language) })
+        : t('shell.noChecks');
 
   const handleLogout = async () => {
     setUserMenuAnchor(null);
@@ -144,9 +149,14 @@ const Layout = () => {
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ px: 2.5, pt: 2.25, pb: 1.5 }}>
-        <BrandLockup size={22} />
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1.25 }}>
+      <Box sx={{ px: 2.5, pt: 2.5, pb: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <BrandLockup size={22} />
+          <IconButton aria-label={t('common.close')} onClick={() => setMobileOpen(false)} sx={{ display: { lg: 'none' } }}>
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
           <Box
             component="span"
             sx={{
@@ -159,11 +169,10 @@ const Layout = () => {
           />
           <Typography
             component="span"
+            role="status"
             sx={{ fontFamily: UI_FONTS.mono, fontSize: 11, color: UI_COLORS.muted, letterSpacing: 0 }}
           >
-            {latestLog
-              ? t('shell.lastCheck', { time: formatRelativeTime(latestLog.check_time, i18n.language) })
-              : t('shell.noChecks')}
+            {checkStatus}
           </Typography>
         </Box>
       </Box>
@@ -184,10 +193,7 @@ const Layout = () => {
                   item={item}
                   t={t}
                   active={location.pathname === item.path}
-                  onClick={() => {
-                    navigate(item.path);
-                    setMobileOpen(false);
-                  }}
+                  onClick={() => setMobileOpen(false)}
                 />
               ))}
             </List>
@@ -198,6 +204,9 @@ const Layout = () => {
       <Box sx={{ borderTop: `1px solid ${UI_COLORS.hairline}`, p: 1.5 }}>
         <LanguageSwitcher sx={{ mb: 1 }} />
         <ListItemButton
+          aria-label={t('common.userMenu')}
+          aria-controls={userMenuAnchor ? 'menu-appbar' : undefined}
+          aria-expanded={Boolean(userMenuAnchor)}
           onClick={(event) => setUserMenuAnchor(event.currentTarget)}
           sx={{ px: 1, minHeight: 36, height: 36, gap: 1 }}
         >
@@ -214,7 +223,7 @@ const Layout = () => {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: UI_COLORS.background }}>
-      <AppBar position="fixed" sx={{ display: { sm: 'none' } }}>
+      <AppBar position="fixed" sx={{ display: { lg: 'none' } }}>
         <Toolbar sx={{ minHeight: 52, gap: 1 }}>
           <IconButton
             edge="start"
@@ -229,19 +238,19 @@ const Layout = () => {
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }} aria-label={t('navigation.groups.monitor')}>
+      <Box component="nav" sx={{ width: { lg: drawerWidth }, flexShrink: { lg: 0 } }} aria-label={t('navigation.groups.monitor')}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
+          sx={{ display: { xs: 'block', lg: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
         >
           {drawer}
         </Drawer>
         <Drawer
           variant="permanent"
-          sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
+          sx={{ display: { xs: 'none', lg: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
           open
         >
           {drawer}
@@ -255,19 +264,19 @@ const Layout = () => {
           // minWidth: 0 让 flex 子项可以被压缩：否则宽表格会撑开整页并产生横向滚动
           minWidth: 0,
           minHeight: '100vh',
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: { lg: `calc(100% - ${drawerWidth}px)` },
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        <Toolbar sx={{ display: { sm: 'none' }, minHeight: 52 }} />
-        <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 3, md: 4 }, flexGrow: 1 }}>
+        <Toolbar sx={{ display: { lg: 'none' }, minHeight: 52 }} />
+        <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 3, md: 4 }, flexGrow: 1, width: '100%', maxWidth: 1500, mx: 'auto' }}>
           {/* 页面级 Suspense：切换私有页时只替换内容，侧栏不卸载 */}
           <Suspense fallback={<PageLoading />}>
             <Outlet />
           </Suspense>
         </Box>
-        <Box sx={{ px: { xs: 2, md: 4 }, pb: 2.5 }}>
+        <Box sx={{ px: { xs: 2, md: 4 }, pb: 2.5, width: '100%', maxWidth: 1500, mx: 'auto' }}>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             <Box
               component="a"

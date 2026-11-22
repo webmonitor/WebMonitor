@@ -51,6 +51,7 @@ WORKDIR /app
 #   - mesa 的 LLVM 软件光栅化栈：libLLVM/ libgallium/ libz3 合计约 180 MB，
 #     只在 --use-gl=… 软件渲染时 dlopen，Selenium 抓取（--disable-gpu）不使用
 RUN set -eux; \
+    sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources; \
     apt-get update; \
     apt-get install -y --no-install-recommends chromium chromium-driver; \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man /usr/share/info; \
@@ -62,15 +63,16 @@ RUN set -eux; \
           /usr/lib/chromium/chrome_200_percent.pak; \
     rm -f /usr/lib/*/libLLVM.so.* /usr/lib/*/libgallium-*.so /usr/lib/*/libz3.so.*
 
-ENV FRONTEND_DIST=/app/web
+ENV FRONTEND_DIST=/app/web \
+    PIP_DEFAULT_TIMEOUT=120
 
 # Hashed dependency transaction, generated from pyproject.toml.
 # 同一个 RUN 里删掉运行期用不到的 pip 本身（12 MB）与 Selenium Manager 的多平台
 # 二进制（只留本架构那个；驱动由 apt 的 chromium-driver 提供）。
 COPY requirements.txt pyproject.toml ./
 COPY LICENSE /app/LICENSE
-RUN set -eux; \
-    pip install --no-cache-dir --require-hashes -r requirements.txt; \
+RUN --mount=type=cache,target=/root/.cache/pip set -eux; \
+    pip install --require-hashes -r requirements.txt; \
     rm -rf /usr/local/lib/python3.12/site-packages/pip \
            /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
            /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.12; \

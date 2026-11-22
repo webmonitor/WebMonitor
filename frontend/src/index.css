@@ -4,8 +4,8 @@ body {
     'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f7fa;
-  color: #111827;
+  background-color: #f5f4f1;
+  color: #252823;
 }
 
 code,
@@ -24,7 +24,13 @@ body,
 }
 
 ::selection {
-  background: rgba(18, 104, 75, 0.16);
+  background: rgba(31, 101, 73, 0.16);
+}
+
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #1f6549;
+  outline-offset: 3px;
 }
 
 /* 全站只用一条入场动效：主内容轻微上移，不参与布局属性。 */
@@ -40,7 +46,7 @@ body,
 }
 
 .enter {
-  animation: enter-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: enter-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -51,6 +57,8 @@ body,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
