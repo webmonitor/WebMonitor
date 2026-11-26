@@ -64,6 +64,48 @@ api.interceptors.response.use(
   },
 );
 
+const LIST_PAGE_SIZE = 100;
+
+const throwIfAborted = (signal) => {
+  if (signal?.aborted) {
+    throw signal.reason || new axios.CanceledError('Request aborted');
+  }
+};
+
+/**
+ * 顺序读取一个数组接口的全部页面。
+ *
+ * 每页固定 100 项，短页（包括空页）就是末页；正好 100 项时会再请求一次空页。
+ * 请求逐页 await，避免为了绕开单页上限而制造无界并发。调用方传入的额外
+ * params 会保留，但 skip/limit 始终由这里维护，signal 会传给每一次请求。
+ */
+export const fetchAllPages = async (url, config = {}) => {
+  const { params = {}, signal, ...requestConfig } = config;
+  const items = [];
+  let skip = 0;
+
+  while (true) {
+    throwIfAborted(signal);
+    const response = await api.get(url, {
+      ...requestConfig,
+      params: { ...params, skip, limit: LIST_PAGE_SIZE },
+      signal,
+    });
+    throwIfAborted(signal);
+
+    const page = response.data;
+    if (!Array.isArray(page)) {
+      throw new TypeError(`Expected an array response from ${url}`);
+    }
+
+    items.push(...page);
+    if (page.length < LIST_PAGE_SIZE) {
+      return items;
+    }
+    skip += LIST_PAGE_SIZE;
+  }
+};
+
 /**
  * 从后端错误里取出可展示的文案。
  *

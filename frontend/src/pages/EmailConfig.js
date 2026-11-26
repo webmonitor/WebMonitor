@@ -27,7 +27,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import api, { getApiErrorMessage } from '../api/client';
+import api, { fetchAllPages, getApiErrorMessage } from '../api/client';
 import { keys, EMAIL_CONFIG_FULL } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -73,8 +73,7 @@ const EmailConfig = () => {
     refetch: refetchEmailConfigs,
   } = useQuery({
     queryKey: keys.emailConfigs(user?.id, EMAIL_CONFIG_FULL),
-    queryFn: ({ signal }) =>
-      api.get('/api/email-configs', { signal }).then((response) => response.data),
+    queryFn: ({ signal }) => fetchAllPages('/api/email-configs', { signal }),
     enabled: !!user,
   });
 

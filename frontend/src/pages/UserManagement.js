@@ -26,7 +26,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import api, { getApiErrorMessage } from '../api/client';
+import api, { fetchAllPages, getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -77,7 +77,7 @@ const UserManagement = () => {
 
   const { data: users = [], error, isLoading, refetch } = useQuery({
     queryKey: keys.users(currentUser?.id),
-    queryFn: ({ signal }) => api.get('/api/auth/users', { signal }).then((response) => response.data),
+    queryFn: ({ signal }) => fetchAllPages('/api/auth/users', { signal }),
     enabled: !!currentUser,
   });
 

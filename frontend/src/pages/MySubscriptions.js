@@ -22,7 +22,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 
-import api, { getApiErrorMessage } from '../api/client';
+import api, { fetchAllPages, getApiErrorMessage } from '../api/client';
 import { keys, EMAIL_CONFIG_FULL } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -67,13 +67,13 @@ const MySubscriptions = () => {
 
   const subscriptionsQuery = useQuery({
     queryKey: keys.subscriptions(user?.id),
-    queryFn: ({ signal }) => api.get('/api/subscriptions', { signal }).then((response) => response.data),
+    queryFn: ({ signal }) => fetchAllPages('/api/subscriptions', { signal }),
     enabled: !!user,
   });
 
   const emailConfigsQuery = useQuery({
     queryKey: keys.emailConfigs(user?.id, EMAIL_CONFIG_FULL),
-    queryFn: ({ signal }) => api.get('/api/email-configs', { signal }).then((response) => response.data),
+    queryFn: ({ signal }) => fetchAllPages('/api/email-configs', { signal }),
     enabled: !!user,
   });
 

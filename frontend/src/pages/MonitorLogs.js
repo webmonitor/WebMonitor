@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { formatDateTime } from '../utils/date';
 import { useAuth } from '../contexts/AuthContext';
-import api, { getApiErrorMessage } from '../api/client';
+import api, { fetchAllPages, getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
 import PageHeader from '../components/PageHeader';
 import StatGrid from '../components/StatGrid';
@@ -48,7 +48,7 @@ const MonitorLogs = () => {
 
   const tasksQuery = useQuery({
     queryKey: keys.tasks(user?.id),
-    queryFn: ({ signal }) => api.get('/api/monitor-tasks', { signal }).then((response) => response.data),
+    queryFn: ({ signal }) => fetchAllPages('/api/monitor-tasks', { signal }),
     enabled: !!user,
   });
 

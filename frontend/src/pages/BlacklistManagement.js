@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { formatDateTime } from '../utils/date';
-import api, { getApiErrorMessage } from '../api/client';
+import api, { fetchAllPages, getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -78,8 +78,7 @@ const BlacklistManagement = () => {
 
   const { data: domains = [], error: loadError, isLoading, refetch } = useQuery({
     queryKey: keys.blacklist(user?.id),
-    queryFn: ({ signal }) =>
-      api.get('/api/blacklist-domains', { signal }).then((response) => response.data),
+    queryFn: ({ signal }) => fetchAllPages('/api/blacklist-domains', { signal }),
     enabled: !!user,
   });
 

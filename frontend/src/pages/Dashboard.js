@@ -20,7 +20,7 @@ import StatusBadge from '../components/StatusBadge';
 import ChangeDiff from '../components/ChangeDiff';
 import { UI_COLORS, UI_FONTS, UI_SURFACE } from '../theme/tokens';
 import { useAuth } from '../contexts/AuthContext';
-import api, { getApiErrorMessage } from '../api/client';
+import api, { fetchAllPages, getApiErrorMessage } from '../api/client';
 import { keys } from '../api/queryKeys';
 import { formatRelativeTime } from '../utils/date';
 
@@ -94,7 +94,7 @@ const Dashboard = () => {
 
   const tasksQuery = useQuery({
     queryKey: keys.tasks(user?.id),
-    queryFn: ({ signal }) => api.get('/api/monitor-tasks', { signal }).then((response) => response.data),
+    queryFn: ({ signal }) => fetchAllPages('/api/monitor-tasks', { signal }),
     enabled: !!user,
     refetchInterval: 60000,
   });
