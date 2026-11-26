@@ -19,7 +19,6 @@ import random
 import re
 import secrets
 import shutil
-import socket
 import socketserver
 import ssl
 import string
@@ -176,7 +175,6 @@ class SmtpHandler(socketserver.StreamRequestHandler):
         mail_from = None
         recipients = []
         authed = False
-        buffer = []
 
         while True:
             raw = self.rfile.readline()
@@ -233,7 +231,6 @@ class SmtpHandler(socketserver.StreamRequestHandler):
                 match = re.search(r"<(.*)>", line)
                 mail_from = match.group(1) if match else ""
                 recipients = []
-                buffer = []
                 self._send("250 OK")
 
             elif command == "RCPT":
@@ -325,6 +322,8 @@ def make_tls_material(tmpdir):
                 "1",
                 "-subj",
                 "/CN=localhost",
+                "-addext",
+                "subjectAltName=IP:127.0.0.1,DNS:localhost",
             ],
             check=True,
             stdout=subprocess.DEVNULL,
@@ -777,6 +776,7 @@ def main():
             "DATABASE_URL": f"sqlite:///{db_path}",
             "FRONTEND_DIST": _frontend_dist(),
             "LOG_LEVEL": "INFO",
+            "SMTP_ALLOWED_HOSTS": "127.0.0.1",
         }
     )
 
@@ -789,6 +789,14 @@ def main():
 
     global SMTP_TLS_CERT, SMTP_TLS_KEY
     SMTP_TLS_CERT, SMTP_TLS_KEY = make_tls_material(tmpdir)
+    # 产品代码仍执行正常证书与 hostname 校验；仅在这个隔离验收进程中信任自签 CA。
+    default_context = ssl.create_default_context
+
+    def smoke_tls_context(*args, **kwargs):
+        kwargs["cafile"] = SMTP_TLS_CERT
+        return default_context(*args, **kwargs)
+
+    ssl.create_default_context = smoke_tls_context
     # 两个测试账户共用同一个 sink 与同一套口令；凭据必须匹配，否则 AUTH 失败
     SINK.allowed_users = {f"{name}@example.com" for name in ("alice", "bob")}
     SINK.expected_password = password
@@ -797,6 +805,18 @@ def main():
     print(f"smtp sink: 127.0.0.1:{smtp_port}")
 
     import uvicorn
+    from selenium import webdriver
+
+    # 仅测试环境需要自定义浏览器路径；生产仍由 Selenium Manager 正常解析。
+    original_chrome = webdriver.Chrome
+
+    def chrome_with_optional_binary(*args, **kwargs):
+        options = kwargs.get("options") or (args[0] if args else None)
+        if options is not None and os.environ.get("WEBMONITOR_SMOKE_CHROME"):
+            options.binary_location = os.environ["WEBMONITOR_SMOKE_CHROME"]
+        return original_chrome(*args, **kwargs)
+
+    webdriver.Chrome = chrome_with_optional_binary
 
     import main as app_main
 

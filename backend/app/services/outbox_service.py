@@ -7,6 +7,7 @@ exactly-once。
 """
 import logging
 import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
@@ -21,6 +22,8 @@ from .email_service import EmailService
 logger = logging.getLogger(__name__)
 
 OUTBOX_BATCH_SIZE = 100
+OUTBOX_MAX_BATCHES_PER_DRAIN = 2
+OUTBOX_DRAIN_TIME_BUDGET_SECONDS = 30.0
 _drain_lock = threading.Lock()
 
 
@@ -74,7 +77,7 @@ class OutboxService:
                 row.last_error = "投递中断，等待重试"
 
     @staticmethod
-    def _claim_batch() -> list[OutboxMessage]:
+    def _claim_batch(batch_size: int) -> list[OutboxMessage]:
         db = SessionLocal()
         try:
             now = datetime.now()
@@ -86,7 +89,7 @@ class OutboxService:
                     NotificationOutbox.next_attempt_at <= now,
                 )
                 .order_by(NotificationOutbox.id)
-                .limit(OUTBOX_BATCH_SIZE)
+                .limit(batch_size)
                 .all()
             )
             messages = []
@@ -98,6 +101,35 @@ class OutboxService:
             # SMTP 之前先提交 claim；采集结果早已在另一事务中提交。
             db.commit()
             return messages
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    @staticmethod
+    def _release_unattempted(messages: list[OutboxMessage]) -> None:
+        """时间预算耗尽时释放尚未调用 SMTP 的 claim，不消耗其重试次数。"""
+        if not messages:
+            return
+        snapshots = {message.id: message for message in messages}
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(NotificationOutbox)
+                .filter(
+                    NotificationOutbox.id.in_(snapshots),
+                    NotificationOutbox.status == "sending",
+                )
+                .all()
+            )
+            now = datetime.now()
+            for row in rows:
+                row.status = "pending"
+                row.attempts = snapshots[row.id].attempts - 1
+                row.next_attempt_at = now
+                row.last_error = None
+            db.commit()
         except Exception:
             db.rollback()
             raise
@@ -164,12 +196,19 @@ class OutboxService:
         self._complete(message, delivered=delivered, error=error)
         return delivered
 
-    def deliver_pending(self) -> int:
-        """恢复中断行并投递当前到期的记录；返回本次成功投递数量。"""
+    def deliver_pending(
+        self,
+        *,
+        batch_size: int = OUTBOX_BATCH_SIZE,
+        max_batches: int = OUTBOX_MAX_BATCHES_PER_DRAIN,
+        time_budget_seconds: float = OUTBOX_DRAIN_TIME_BUDGET_SECONDS,
+    ) -> int:
+        """在批次和单调时钟预算内投递；剩余 pending 行留给后续周期。"""
         if not _drain_lock.acquire(blocking=False):
             return 0
 
         delivered_count = 0
+        deadline = time.monotonic() + time_budget_seconds
         try:
             db = SessionLocal()
             try:
@@ -181,11 +220,16 @@ class OutboxService:
             finally:
                 db.close()
 
-            while True:
-                messages = self._claim_batch()
+            batches = 0
+            while batches < max_batches and time.monotonic() < deadline:
+                messages = self._claim_batch(batch_size)
                 if not messages:
                     break
-                for message in messages:
+                batches += 1
+                for index, message in enumerate(messages):
+                    if time.monotonic() >= deadline:
+                        self._release_unattempted(messages[index:])
+                        return delivered_count
                     if self._deliver(message):
                         delivered_count += 1
             return delivered_count

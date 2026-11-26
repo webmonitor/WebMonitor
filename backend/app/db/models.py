@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -25,6 +25,7 @@ class User(Base):
     # 删除用户时，同事务清除明文 SMTP 配置和该用户的投递记录
     email_configs = relationship("EmailConfig", back_populates="user", cascade="all, delete-orphan")
     outbox_deliveries = relationship("NotificationOutbox", back_populates="user", cascade="all, delete-orphan")
+    blacklist_domains = relationship("BlacklistDomain", back_populates="creator", cascade="all, delete-orphan")
 
 
 class MonitorTask(Base):
@@ -61,6 +62,9 @@ class MonitorTask(Base):
 class MonitorLog(Base):
     """监控日志模型"""
     __tablename__ = "monitor_logs"
+    __table_args__ = (
+        Index("ix_monitor_logs_task_check_id", "task_id", "check_time", "id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("monitor_tasks.id"), nullable=False, comment="任务ID")
@@ -134,8 +138,8 @@ class BlacklistDomain(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), comment="更新时间")
 
-    # 关联创建者
-    creator = relationship("User")
+    # 关联创建者；ORM 删除用户时同步清理，满足启用的 SQLite 外键。
+    creator = relationship("User", back_populates="blacklist_domains")
 
 
 class TaskSubscription(Base):

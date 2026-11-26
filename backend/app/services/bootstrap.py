@@ -1,5 +1,5 @@
 """
-启动引导：建表 + 首次管理员。
+启动引导：Alembic 数据库升级 + 首次管理员。
 
 规则：
 - 库里已有管理员：什么都不做（绝不重置已有密码）；
@@ -8,7 +8,11 @@
 - 日志只写原因，不写任何密码。
 """
 import logging
+from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from ..core.config import settings
@@ -22,15 +26,30 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_ADMIN_FULL_NAME = "系统管理员"
 DEFAULT_ADMIN_MAX_SUBSCRIPTIONS = 10
+MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
+LEGACY_BASELINE_REVISION = "0001"
 
 
 class BootstrapError(RuntimeError):
     """引导失败；消息里不得包含密码。"""
 
 
-def create_all_tables() -> None:
-    """建表（幂等）。"""
-    Base.metadata.create_all(bind=engine)
+def upgrade_database() -> None:
+    """空库执行全部 migration；旧 create_all 库先标记基线再增量升级。"""
+    with engine.begin() as connection:
+        config = Config()
+        config.set_main_option("script_location", str(MIGRATIONS_DIR))
+        config.attributes["connection"] = connection
+
+        tables = set(inspect(connection).get_table_names())
+        application_tables = set(Base.metadata.tables)
+        legacy_tables = tables.intersection(application_tables)
+        if "alembic_version" not in tables and legacy_tables:
+            if legacy_tables != application_tables:
+                raise BootstrapError("数据库结构不完整，无法自动标记 Alembic 基线")
+            # stamp 不写业务表；0002 等后续增量 migration 仍会正常执行。
+            command.stamp(config, LEGACY_BASELINE_REVISION)
+        command.upgrade(config, "head")
 
 
 def _bootstrap_password() -> str:
@@ -87,6 +106,6 @@ def create_default_admin(db: Session | None = None) -> bool:
 
 
 def bootstrap() -> None:
-    """建表 + 引导管理员；任何失败都向调用方抛出。"""
-    create_all_tables()
+    """升级数据库 + 引导管理员；任何失败都向调用方抛出。"""
+    upgrade_database()
     create_default_admin()

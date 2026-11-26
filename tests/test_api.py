@@ -12,7 +12,15 @@ import support  # noqa: E402
 support.bootstrap_environment()
 
 import main  # noqa: E402
-from app.db.models import EmailConfig, MonitorLog, MonitorTask, NotificationOutbox, TaskSubscription, User  # noqa: E402
+from app.db.models import (  # noqa: E402
+    BlacklistDomain,
+    EmailConfig,
+    MonitorLog,
+    MonitorTask,
+    NotificationOutbox,
+    TaskSubscription,
+    User,
+)
 
 
 def _header(response, name):
@@ -45,6 +53,7 @@ class ApiTestCase(unittest.TestCase):
             db.query(MonitorLog).delete()
             db.query(MonitorTask).delete()
             db.query(EmailConfig).delete()
+            db.query(BlacklistDomain).delete()
             db.query(User).delete()
             db.commit()
         finally:
@@ -518,6 +527,7 @@ class EmailConfigApiTestCase(unittest.TestCase):
             db.query(MonitorLog).delete()
             db.query(MonitorTask).delete()
             db.query(EmailConfig).delete()
+            db.query(BlacklistDomain).delete()
             db.query(User).delete()
             db.commit()
         finally:

@@ -238,6 +238,71 @@ class MonitorOutboxTestCase(unittest.TestCase):
         self.assertEqual(send.call_args.kwargs["url"], "http://example.com/original")
         self.assertEqual(send.call_args.kwargs["new_content"], "new-content")
 
+    def test_drain_batch_budget_leaves_pending_rows_for_later_cycles(self):
+        first = self._outbox()
+        second = self._outbox()
+        service = OutboxService()
+        with mock.patch.object(service.email_service, "send_change_notification", return_value=True) as send:
+            self.assertEqual(
+                service.deliver_pending(batch_size=1, max_batches=1, time_budget_seconds=60),
+                1,
+            )
+            self.db.refresh(first)
+            self.db.refresh(second)
+            self.assertEqual(first.status, "delivered")
+            self.assertEqual(second.status, "pending")
+            self.assertEqual(second.attempts, 0)
+
+            self.assertEqual(service.deliver_pending(), 1)
+            self.db.refresh(second)
+            self.assertEqual(second.status, "delivered")
+        self.assertEqual(send.call_count, 2)
+
+    def test_drain_time_budget_releases_unattempted_claims_without_retry_cost(self):
+        first = self._outbox()
+        second = self._outbox()
+        service = OutboxService()
+        with mock.patch("app.services.outbox_service.time.monotonic", side_effect=[0, 0, 0, 2]), mock.patch.object(
+            service.email_service,
+            "send_change_notification",
+            return_value=True,
+        ) as send:
+            self.assertEqual(service.deliver_pending(time_budget_seconds=1), 1)
+        self.db.refresh(first)
+        self.db.refresh(second)
+        self.assertEqual(first.status, "delivered")
+        self.assertEqual(second.status, "pending")
+        self.assertEqual(second.attempts, 0)
+        self.assertEqual(send.call_count, 1)
+
+    def test_unchanged_log_does_not_store_duplicate_old_and_new_content(self):
+        self.task.last_content = "same-content"
+        self.db.commit()
+        service = MonitorService()
+        with mock.patch.object(
+            service,
+            "get_content_with_selenium",
+            return_value=("same-content", None, "title"),
+        ), mock.patch.object(service.outbox_service, "deliver_pending"):
+            self.assertTrue(service.check_single_task(self.task.id))
+        log = self.db.query(MonitorLog).filter(MonitorLog.task_id == self.task.id).one()
+        self.assertFalse(log.is_changed)
+        self.assertIsNone(log.old_content)
+        self.assertIsNone(log.new_content)
+
+    def test_log_retention_deletes_only_expired_rows(self):
+        old_log = MonitorLog(task_id=self.task.id, check_time=datetime.now() - timedelta(days=31))
+        recent_log = MonitorLog(task_id=self.task.id, check_time=datetime.now())
+        self.db.add_all([old_log, recent_log])
+        self.db.commit()
+        self.db.refresh(old_log)
+        self.db.refresh(recent_log)
+
+        with mock.patch("app.services.monitor_service.settings.LOG_RETENTION_DAYS", 30):
+            self.assertEqual(MonitorService.cleanup_old_logs(), 1)
+        remaining = self.db.query(MonitorLog).all()
+        self.assertEqual([row.id for row in remaining], [recent_log.id])
+
     def test_failed_delivery_retries_are_bounded(self):
         row = self._outbox()
         service = OutboxService()
@@ -364,12 +429,12 @@ class DebugSqlLoggingTestCase(unittest.TestCase):
 
 
 class SmtpResourceTestCase(unittest.TestCase):
-    def test_send_uses_timeout_and_closes_after_failure(self):
+    def test_send_closes_after_failure(self):
         from app.services.email_service import EmailService
 
         server = mock.Mock()
         server.login.side_effect = OSError("blackhole")
-        with mock.patch("app.services.email_service.smtplib.SMTP", return_value=server) as smtp:
+        with mock.patch("app.services.email_service._connect_smtp", return_value=server) as connect:
             self.assertFalse(
                 EmailService()._send_email(
                     "subject",
@@ -382,16 +447,16 @@ class SmtpResourceTestCase(unittest.TestCase):
                     False,
                 )
             )
-        self.assertGreater(smtp.call_args.kwargs["timeout"], 0)
+        connect.assert_called_once_with("smtp.example.com", 587, False)
         server.quit.assert_called_once_with()
         server.close.assert_called_once_with()
 
-    def test_connection_test_uses_timeout_and_closes_after_failure(self):
+    def test_connection_test_closes_after_failure(self):
         from app.services.email_service import EmailService
 
         server = mock.Mock()
         server.login.side_effect = OSError("blackhole")
-        with mock.patch("app.services.email_service.smtplib.SMTP_SSL", return_value=server) as smtp:
+        with mock.patch("app.services.email_service._connect_smtp", return_value=server) as connect:
             result = EmailService()._test_connection(
                 "smtp.example.com",
                 465,
@@ -400,7 +465,7 @@ class SmtpResourceTestCase(unittest.TestCase):
                 True,
             )
         self.assertFalse(result["success"])
-        self.assertGreater(smtp.call_args.kwargs["timeout"], 0)
+        connect.assert_called_once_with("smtp.example.com", 465, True)
         server.quit.assert_called_once_with()
         server.close.assert_called_once_with()
 

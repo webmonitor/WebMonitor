@@ -5,8 +5,9 @@
 的工作线程直接调用，FastAPI 侧通过线程池调用，不再用 `asyncio.run` 包一层。
 """
 import logging
+import threading
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
 from sqlalchemy import update
@@ -29,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 PAGE_LOAD_TIMEOUT_SECONDS = 30
 ELEMENT_WAIT_TIMEOUT_SECONDS = 20
+# 手工测试与调度线程调用同一入口，因此共用进程级有界信号量。
+_browser_slots = threading.BoundedSemaphore(settings.SELENIUM_MAX_CONCURRENCY)
 
 
 @dataclass(frozen=True)
@@ -53,35 +56,37 @@ class MonitorService:
 
     def get_content_with_selenium(self, url: str, xpath: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """通过受限代理采集公开 HTTP(S) 页面；每个连接重新校验目标。"""
-        driver = None
-        try:
-            with CollectorProxy(settings.TARGET_ALLOWED_ORIGINS) as proxy:
-                resolve_target(url, proxy.exceptions)
-                chrome_options = Options()
-                for argument in ("--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage",
-                                 f"--proxy-server={proxy.url}", "--proxy-bypass-list=<-loopback>",
-                                 "--disable-quic", "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"):
-                    chrome_options.add_argument(argument)
-                chrome_options.add_argument(
-                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                try:
-                    driver = webdriver.Chrome(options=chrome_options)
-                    driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
-                    driver.get(url)
-                    wait = WebDriverWait(driver, ELEMENT_WAIT_TIMEOUT_SECONDS)
-                    element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
-                    content, title = element.text.strip(), driver.title
-                    if proxy.blocked:
-                        raise TargetForbidden("目标地址不在允许范围内")
-                    return content, None, title
-                finally:
-                    if driver is not None:
-                        driver.quit()
-        except TargetForbidden:
-            return None, "目标地址不在允许范围内", None
-        except Exception:
-            logger.warning("网页采集失败")
-            return None, "网页采集失败", None
+        with _browser_slots:
+            driver = None
+            try:
+                with CollectorProxy(settings.TARGET_ALLOWED_ORIGINS) as proxy:
+                    resolve_target(url, proxy.exceptions)
+                    chrome_options = Options()
+                    for argument in ("--headless", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage",
+                                     f"--proxy-server={proxy.url}", "--proxy-bypass-list=<-loopback>",
+                                     "--disable-quic", "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+                                     "--disable-background-networking", "--disable-component-update", "--no-first-run"):
+                        chrome_options.add_argument(argument)
+                    chrome_options.add_argument(
+                        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    try:
+                        driver = webdriver.Chrome(options=chrome_options)
+                        driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
+                        driver.get(url)
+                        wait = WebDriverWait(driver, ELEMENT_WAIT_TIMEOUT_SECONDS)
+                        element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
+                        content, title = element.text.strip(), driver.title
+                        if proxy.blocked:
+                            raise TargetForbidden("目标地址不在允许范围内")
+                        return content, None, title
+                    finally:
+                        if driver is not None:
+                            driver.quit()
+            except TargetForbidden:
+                return None, "目标地址不在允许范围内", None
+            except Exception:
+                logger.warning("网页采集失败")
+                return None, "网页采集失败", None
 
     def check_single_task(self, task_id: int) -> bool:
         """版本围栏采集；baseline、last_check、日志和 outbox 只提交一次。"""
@@ -138,8 +143,9 @@ class MonitorService:
             db.add(
                 MonitorLog(
                     task_id=task_id,
-                    old_content=old_content if error_message is None else None,
-                    new_content=current_content if error_message is None else None,
+                    # 未变化/失败日志只保留状态和错误，不重复存储两份正文。
+                    old_content=old_content if is_changed else None,
+                    new_content=current_content if is_changed else None,
                     is_changed=is_changed,
                     error_message=error_message,
                     check_time=check_time,
@@ -186,19 +192,11 @@ class MonitorService:
         logger.info("任务 %s 检查完成，变化: %s", task.name, is_changed)
         return error_message is None
 
-    def test_task(self, task_id: int) -> dict:
-        """测试监控任务：只抓取，不写 baseline、last_check 或日志。"""
-        db = SessionLocal()
+    def test_task(self, task_id: int, url: str, xpath: str) -> dict:
+        """使用调用方已授权的快照测试采集；本路径不创建数据库会话。"""
+        logger.info("测试任务 ID: %s", task_id)
         try:
-            task = get_monitor_task(db, task_id)
-
-            if not task:
-                return {"success": False, "error": "任务不存在"}
-
-            logger.info("测试任务: %s (ID: %s)", task.name, task_id)
-
-            current_content, error_message, title = self.get_content_with_selenium(task.url, task.xpath)
-
+            current_content, error_message, title = self.get_content_with_selenium(url, xpath)
             if error_message:
                 return {"success": False, "error": error_message}
 
@@ -206,15 +204,30 @@ class MonitorService:
                 "success": True,
                 "content": current_content,
                 "title": title,
-                "url": task.url,
+                "url": url,
                 "message": "测试成功",
             }
-
         except Exception as exc:
-            error_msg = f"测试任务 {task_id} 时发生错误: {exc}"
-            logger.error(error_msg)
-            return {"success": False, "error": error_msg}
+            # 不把可能包含 URL、凭据或内部路径的异常文本返回给客户端。
+            logger.error("测试任务 %s 时发生错误 (%s)", task_id, type(exc).__name__)
+            return {"success": False, "error": "测试任务时发生错误"}
 
+    @staticmethod
+    def cleanup_old_logs() -> int:
+        """删除超过保留期的日志并返回行数；由调度作业周期调用。"""
+        cutoff = datetime.now() - timedelta(days=settings.LOG_RETENTION_DAYS)
+        db = SessionLocal()
+        try:
+            deleted = (
+                db.query(MonitorLog)
+                .filter(MonitorLog.check_time < cutoff)
+                .delete(synchronize_session=False)
+            )
+            db.commit()
+            return deleted
+        except Exception:
+            db.rollback()
+            raise
         finally:
             db.close()
 

@@ -13,6 +13,7 @@
 """
 import logging
 import threading
+from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -26,9 +27,11 @@ logger = logging.getLogger(__name__)
 
 SCAN_JOB_ID = "check_active_tasks"
 OUTBOX_JOB_ID = "deliver_notification_outbox"
+LOG_RETENTION_JOB_ID = "cleanup_expired_monitor_logs"
 TASK_JOB_PREFIX = "monitor_task_"
 SCAN_INTERVAL_MINUTES = 5
 OUTBOX_INTERVAL_SECONDS = 60
+LOG_RETENTION_INTERVAL_HOURS = 24
 
 
 class MonitorScheduler:
@@ -46,7 +49,7 @@ class MonitorScheduler:
         return f"{TASK_JOB_PREFIX}{task_id}"
 
     def _setup_jobs(self):
-        """设置每 5 分钟一次的兜底扫描作业。"""
+        """设置兜底扫描、有界 outbox 投递和每日日志保留作业。"""
         self.scheduler.add_job(
             func=self.sync_tasks,
             trigger=IntervalTrigger(minutes=SCAN_INTERVAL_MINUTES),
@@ -64,6 +67,18 @@ class MonitorScheduler:
             replace_existing=True,
             max_instances=1,
             coalesce=True,
+            # 首次恢复由调度线程执行，绝不在 start() 的调用线程同步 drain。
+            next_run_time=datetime.now(),
+        )
+        self.scheduler.add_job(
+            func=self._run_log_retention,
+            trigger=IntervalTrigger(hours=LOG_RETENTION_INTERVAL_HOURS),
+            id=LOG_RETENTION_JOB_ID,
+            name="清理过期监控日志",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            next_run_time=datetime.now(),
         )
 
     def _run_task(self, task_id: int) -> None:
@@ -79,6 +94,15 @@ class MonitorScheduler:
             self.outbox_service.deliver_pending()
         except Exception as exc:
             logger.error("执行 outbox 投递时发生错误: %s", type(exc).__name__)
+
+    def _run_log_retention(self) -> None:
+        """保留期清理失败不扩散到调度线程，下个周期继续。"""
+        try:
+            deleted = self.monitor_service.cleanup_old_logs()
+            if deleted:
+                logger.info("已清理 %s 条过期监控日志", deleted)
+        except Exception as exc:
+            logger.error("清理过期监控日志失败 (%s)", type(exc).__name__)
 
     def sync_tasks(self) -> None:
         """把数据库里的活跃任务同步成作业表。"""
@@ -151,15 +175,13 @@ class MonitorScheduler:
                         logger.error("移除任务作业 %s 失败: %s", job.id, exc)
 
     def start(self) -> None:
-        """启动调度器；失败必须抛给调用方，不能打印后继续服务。"""
+        """启动调度器；outbox 恢复已由立即到期的后台作业执行。"""
         if self.scheduler.running:
             logger.info("监控调度器已在运行")
             return
 
         self.scheduler.start()
         self.sync_tasks()
-        # 启动即恢复 sending/pending；SMTP 接受后崩溃的窗口按 at-least-once 重发。
-        self.outbox_service.deliver_pending()
         logger.info("监控调度器启动成功")
 
     def stop(self) -> None:

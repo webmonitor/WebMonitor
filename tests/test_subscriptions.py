@@ -347,6 +347,11 @@ class SubscriptionServiceTestCase(unittest.TestCase):
                 mock.patch.object(service, "get_content_with_selenium", return_value=("new-value", None, "Changed")), \
                 mock.patch.object(service.email_service, "_send_email", side_effect=transport):
             self.assertTrue(service.check_single_task(self.task.id))
+            # drain 现在有明确的批次预算；后续周期必须继续投递剩余订阅通知。
+            for _ in range(3):
+                if len(messages) == len(receivers):
+                    break
+                service.outbox_service.deliver_pending()
         self.assertEqual({receiver for receiver, _ in messages}, receivers)
         self.assertEqual(len(messages), len(receivers))
         self.assertTrue(all("new-value" in body and "old-value" in body for _, body in messages))

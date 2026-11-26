@@ -1,6 +1,8 @@
 """调度器行为：作业绑定、间隔变更、移除与长间隔计时不被重置。"""
 import os
 import sys
+import threading
+import time
 import unittest
 from unittest import mock
 
@@ -222,6 +224,15 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(scan_job.max_instances, 1)
         self.assertTrue(scan_job.coalesce)
 
+    def test_log_retention_job_is_bounded_and_scheduled(self):
+        job = self.scheduler.scheduler.get_job("cleanup_expired_monitor_logs")
+        self.assertEqual(job.func, self.scheduler._run_log_retention)
+        self.assertEqual(job.max_instances, 1)
+        self.assertTrue(job.coalesce)
+        with mock.patch.object(self.scheduler.monitor_service, "cleanup_old_logs", return_value=2) as cleanup:
+            self.scheduler._run_log_retention()
+        cleanup.assert_called_once_with()
+
     def test_outbox_job_is_bounded_and_startup_recovers(self):
         outbox_job = self.scheduler.scheduler.get_job("deliver_notification_outbox")
         self.assertEqual(outbox_job.func, self.scheduler._run_outbox)
@@ -229,9 +240,33 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertTrue(outbox_job.coalesce)
 
         self.scheduler.stop()
-        with mock.patch.object(self.scheduler.outbox_service, "deliver_pending") as recover:
+        # shutdown 会关闭 executor；真实进程重启会创建新的调度器实例。
+        self.scheduler = MonitorScheduler()
+        started = threading.Event()
+        release = threading.Event()
+
+        def blocked_drain():
+            started.set()
+            release.wait(5)
+
+        with mock.patch.object(
+            self.scheduler.outbox_service,
+            "deliver_pending",
+            side_effect=blocked_drain,
+        ) as recover, mock.patch.object(
+            self.scheduler.monitor_service,
+            "cleanup_old_logs",
+            return_value=0,
+        ):
+            before = time.monotonic()
             self.scheduler.start()
-        recover.assert_called_once_with()
+            elapsed = time.monotonic() - before
+            try:
+                self.assertLess(elapsed, 1)
+                self.assertTrue(started.wait(2), "启动后应立即由后台线程恢复 outbox")
+                recover.assert_called_once_with()
+            finally:
+                release.set()
 
 
 class SchedulerErrorHandlingTestCase(unittest.TestCase):
