@@ -85,6 +85,7 @@ RUN --mount=type=cache,target=/root/.cache/pip set -eux; \
 
 COPY backend/main.py ./
 COPY backend/app ./app/
+COPY backend/migrations ./migrations/
 
 # 前端构建产物；main.py 通过 FRONTEND_DIST 找到它
 COPY --from=web /app/build ./web

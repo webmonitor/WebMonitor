@@ -76,8 +76,11 @@ ADMIN_PASSWORD=CHANGE_ME_STRONG_PASSWORD
 DEBUG=false
 LOG_LEVEL=INFO
 SMTP_TIMEOUT_SECONDS=15
+SMTP_ALLOWED_HOSTS=
 OUTBOX_MAX_ATTEMPTS=3
 OUTBOX_RETRY_SECONDS=60
+SELENIUM_MAX_CONCURRENCY=2
+LOG_RETENTION_DAYS=30
 ```
 
 Replace both `CHANGE_ME` values before starting.
@@ -92,8 +95,11 @@ Replace both `CHANGE_ME` values before starting.
 | `DEBUG` | Optional. Leave `false`. Debug SQL logs always hide bind values, including SMTP passwords |
 | `LOG_LEVEL` | Optional. Leave `INFO` unless you are diagnosing a problem |
 | `SMTP_TIMEOUT_SECONDS` | Optional. Finite timeout for each SMTP socket operation; default `15`, maximum `300` |
+| `SMTP_ALLOWED_HOSTS` | Optional. Exact hostnames allowed for non-public SMTP relays, comma-separated; empty means public addresses only |
 | `OUTBOX_MAX_ATTEMPTS` | Optional. Total delivery attempts per notification, including the first; default `3` |
 | `OUTBOX_RETRY_SECONDS` | Optional. Base retry delay; default `60`, multiplied by the attempt number |
+| `SELENIUM_MAX_CONCURRENCY` | Optional. Shared Chromium limit for manual tests and scheduled collection; default `2` |
+| `LOG_RETENTION_DAYS` | Optional. Monitor-log retention in days, cleaned daily in the background; default `30` |
 | `TARGET_ALLOWED_ORIGINS` | Optional. Empty by default: collection permits public HTTP(S) destinations only. For an explicitly authorized internal target, list exact origins such as `http://site:9000`, separated by commas. Scheme and port must match; do not include paths or management origins |
 
 The administrator values are read only when the database has no administrator. Changing them later does not change an existing login.
@@ -241,9 +247,9 @@ Each account may hold 10 enabled subscriptions by default; **Public tasks** show
 
 ## Data, backup, and updates
 
-The supplied `compose.yaml` defines no volume. The database lives at `/app/data/webmonitor.db` inside the container, and it is the only place accounts, tasks, email configurations, subscriptions, logs, and notification delivery records are stored.
+The supplied `compose.yaml` mounts the named volume `webmonitor-data` at `/app/data`. The database lives at `/app/data/webmonitor.db` in that volume, and it is the only place accounts, tasks, email configurations, subscriptions, logs, and notification delivery records are stored. Alembic upgrades the schema at startup; databases created by the old `create_all` bootstrap are stamped at the baseline before incremental upgrades.
 
-Recreating the container starts with an empty database. That happens after an image tag change, `docker compose down`, `--force-recreate`, or an update of `latest`, because the service always pulls before starting. `docker compose restart` keeps the existing container and its data.
+Recreating the container keeps the named volume and database. `docker compose down` also keeps it by default; only `docker compose down -v` or explicitly deleting the volume removes it. Back up before every upgrade even though storage is persistent.
 
 ### Back up
 
@@ -277,22 +283,11 @@ docker compose pull
 docker compose up -d --wait
 ```
 
-The default database is stored inside the container, so recreating it loses that file unless storage is mounted separately. To roll back, set `WEBMONITOR_IMAGE` to the previous tag and repeat the commands.
+The named volume preserves the database during updates and rollbacks. To roll back, set `WEBMONITOR_IMAGE` to the previous tag and repeat the commands. Startup applies Alembic migrations automatically; before returning to an older application version, verify that it understands the migrated schema and keep a backup.
 
-### Keep data across container recreation
+### Migrate an older installation without a volume
 
-If you want updates to keep data automatically, mount a named volume at `/app/data`. Add this next to `compose.yaml` as `docker-compose.override.yml`:
-
-```yaml
-services:
-  webmonitor:
-    volumes:
-      - webmonitor-data:/app/data
-volumes:
-  webmonitor-data:
-```
-
-`docker compose up -d --wait` reads that override automatically. Back up before adding it to an instance that already has data: switching to a volume recreates the container.
+If an older installation still stores its database in the container's writable layer, back it up **before pulling the new image or recreating the container**. Start the new Compose file to create the named volume, then stop the service, restore the backup, and fix file ownership as shown above. Do not recreate the old container before locating its database.
 
 ## Prefer to describe what you want to watch?
 

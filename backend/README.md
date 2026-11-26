@@ -15,7 +15,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 容器镜像的 `CMD` 也是这条命令。启动流程：
 
 1. `configure_logging()`：日志输出到 stdout，级别由 `LOG_LEVEL` 决定；这是整个后端唯一一次 `basicConfig`。
-2. `lifespan` 调用 `bootstrap()`：先用 `Base.metadata.create_all` 建表，再在没有管理员时按环境变量创建引导管理员。
+2. `lifespan` 调用 `bootstrap()`：先通过 Alembic 执行 `upgrade head`（旧 `create_all` 数据库自动标记 `0001` 基线），再在没有管理员时按环境变量创建引导管理员。
 3. 启动模块级 `monitor_scheduler`（APScheduler `BackgroundScheduler`），同步任务并立即恢复、投递持久化 outbox。
 4. 关闭时在 `finally` 中停止调度器。
 
@@ -92,8 +92,11 @@ python main.py
 | `DEBUG` | 调试模式；可开启 SQL echo，但 `hide_parameters=True` 始终隐藏所有绑定值 | `False` |
 | `LOG_LEVEL` | 输出到 stdout 的日志级别 | `INFO` |
 | `SMTP_TIMEOUT_SECONDS` | SMTP 连接、读取和写入的单次 socket 超时，必须大于 0 且不超过 300 | `15.0` |
+| `SMTP_ALLOWED_HOSTS` | 允许非公网 SMTP 的精确主机名，逗号分隔；默认空，仅公网地址 | — |
 | `OUTBOX_MAX_ATTEMPTS` | 每封通知的最大投递尝试次数（含首次），范围 1–10 | `3` |
 | `OUTBOX_RETRY_SECONDS` | 失败后的基础重试间隔，按已尝试次数线性增加，范围 1–3600 | `60` |
+| `SELENIUM_MAX_CONCURRENCY` | 手动测试与定时采集共享的 Chromium 并发上限，范围 1–32 | `2` |
+| `LOG_RETENTION_DAYS` | 监控日志保留天数，每日后台清理，范围 1–3650 | `30` |
 | `ALGORITHM` | JWT 算法 | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 访问令牌有效期（分钟） | `30` |
 | `FRONTEND_DIST` | 前端构建产物目录 | `web` |
@@ -110,7 +113,8 @@ python main.py
 - 同步时先读取所有启用任务，再为每个任务维护 `monitor_task_{id}` 作业。作业参数只传整数 `task_id`，不捕获 ORM 对象或循环变量。
 - 只有间隔变化时才 `reschedule_job`；改名使用 `modify_job`；已不在启用集合中的 `monitor_task_*` 作业会被移除，兜底扫描作业本身不会被移除。
 - 整个“读数据库 → 修改作业表”的过程在同一把 `threading.RLock` 内完成。任务作业以 `max_instances=1, coalesce=True` 运行。
-- `deliver_notification_outbox` 每 60 秒恢复中断记录并投递到期通知，启动时也会立即执行一次；模块级锁避免采集线程与恢复作业同时 drain。
+- `deliver_notification_outbox` 每 60 秒恢复中断记录并投递到期通知，启动时由后台作业立即执行一次，不阻塞 HTTP lifespan；每次 drain 有批次和单调时钟预算，剩余记录留给后续周期。模块级锁避免采集线程与恢复作业同时 drain。
+- `cleanup_expired_monitor_logs` 每日清理超过 `LOG_RETENTION_DAYS` 的日志。未变化/失败日志不重复保存两份正文，查询使用 `(task_id, check_time, id)` 复合索引。
 
 每个任务到点后调用 `MonitorService.check_single_task`：先读取任务及 `config_version` 快照并关闭会话，再用一次新的无头 Chromium 打开页面。抓取后的条件更新同时要求任务仍存在、启用，且版本、URL、XPath 均未变化；任何编辑都会递增版本，过期结果直接丢弃，不写日志或 outbox。浏览器在 `finally` 中退出。
 
@@ -128,17 +132,17 @@ python main.py
 
 通知先写入 `notification_outbox`，再由 `OutboxService` 在数据库事务外发送。每条记录有 `pending/sending/delivered/failed` 状态、尝试次数和下次投递时间；默认最多尝试 3 次，失败按线性间隔重试，终态记录保留用于排查。启动和周期恢复会重新处理中断的 `sending`。如果 SMTP 已接受邮件但进程在写入 `delivered` 前崩溃，恢复后会重发，所以通知保证采用 **at-least-once**，可能重复，不声称 exactly-once。
 
-SMTP_SSL 和 starttls 均使用有限 socket timeout，并在 `finally` 中 `quit`/`close`；黑洞或认证失败只影响该投递，不会终止调度。发送失败日志只包含错误类型，不记录凭据、异常 repr 或 SQL 绑定值。删除用户时，其明文 `EmailConfig` 和 outbox 记录与用户、任务在同一事务中清理。
+SMTP_SSL 和 starttls 均使用有限 socket timeout，并在 `finally` 中 `quit`/`close`；连接前验证全部 DNS 结果并固定到已验证 IP，TLS 仍按原 hostname 校验证书。默认只允许公网地址，内网中继必须加入 `SMTP_ALLOWED_HOSTS`。发送失败日志只包含错误类型，不记录凭据、异常 repr 或 SQL 绑定值。删除用户时，其明文 `EmailConfig` 和 outbox 记录与用户、任务在同一事务中清理。
 
 ## 数据与备份
 
-数据层是同步 SQLAlchemy 2.0，`SessionLocal` + `get_db()` 依赖。表结构在启动时由 `create_all` 创建；结构变更通过重建数据库生效。
+数据层是同步 SQLAlchemy 2.0，`SessionLocal` + `get_db()` 依赖。启动时由 Alembic 执行 `upgrade head`：`backend/migrations/versions/0001_initial_schema.py` 是完整基线，旧 `create_all` 数据库自动标记基线后执行增量迁移，不需要重建数据库。每个 SQLite 连接都启用 `PRAGMA foreign_keys=ON`。
 
 默认数据库是 SQLite：
 
 - 本地从 `backend/` 启动时，数据库文件在 `backend/data/webmonitor.db`（相对当前工作目录）。
 - 容器内工作目录是 `/app`，数据库文件在 `/app/data/webmonitor.db`。
-- 提供的 Compose 文件没有数据卷；容器被重建后数据库为空。详见根目录 README 的“数据、备份与更新”。
+- 提供的 Compose 文件默认挂载命名卷 `webmonitor-data:/app/data`；重建容器和 `docker compose down` 都保留数据，`down -v` 才会删除。详见根目录 README 的“数据、备份与更新”。
 - 发布镜像默认使用 `latest`；需要固定版本时在 `.env` 设置 `WEBMONITOR_IMAGE=ghcr.io/webmonitor/webmonitor:1.0.3`。`compose.yaml` 使用 `pull_policy: always`，更新 `latest` 后启动也可能重建容器。
 
 ## API 文档

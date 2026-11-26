@@ -16,6 +16,13 @@ services:
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       TARGET_ALLOWED_ORIGINS: ${TARGET_ALLOWED_ORIGINS:-}
+      # 默认只允许公网 SMTP；本地中继必须配置精确主机名 allowlist。
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-15}
+      SMTP_ALLOWED_HOSTS: ${SMTP_ALLOWED_HOSTS:-}
+      OUTBOX_MAX_ATTEMPTS: ${OUTBOX_MAX_ATTEMPTS:-3}
+      OUTBOX_RETRY_SECONDS: ${OUTBOX_RETRY_SECONDS:-60}
+      SELENIUM_MAX_CONCURRENCY: ${SELENIUM_MAX_CONCURRENCY:-2}
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-30}
 
       # 应用配置
       DEBUG: ${DEBUG:-false}
@@ -33,6 +40,8 @@ services:
     ports:
       # 页面与 API 共用这一个端口：http://localhost:8000/
       - "8000:8000"
+    volumes:
+      - webmonitor-data:/app/data
     healthcheck:
       # 镜像里不再安装 curl，探活用 Python 标准库
       test: [ "CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)" ]
@@ -40,3 +49,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  webmonitor-data:

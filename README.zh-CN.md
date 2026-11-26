@@ -76,8 +76,11 @@ ADMIN_PASSWORD=CHANGE_ME_STRONG_PASSWORD
 DEBUG=false
 LOG_LEVEL=INFO
 SMTP_TIMEOUT_SECONDS=15
+SMTP_ALLOWED_HOSTS=
 OUTBOX_MAX_ATTEMPTS=3
 OUTBOX_RETRY_SECONDS=60
+SELENIUM_MAX_CONCURRENCY=2
+LOG_RETENTION_DAYS=30
 ```
 
 启动前替换两个 `CHANGE_ME` 值。
@@ -92,8 +95,11 @@ OUTBOX_RETRY_SECONDS=60
 | `DEBUG` | 可选。保持 `false`；调试 SQL 日志始终隐藏绑定值，包括 SMTP 密码 |
 | `LOG_LEVEL` | 可选。保持 `INFO`，排查问题时再调整 |
 | `SMTP_TIMEOUT_SECONDS` | 可选。每次 SMTP socket 操作的有限超时；默认 `15`，最大 `300` |
+| `SMTP_ALLOWED_HOSTS` | 可选。允许非公网 SMTP 的精确主机名，逗号分隔；默认空，仅允许公网地址 |
 | `OUTBOX_MAX_ATTEMPTS` | 可选。每封通知包含首次在内的总尝试次数；默认 `3` |
 | `OUTBOX_RETRY_SECONDS` | 可选。基础重试间隔；默认 `60`，按已尝试次数线性增加 |
+| `SELENIUM_MAX_CONCURRENCY` | 可选。手动测试与定时采集共享的 Chromium 并发上限；默认 `2` |
+| `LOG_RETENTION_DAYS` | 可选。监控日志保留天数，每日后台清理；默认 `30` |
 | `TARGET_ALLOWED_ORIGINS` | 可选，默认留空，只采集公网 HTTP(S) 目标。明确授权的内网站点可填写 `http://site:9000` 这类精确 origin，多个用逗号分隔；协议和端口必须一致，不包含路径或管理端 origin |
 
 管理员配置只在数据库没有管理员时读取。之后再改这些值不会改变已有账户的登录信息。
@@ -241,9 +247,9 @@ docker compose up -d --wait
 
 ## 数据、备份与更新
 
-提供的 `compose.yaml` 没有定义数据卷。数据库位于容器内的 `/app/data/webmonitor.db`，账户、任务、邮件配置、订阅、日志和通知投递记录只保存在这里。
+提供的 `compose.yaml` 默认把命名卷 `webmonitor-data` 挂载到 `/app/data`。数据库位于该卷内的 `/app/data/webmonitor.db`，账户、任务、邮件配置、订阅、日志和通知投递记录只保存在这里；启动时 Alembic 自动升级结构，已有 `create_all` 数据库会先标记基线再增量升级。
 
-容器重建后会从空数据库开始：修改镜像标签、执行 `docker compose down`、使用 `--force-recreate`，或更新 `latest` 后启动，都会重建容器，因为服务每次启动前都会拉取镜像。`docker compose restart` 保留现有容器和数据。
+修改镜像标签、使用 `--force-recreate` 或更新 `latest` 后启动会重建容器，但命名卷和数据库会保留。`docker compose down` 默认也保留命名卷；只有显式执行 `docker compose down -v` 或自行删除卷才会清空数据。升级前仍必须备份。
 
 ### 备份
 
@@ -277,22 +283,11 @@ docker compose pull
 docker compose up -d --wait
 ```
 
-默认数据库位于容器内，未单独挂载存储时，重建容器会丢失该文件。回退时把 `WEBMONITOR_IMAGE` 改成之前的标签，执行相同命令。
+默认命名卷会在更新或回退时保留数据库；回退时把 `WEBMONITOR_IMAGE` 改成之前的标签，执行相同命令。应用启动时会自动执行 Alembic 升级，回退到不认识新结构的旧版本前仍应先核对迁移兼容性并备份。
 
-### 让数据在容器重建后保留
+### 已有无卷部署迁移
 
-如果希望更新后自动保留数据，可在 `/app/data` 挂载命名卷。在 `compose.yaml` 同目录添加 `docker-compose.override.yml`：
-
-```yaml
-services:
-  webmonitor:
-    volumes:
-      - webmonitor-data:/app/data
-volumes:
-  webmonitor-data:
-```
-
-`docker compose up -d --wait` 会自动读取这个覆盖文件。给已有数据的实例添加卷前请先备份：改为使用数据卷会重建容器。
+旧版本如果还把数据库放在容器可写层，**拉取新版镜像或重建容器前**先按上面的命令备份。首次使用新版 Compose 创建命名卷后，再停止服务并恢复备份、修正文件所有者。不要先重建旧容器再寻找数据库文件。
 
 ## 想通过对话描述监控需求？
 

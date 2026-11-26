@@ -6,8 +6,8 @@
 # from per-arch images built on native runners. The image is large (~1.1 GB)
 # because it ships Chromium, so a cold build takes several minutes per arch.
 #
-# Push vX.Y.Z to publish X.Y.Z, X.Y and latest and create a GitHub Release.
-# Prereleases publish their version tag without moving latest.
+# Push vX.Y.Z to publish X.Y.Z and X.Y and create a GitHub Release. The newest
+# stable release also moves latest; prereleases and older stable patches do not.
 # Pull requests build the image without publishing it.
 #
 # This package is public and supports anonymous pulls. Visibility is managed in
@@ -70,10 +70,54 @@ jobs:
           check backend/app/core/config.py 's/^    APP_VERSION: str = "\(.*\)"$/\1/p'
           exit "$fail"
 
+  test:
+    name: backend and frontend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install --require-hashes -r requirements.txt
+
+      - name: Run backend unit tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.8
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Test frontend
+        working-directory: frontend
+        run: pnpm test --watchAll=false
+
   build:
     name: build ${{ matrix.arch }}
-    needs: verify
-    if: always() && (needs.verify.result == 'success' || needs.verify.result == 'skipped')
+    needs: [verify, test]
+    if: always() && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && needs.test.result == 'success'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     strategy:
@@ -122,10 +166,41 @@ jobs:
 
   publish:
     name: publish
-    needs: build
-    if: always() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
+    needs: [build, test]
+    if: always() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success' && needs.test.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository and release tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whether this is the newest stable release
+        id: latest
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+
+          stable_tag = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+          tags = subprocess.check_output(["git", "tag", "--list", "v*"], text=True).splitlines()
+          stable_versions = [
+              tuple(int(part) for part in match.groups())
+              for tag in tags
+              if (match := stable_tag.fullmatch(tag)) is not None
+          ]
+          current_match = stable_tag.fullmatch(os.environ["TAG"])
+          current = tuple(int(part) for part in current_match.groups()) if current_match else None
+          enabled = current is not None and all(current >= version for version in stable_versions)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"enabled={str(enabled).lower()}\n")
+          print(f"Move latest: {str(enabled).lower()}")
+          PY
+
       - name: Compute image name
         id: image
         run: echo "name=$(printf '%s' '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
@@ -145,13 +220,13 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
-          # `latest` is the newest stable release, never a dev build or a prerelease.
+          # Older stable patches keep their full/minor tags without replacing latest.
           flavor: |
             latest=false
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+            type=raw,value=latest,enable=${{ steps.latest.outputs.enabled }}
 
       - name: Assemble multi-arch manifest
         shell: bash
