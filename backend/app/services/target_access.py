@@ -15,7 +15,7 @@ class TargetForbidden(ValueError):
 
 
 def parse_target(url: str) -> tuple[SplitResult, str]:
-    """只接受没有凭据的 HTTP(S) URL，并规范化 origin。"""
+    """只接受无凭据 HTTP(S)，并统一规范化 hostname 与 origin。"""
     try:
         parsed = urlsplit(url)
         if (parsed.scheme not in {"http", "https"} or not parsed.hostname
@@ -23,14 +23,32 @@ def parse_target(url: str) -> tuple[SplitResult, str]:
                 or any(ord(char) <= 32 or ord(char) == 127 for char in url)
                 or "\\" in url):
             raise TargetForbidden("目标地址只允许 HTTP(S) 且不能包含凭据")
-        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        explicit_port = parsed.port
+        port = explicit_port if explicit_port is not None else (443 if parsed.scheme == "https" else 80)
         if not 1 <= port <= 65535:
             raise TargetForbidden("目标端口无效")
         host = parsed.hostname.encode("idna").decode("ascii").lower().rstrip(".")
+        if not host:
+            raise TargetForbidden("目标主机名无效")
         authority = f"[{host}]" if ":" in host else host
-        return parsed, f"{parsed.scheme}://{authority}:{port}"
+        # 调用方读取 parsed.hostname 时也必须得到同一规范化结果，不能再各自解析。
+        normalized = parsed._replace(netloc=authority + (f":{explicit_port}" if explicit_port is not None else ""))
+        return normalized, f"{parsed.scheme}://{authority}:{port}"
     except (ValueError, UnicodeError) as exc:
         raise TargetForbidden("目标地址无效") from exc
+
+
+def normalize_blacklist_rule(value: str) -> str:
+    """把精确域名或 *. 后缀规则规范化为小写 IDNA，并去除尾点。"""
+    rule = value.strip()
+    wildcard = rule.startswith("*.")
+    hostname = rule[2:] if wildcard else rule
+    if not hostname or "*" in hostname:
+        raise TargetForbidden("黑名单规则无效")
+    parsed, _ = parse_target(f"http://{hostname}")
+    if parsed.path or parsed.query or parsed.fragment or parsed.port is not None:
+        raise TargetForbidden("黑名单规则只能包含域名")
+    return ("*." if wildcard else "") + (parsed.hostname or "")
 
 
 def allowed_origins(value: str) -> frozenset[str]:
@@ -49,7 +67,7 @@ def allowed_origins(value: str) -> frozenset[str]:
 def resolve_target(url: str, exceptions: frozenset[str]) -> tuple[str, int, list[str]]:
     """验证全部解析结果，后续直接连接数字地址，不进行第二次 DNS 解析。"""
     parsed, origin = parse_target(url)
-    host = parsed.hostname.encode("idna").decode("ascii").lower().rstrip(".")
+    host = parsed.hostname or ""
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     addresses = list(dict.fromkeys(
         item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)))

@@ -6,7 +6,7 @@
 """
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -57,8 +57,8 @@ def get_current_user_info(current_user: User = Depends(get_current_active_user))
 
 @router.get("/users", response_model=List[UserResponse])
 def get_user_list(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ) -> List[User]:

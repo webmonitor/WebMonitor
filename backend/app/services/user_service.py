@@ -28,6 +28,7 @@ USERNAME_EXISTS = "用户名已存在"
 EMAIL_EXISTS = "邮箱已存在"
 DUPLICATE_DETAIL = "用户名或邮箱已存在"
 USER_MISSING = "用户不存在"
+LAST_ADMIN = "系统至少需要一名启用状态的管理员"
 
 
 def _check_uniqueness(db: Session, username: str, email: str, *, exclude_user_id: int | None = None) -> None:
@@ -68,7 +69,10 @@ def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
         raise ServiceError(409, DUPLICATE_DETAIL) from exc
 
     if updated is None:
-        raise ServiceError(404, USER_MISSING)
+        # 条件 UPDATE 已回滚；目标仍存在才表示被最后管理员围栏拒绝。
+        if get_user(db, user_id) is None:
+            raise ServiceError(404, USER_MISSING)
+        raise ServiceError(409, LAST_ADMIN)
     return updated
 
 

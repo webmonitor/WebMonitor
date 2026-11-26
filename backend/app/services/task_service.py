@@ -20,6 +20,7 @@ from ..schemas.schemas import MonitorTaskCreate, MonitorTaskUpdate
 from .errors import ServiceError
 from .monitor_service import MonitorService
 from .scheduler import monitor_scheduler
+from .target_access import TargetForbidden, parse_target
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,10 @@ def require_owned_task(db: Session, task_id: int, user_id: int) -> MonitorTask:
 
 
 def _require_url_allowed(db: Session, url: str, user: User) -> None:
+    try:
+        parse_target(url)
+    except TargetForbidden as exc:
+        raise ServiceError(400, "监控 URL 只允许有效的 HTTP(S) 地址") from exc
     if not is_url_allowed_for_user(db=db, url=url, is_admin=user.is_admin):
         raise ServiceError(403, BLACKLIST_DETAIL)
 
@@ -68,9 +73,9 @@ def create_task(db: Session, data: MonitorTaskCreate, user: User) -> MonitorTask
 
 def update_task(db: Session, task_id: int, data: MonitorTaskUpdate, user: User) -> MonitorTask:
     """更新任务；成功后同步调度作业。"""
-    existing = require_owned_task(db, task_id, user.id)
+    require_owned_task(db, task_id, user.id)
 
-    if data.url is not None and data.url != existing.url:
+    if data.url is not None:
         _require_url_allowed(db, data.url, user)
 
     if data.email_config_id is not None:
@@ -95,10 +100,12 @@ def delete_task(db: Session, task_id: int, user: User) -> None:
 
 
 def test_task(db: Session, task_id: int, user: User) -> dict:
-    """测试任务采集：先授权，再抓取；不写 baseline、last_check 或日志。"""
-    require_owned_task(db, task_id, user.id)
+    """授权后冻结采集参数并关闭请求会话，再执行无数据库的采集。"""
+    task = require_owned_task(db, task_id, user.id)
+    snapshot = (task.id, task.url, task.xpath)
+    db.close()
 
-    result = MonitorService().test_task(task_id)
+    result = MonitorService().test_task(*snapshot)
     if not result.get("success"):
         logger.warning("任务 %s 采集测试失败: %s", task_id, result.get("error"))
         raise ServiceError(502, "目标页面采集失败")

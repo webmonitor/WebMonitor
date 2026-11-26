@@ -4,6 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from ..core.passwords import validate_password
+from ..services.target_access import normalize_blacklist_rule
 
 
 class UserBase(BaseModel):
@@ -263,6 +264,11 @@ class BlacklistDomainBase(BaseModel):
 class BlacklistDomainCreate(BlacklistDomainBase):
     """创建黑名单域名"""
 
+    @field_validator("domain")
+    @classmethod
+    def _normalize_domain(cls, value: str) -> str:
+        return normalize_blacklist_rule(value)
+
 
 class BlacklistDomainUpdate(BaseModel):
     """更新黑名单域名"""
@@ -270,6 +276,11 @@ class BlacklistDomainUpdate(BaseModel):
     domain: Optional[str] = Field(None, description="黑名单域名", min_length=1, max_length=500)
     description: Optional[str] = Field(None, description="描述")
     is_active: Optional[bool] = Field(None, description="是否启用")
+
+    @field_validator("domain")
+    @classmethod
+    def _normalize_domain(cls, value: Optional[str]) -> Optional[str]:
+        return normalize_blacklist_rule(value) if value is not None else None
 
 
 class BlacklistDomainResponse(BlacklistDomainBase):

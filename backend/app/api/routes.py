@@ -23,7 +23,6 @@ from app.db.crud import (
     get_email_config,
     get_latest_monitor_logs,
     get_monitor_logs,
-    get_monitor_task,
     get_public_tasks,
     get_task_with_subscription_info,
     get_user_email_configs,
@@ -34,10 +33,9 @@ from app.db.crud import (
     update_blacklist_domain,
     update_email_config,
     update_user_max_subscriptions,
-    validate_email_config_ownership,
 )
 from app.db.database import get_db
-from app.db.models import BlacklistDomain, EmailConfig, MonitorLog, MonitorTask, TaskSubscription, User
+from app.db.models import BlacklistDomain, EmailConfig, MonitorLog, MonitorTask, User
 from app.schemas.schemas import (
     BlacklistDomainCreate,
     BlacklistDomainResponse,
@@ -81,8 +79,8 @@ def create_task(
 
 @router.get("/monitor-tasks", response_model=List[MonitorTaskResponse])
 def read_tasks(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[MonitorTask]:
@@ -186,8 +184,8 @@ def create_email_config_route(
 
 @router.get("/email-configs", response_model=List[EmailConfigResponse])
 def read_email_configs(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[EmailConfig]:
@@ -197,8 +195,8 @@ def read_email_configs(
 
 @router.get("/email-configs/simple-list", response_model=List[EmailConfigSimpleResponse])
 def get_simple_email_config_list(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[EmailConfigSimpleResponse]:
@@ -294,8 +292,8 @@ def create_blacklist_domain_route(
 
 @router.get("/blacklist-domains", response_model=List[BlacklistDomainResponse])
 def read_blacklist_domains(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ) -> List[BlacklistDomain]:
@@ -362,8 +360,8 @@ def test_blacklist_matching(
 # ---------------------------------------------------------------------------
 @router.get("/public-tasks", response_model=List[PublicTaskResponse])
 def read_public_tasks(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
@@ -410,8 +408,8 @@ def subscribe_to_task(
 
 @router.get("/subscriptions", response_model=List[TaskSubscriptionResponse])
 def read_subscriptions(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[TaskSubscriptionResponse]:

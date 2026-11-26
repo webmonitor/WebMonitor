@@ -43,8 +43,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     # SMTP 和事务 outbox 均有有限等待/重试，避免黑洞连接拖死调度。
     SMTP_TIMEOUT_SECONDS: float = Field(default=15.0, gt=0, le=300)
+    # 默认仅连接解析结果全部为公网地址的 SMTP；精确主机名例外用于本地中继。
+    SMTP_ALLOWED_HOSTS: str = ""
     OUTBOX_MAX_ATTEMPTS: int = Field(default=3, ge=1, le=10)
     OUTBOX_RETRY_SECONDS: int = Field(default=60, ge=1, le=3600)
+    # 手工测试和定时采集共用浏览器并发上限。
+    SELENIUM_MAX_CONCURRENCY: int = Field(default=2, ge=1, le=32)
+    # 调度器每天清理超过保留期的监控日志。
+    LOG_RETENTION_DAYS: int = Field(default=30, ge=1, le=3650)
     # 本地验收或明确授权的内网站点例外；逗号分隔的精确 HTTP(S) origin。
     TARGET_ALLOWED_ORIGINS: str = ""
 

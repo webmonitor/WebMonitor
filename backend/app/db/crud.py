@@ -6,10 +6,11 @@
 的入口。
 """
 from typing import List, Optional, Union
-from urllib.parse import urlparse
 
-from sqlalchemy import and_, desc, func
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, desc, func, or_, select, update
+from sqlalchemy.orm import Session, aliased
+
+from ..services.target_access import TargetForbidden, normalize_blacklist_rule, parse_target
 
 from ..schemas.schemas import (
     BlacklistDomainCreate,
@@ -65,20 +66,24 @@ def get_monitor_task(db: Session, task_id: int) -> Union[MonitorTask, None]:
 
 
 def update_monitor_task(db: Session, task_id: int, task: MonitorTaskUpdate) -> Union[MonitorTask, None]:
-    """更新监控任务"""
-    db_task = db.query(MonitorTask).filter(MonitorTask.id == task_id).first()
-    if db_task is None:
+    """用数据库原子表达式递增版本，避免并发编辑回写陈旧版本。"""
+    update_data = task.model_dump(exclude_unset=True)
+    if not update_data:
+        return db.query(MonitorTask).filter(MonitorTask.id == task_id).first()
+
+    statement = (
+        update(MonitorTask)
+        .where(MonitorTask.id == task_id)
+        .values(**update_data, config_version=MonitorTask.config_version + 1)
+        .execution_options(synchronize_session=False)
+    )
+    result = db.execute(statement)
+    if result.rowcount == 0:
+        db.rollback()
         return None
 
-    update_data = task.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_task, field, value)
-    if update_data:
-        db_task.config_version += 1
-
     db.commit()
-    db.refresh(db_task)
-    return db_task
+    return db.query(MonitorTask).filter(MonitorTask.id == task_id).first()
 
 
 def delete_monitor_task(db: Session, task_id: int) -> bool:
@@ -254,18 +259,50 @@ def get_user_by_email(db: Session, email: str) -> Union[User, None]:
 
 
 def update_user(db: Session, user_id: int, user: UserUpdate) -> Union[User, None]:
-    """更新用户；password 省略或空字符串表示保留原密码。"""
+    """更新用户；降级/停用的最后管理员保护由同一条 UPDATE 原子判定。"""
     db_user = db.query(User).filter(User.id == user_id).first()
     if db_user is None:
         return None
 
     update_data = user.model_dump(exclude_unset=True)
-
     password = update_data.pop("password", None)
     if password:
         from ..services.auth_service import get_password_hash
 
-        db_user.hashed_password = get_password_hash(password)
+        update_data["hashed_password"] = get_password_hash(password)
+
+    removes_admin = any(field in update_data and not update_data[field] for field in ("is_admin", "is_active"))
+    if removes_admin:
+        other_admin = aliased(User)
+        another_active_admin = (
+            select(1)
+            .select_from(other_admin)
+            .where(
+                other_admin.id != user_id,
+                other_admin.is_admin.is_(True),
+                other_admin.is_active.is_(True),
+            )
+            .exists()
+        )
+        statement = (
+            update(User)
+            .where(
+                User.id == user_id,
+                or_(
+                    User.is_admin.is_not(True),
+                    User.is_active.is_not(True),
+                    another_active_admin,
+                ),
+            )
+            .values(**update_data)
+            .execution_options(synchronize_session=False)
+        )
+        result = db.execute(statement)
+        if result.rowcount == 0:
+            db.rollback()
+            return None
+        db.commit()
+        return db.query(User).filter(User.id == user_id).first()
 
     for field, value in update_data.items():
         setattr(db_user, field, value)
@@ -303,7 +340,7 @@ def get_user_monitor_tasks(db: Session, user_id: int, skip: int = 0, limit: int 
 def create_blacklist_domain(db: Session, domain: BlacklistDomainCreate, created_by: int) -> BlacklistDomain:
     """创建黑名单域名"""
     db_domain = BlacklistDomain(
-        domain=domain.domain,
+        domain=normalize_blacklist_rule(domain.domain),
         description=domain.description,
         is_active=domain.is_active,
         created_by=created_by,
@@ -338,6 +375,8 @@ def update_blacklist_domain(db: Session, domain_id: int, domain: BlacklistDomain
         return None
 
     update_data = domain.model_dump(exclude_unset=True)
+    if update_data.get("domain") is not None:
+        update_data["domain"] = normalize_blacklist_rule(update_data["domain"])
     for field, value in update_data.items():
         setattr(db_domain, field, value)
 
@@ -358,38 +397,31 @@ def delete_blacklist_domain(db: Session, domain_id: int) -> bool:
 
 
 def is_url_in_blacklist(db: Session, url: str) -> bool:
-    """检查URL是否在黑名单中"""
+    """按规范化 hostname 做精确或 *. 后缀匹配，非法 URL 不视为命中。"""
     try:
-        parsed_url = urlparse(url)
-        domain = parsed_url.netloc.lower()
-
-        if ":" in domain:
-            domain = domain.split(":")[0]
-
-        blacklist_rules = db.query(BlacklistDomain).filter(
-            BlacklistDomain.is_active == True  # noqa: E712
-        ).all()
-
-        for rule in blacklist_rules:
-            rule_domain = rule.domain.lower().strip()
-
-            # 1. 精确匹配
-            if rule_domain == domain:
-                return True
-
-            # 2. 通配符匹配 (*.example.com)
-            if rule_domain.startswith("*."):
-                wildcard_domain = rule_domain[2:]
-                if domain == wildcard_domain or domain.endswith("." + wildcard_domain):
-                    return True
-
-            # 3. 部分匹配
-            if rule_domain in domain:
-                return True
-
+        parsed, _ = parse_target(url)
+    except TargetForbidden:
         return False
-    except Exception:
-        return False
+    domain = parsed.hostname or ""
+
+    blacklist_rules = db.query(BlacklistDomain).filter(
+        BlacklistDomain.is_active == True  # noqa: E712
+    ).all()
+
+    for rule in blacklist_rules:
+        try:
+            rule_domain = normalize_blacklist_rule(rule.domain)
+        except TargetForbidden:
+            # 兼容历史脏数据；新写入已由 schema 和本层共同规范化。
+            continue
+        if rule_domain.startswith("*."):
+            suffix = rule_domain[2:]
+            if domain == suffix or domain.endswith("." + suffix):
+                return True
+        elif domain == rule_domain:
+            return True
+
+    return False
 
 
 def is_url_allowed_for_user(db: Session, url: str, is_admin: bool) -> bool:
@@ -432,8 +464,8 @@ def get_task_subscriptions(db: Session, task_id: int, skip: int = 0, limit: int 
     """获取任务当前生效的订阅列表"""
     return (
         db.query(TaskSubscription)
-        .filter(TaskSubscription.task_id == task_id, TaskSubscription.is_active == True,
-                TaskSubscription.id > after_id)  # noqa: E712
+        .filter(TaskSubscription.task_id == task_id, TaskSubscription.is_active.is_(True),
+                TaskSubscription.id > after_id)
         .order_by(TaskSubscription.id)
         .offset(skip)
         .limit(limit)

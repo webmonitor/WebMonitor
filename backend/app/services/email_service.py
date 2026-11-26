@@ -10,8 +10,11 @@
 没有部署级 SMTP 回退：环境变量不是收件人的来源，邮件只能发到用户自己
 配置的地址。
 """
+import ipaddress
 import logging
 import smtplib
+import socket
+import ssl
 from datetime import datetime
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
@@ -25,6 +28,119 @@ from ..db.database import SessionLocal
 from ..db.models import EmailConfig
 
 logger = logging.getLogger(__name__)
+
+
+class _SMTPHostRejected(smtplib.SMTPException):
+    """DNS 解析包含非公网地址，且主机不在运维例外列表中。"""
+
+
+def _canonical_smtp_host(host: str) -> str:
+    # DNS 主机名不区分大小写；末尾根标签不改变所指的是同一台主机。
+    return host.strip().rstrip(".").casefold()
+
+
+def _resolve_smtp_addresses(host: str, port: int) -> list[tuple]:
+    """在建立任何 socket 前解析并验证全部地址，防止混合 DNS 记录重绑定。"""
+    records = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    if not records:
+        raise OSError("SMTP 主机没有可用地址")
+
+    allowlist = {
+        _canonical_smtp_host(item)
+        for item in settings.SMTP_ALLOWED_HOSTS.split(",")
+        if item.strip()
+    }
+    host_allowed = _canonical_smtp_host(host) in allowlist
+    addresses = []
+    seen = set()
+    for family, socktype, proto, _canonical_name, sockaddr in records:
+        if family not in (socket.AF_INET, socket.AF_INET6):
+            raise OSError("SMTP 主机返回了不支持的地址")
+        address = ipaddress.ip_address(sockaddr[0])
+        if not host_allowed and (
+            not address.is_global or address.is_multicast or address.is_reserved or address.is_unspecified
+        ):
+            raise _SMTPHostRejected("SMTP 主机地址不在允许范围内")
+        key = (family, sockaddr)
+        if key not in seen:
+            seen.add(key)
+            addresses.append((family, socktype, proto, sockaddr))
+    if not addresses:
+        raise OSError("SMTP 主机没有可用地址")
+    return addresses
+
+
+def _open_smtp_socket(
+    host: str,
+    port: int,
+    timeout: float,
+    source_address: Optional[tuple] = None,
+) -> socket.socket:
+    """只连接预先验证的数字地址；不再把原 hostname 交给 socket 解析。"""
+    addresses = _resolve_smtp_addresses(host, port)
+    last_error = None
+    for family, socktype, proto, sockaddr in addresses:
+        sock = None
+        try:
+            sock = socket.socket(family, socktype, proto)
+            sock.settimeout(timeout)
+            if source_address is not None:
+                sock.bind(source_address)
+            sock.connect(sockaddr)
+            return sock
+        except OSError as exc:
+            last_error = exc
+        except BaseException:
+            if sock is not None:
+                sock.close()
+            raise
+        if sock is not None:
+            sock.close()
+    raise OSError("无法连接 SMTP 服务器") from last_error
+
+
+class _PinnedSMTP(smtplib.SMTP):
+    """STARTTLS 连接：TCP 使用已验证 IP，TLS 仍使用原始主机名。"""
+
+    def _get_socket(self, host, port, timeout):
+        return _open_smtp_socket(host, port, timeout, self.source_address)
+
+
+class _PinnedSMTP_SSL(smtplib.SMTP_SSL):
+    """SMTP_SSL 连接：在已验证 IP 的 socket 上校验原 hostname 的证书。"""
+
+    def _get_socket(self, host, port, timeout):
+        raw_socket = _open_smtp_socket(host, port, timeout, self.source_address)
+        try:
+            return self.context.wrap_socket(raw_socket, server_hostname=host)
+        except BaseException:
+            raw_socket.close()
+            raise
+
+
+def _connect_smtp(host: str, port: int, is_ssl: bool) -> smtplib.SMTP:
+    """发送与连接测试的唯一 SMTP 工厂；两种 TLS 模式均验证证书。"""
+    context = ssl.create_default_context()
+    smtp_class = _PinnedSMTP_SSL if is_ssl else _PinnedSMTP
+    server = smtp_class(
+        local_hostname="localhost",
+        timeout=settings.SMTP_TIMEOUT_SECONDS,
+        **({"context": context} if is_ssl else {}),
+    )
+    try:
+        # 手动 connect 以便任何握手失败都能在此关闭半初始化连接。
+        # smtplib.starttls 使用 _host 做 SNI/证书主机名，必须保留原始值。
+        server._host = host
+        code, message = server.connect(host, port)
+        if code != 220:
+            raise smtplib.SMTPConnectError(code, message)
+        server.set_debuglevel(0)
+        if not is_ssl:
+            server.starttls(context=context)
+        return server
+    except BaseException:
+        _close_smtp(server)
+        raise
 
 
 def _close_smtp(server: smtplib.SMTP) -> None:
@@ -186,23 +302,7 @@ class EmailService:
             msg["Subject"] = Header(subject, "utf-8")
             msg.attach(MIMEText(content, "plain", "utf-8"))
 
-            if is_ssl:
-                server = smtplib.SMTP_SSL(
-                    smtp_server,
-                    smtp_port,
-                    local_hostname="localhost",
-                    timeout=settings.SMTP_TIMEOUT_SECONDS,
-                )
-            else:
-                server = smtplib.SMTP(
-                    smtp_server,
-                    smtp_port,
-                    local_hostname="localhost",
-                    timeout=settings.SMTP_TIMEOUT_SECONDS,
-                )
-                server.starttls()
-
-            server.set_debuglevel(0)
+            server = _connect_smtp(smtp_server, smtp_port, is_ssl)
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, receiver_email, msg.as_string())
             return True
@@ -275,26 +375,11 @@ SMTP服务器: {config.smtp_server}:{config.smtp_port}
 
         server = None
         try:
-            if is_ssl:
-                server = smtplib.SMTP_SSL(
-                    smtp_server,
-                    smtp_port,
-                    local_hostname="localhost",
-                    timeout=settings.SMTP_TIMEOUT_SECONDS,
-                )
-            else:
-                server = smtplib.SMTP(
-                    smtp_server,
-                    smtp_port,
-                    local_hostname="localhost",
-                    timeout=settings.SMTP_TIMEOUT_SECONDS,
-                )
-                server.starttls()
-
+            server = _connect_smtp(smtp_server, smtp_port, is_ssl)
             server.login(smtp_user, smtp_password)
             return {"success": True, "message": "邮件连接测试成功"}
 
-        except (smtplib.SMTPException, OSError) as exc:
+        except (smtplib.SMTPException, UnicodeEncodeError, OSError) as exc:
             logger.error("邮件连接测试失败 (%s)", type(exc).__name__)
             return {"success": False, "error": "邮件连接测试失败"}
         finally:
